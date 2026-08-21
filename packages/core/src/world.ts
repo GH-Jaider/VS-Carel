@@ -11,8 +11,9 @@
  * is always the initial state; resetting means building a fresh World.
  */
 
-import { Karel, Position, Direction, parseDirection } from "@/interpreter/karel";
-import { ErrorMessages } from "@/interpreter/messages";
+import { Karel, Position, Direction, parseDirection } from "./karel";
+import { ErrorMessages } from "./messages";
+import { RuntimeError } from "./types/errors";
 
 /**
  * Represents a wall between two adjacent cells.
@@ -395,7 +396,7 @@ export class World {
    */
   move(): void {
     if (this.frontIsBlocked()) {
-      throw new Error(ErrorMessages.moveBlocked());
+      throw new RuntimeError(ErrorMessages.moveBlocked(), undefined, "blocked");
     }
     this._karel.move();
   }
@@ -413,7 +414,7 @@ export class World {
   pickBeeper(): void {
     const pos = this._karel.position;
     if (!this.removeBeeper(pos)) {
-      throw new Error(ErrorMessages.noBeepersToPickUp(pos.x, pos.y));
+      throw new RuntimeError(ErrorMessages.noBeepersToPickUp(pos.x, pos.y), undefined, "no-beeper");
     }
     this._karel.pickBeeper();
   }
@@ -423,7 +424,7 @@ export class World {
    */
   putBeeper(): void {
     if (!this._karel.putBeeper()) {
-      throw new Error(ErrorMessages.noBeepersInBag());
+      throw new RuntimeError(ErrorMessages.noBeepersInBag(), undefined, "empty-bag");
     }
     this.addBeepers(this._karel.position);
   }
@@ -472,7 +473,7 @@ export class World {
       case "no-beeper-in-bag":
         return !this.beeperInBag();
       default:
-        throw new Error(ErrorMessages.unknownCondition(condition));
+        throw new RuntimeError(ErrorMessages.unknownCondition(condition), undefined, "unknown-name");
     }
   }
 

@@ -11,14 +11,14 @@
  * renders is always in sync with the highlighted line.
  */
 
-import { World } from "@/interpreter/world";
-import { ProgramNode, BlockNode, InstructionCallNode } from "@/interpreter/types/ast";
-import { RuntimeError, Diagnostic } from "@/interpreter/types/errors";
-import { ErrorMessages } from "@/interpreter/messages";
-import { Parser } from "@/interpreter/parsing/parser";
-import { ExecutionFrame } from "@/interpreter/execution/executionFrame";
+import { World } from "../world";
+import { ProgramNode, BlockNode, InstructionCallNode } from "../types/ast";
+import { RuntimeError, Diagnostic } from "../types/errors";
+import { ErrorMessages } from "../messages";
+import { Parser } from "../parsing/parser";
+import { ExecutionFrame } from "./executionFrame";
 
-const MAX_VISIBLE_STEPS = 100_000;
+const DEFAULT_MAX_STEPS = 100_000;
 const MAX_STACK_DEPTH = 2_000;
 // Bookkeeping budget within one visible step. Must be generous: a legal
 // `ITERATE 5000 TIMES <empty-ish body>` spins ~5x its count without any
@@ -43,14 +43,21 @@ export class Interpreter {
   private runLoopActive = false;
   private visibleSteps = 0;
   private executionSpeed = 500;
+  private readonly maxSteps: number;
 
   // Callbacks for UI updates
   public onStep?: (line: number) => void;
   public onComplete?: () => void;
   public onError?: (error: RuntimeError) => void;
 
-  constructor(world: World) {
+  /**
+   * @param options.maxSteps Visible instructions allowed before the run is
+   *   declared an infinite loop. Lower it for batch grading, raise it for a
+   *   program that legitimately does a lot of work.
+   */
+  constructor(world: World, options?: { maxSteps?: number }) {
     this.world = world;
+    this.maxSteps = options?.maxSteps ?? DEFAULT_MAX_STEPS;
   }
 
   get isStarted(): boolean {
@@ -132,7 +139,7 @@ export class Interpreter {
 
   private ensureInitialized(): void {
     if (!this.ast) {
-      throw new RuntimeError(ErrorMessages.programNotLoaded());
+      throw new RuntimeError(ErrorMessages.programNotLoaded(), undefined, "internal");
     }
     if (!this.started) {
       this.stack = [
@@ -174,7 +181,7 @@ export class Interpreter {
 
     while (this.stack.length > 0) {
       if (++spins > MAX_INTERNAL_SPINS) {
-        throw new RuntimeError(ErrorMessages.stuckWithoutProgress());
+        throw new RuntimeError(ErrorMessages.stuckWithoutProgress(), undefined, "limit");
       }
 
       const frame = this.stack[this.stack.length - 1];
@@ -197,10 +204,11 @@ export class Interpreter {
               continue;
             }
             this.visibleSteps++;
-            if (this.visibleSteps > MAX_VISIBLE_STEPS) {
+            if (this.visibleSteps > this.maxSteps) {
               throw new RuntimeError(
-                ErrorMessages.maxIterationsReached(MAX_VISIBLE_STEPS),
-                call.line
+                ErrorMessages.maxIterationsReached(this.maxSteps),
+                call.line,
+                "limit"
               );
             }
             this.onStep?.(call.line);
@@ -299,10 +307,10 @@ export class Interpreter {
         default: {
           const body = this.customInstructions.get(name);
           if (!body) {
-            throw new RuntimeError(ErrorMessages.unknownInstruction(node.name), node.line);
+            throw new RuntimeError(ErrorMessages.unknownInstruction(node.name), node.line, "unknown-name");
           }
           if (this.stack.length >= MAX_STACK_DEPTH) {
-            throw new RuntimeError(ErrorMessages.recursionTooDeep(node.name), node.line);
+            throw new RuntimeError(ErrorMessages.recursionTooDeep(node.name), node.line, "limit");
           }
           this.stack.push({ type: "block", statements: body.statements, index: 0 });
           return "expanded";

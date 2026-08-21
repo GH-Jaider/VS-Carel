@@ -8,7 +8,7 @@
  * based on the presence of error-severity diagnostics.
  */
 
-import { Token, TokenType } from "@/interpreter/types/tokens";
+import { Token, TokenType } from "../types/tokens";
 import {
   ASTNode,
   ProgramNode,
@@ -18,11 +18,11 @@ import {
   WhileNode,
   IterateNode,
   InstructionCallNode,
-} from "@/interpreter/types/ast";
-import { Diagnostic } from "@/interpreter/types/errors";
-import { ErrorMessages } from "@/interpreter/messages";
-import { Lexer } from "@/interpreter/parsing/lexer";
-import { BUILT_IN_INSTRUCTIONS } from "@/interpreter/parsing/constants";
+} from "../types/ast";
+import { Diagnostic } from "../types/errors";
+import { ErrorMessages } from "../messages";
+import { Lexer } from "./lexer";
+import { BUILT_IN_INSTRUCTIONS } from "./constants";
 
 const STATEMENT_BOUNDARIES = new Set([
   TokenType.If,

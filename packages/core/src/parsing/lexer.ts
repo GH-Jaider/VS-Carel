@@ -2,8 +2,8 @@
  * Lexer (Tokenizer) for Karel instructions.
  */
 
-import { Token, TokenType } from "@/interpreter/types/tokens";
-import { VALID_CONDITIONS } from "@/interpreter/parsing/constants";
+import { Token, TokenType } from "../types/tokens";
+import { VALID_CONDITIONS } from "./constants";
 
 /**
  * Tokenizer for Karel instructions.

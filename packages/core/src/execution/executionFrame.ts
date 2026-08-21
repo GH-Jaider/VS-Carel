@@ -2,7 +2,7 @@
  * Execution frame types for stack-based execution.
  */
 
-import { ASTNode, BlockNode } from "@/interpreter/types/ast";
+import { ASTNode, BlockNode } from "../types/ast";
 
 /**
  * A frame on the execution stack. Discriminated by `type`:

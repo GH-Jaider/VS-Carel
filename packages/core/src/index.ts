@@ -7,5 +7,6 @@ export type { KarelMap, MapValidationResult, Wall, BeeperStack, Dimensions } fro
 export { Interpreter } from "./execution/interpreter";
 export { Parser } from "./parsing/parser";
 export { ParseError, RuntimeError } from "./types/errors";
+export type { RuntimeErrorKind } from "./types/errors";
 export type { Diagnostic } from "./types/errors";
 export { BUILT_IN_INSTRUCTIONS, VALID_CONDITIONS } from "./parsing/constants";
