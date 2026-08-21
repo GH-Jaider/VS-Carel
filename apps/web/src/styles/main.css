@@ -82,6 +82,10 @@
   /* The program column: wide enough for a Karel procedure at 12.5px without
      wrapping, narrow enough that the world keeps the bigger half. */
   --editor-rail: 500px;
+  /* The lesson column: wide enough for a readable measure of prose at 12px --
+     roughly 55 characters -- and no wider, because every pixel it takes comes
+     off the world. */
+  --guide-rail: 360px;
   --leading: 1.55;
 
   /* Swatch previews. Fixed values on purpose: each one has to show its own
@@ -561,6 +565,58 @@ button {
   background: var(--sw-paper-b);
 }
 
+/* The skin picker, sitting beside the theme swatches and built the same way,
+   because it is the same kind of choice: what the world is drawn AS, next to
+   what it is drawn IN.
+
+   The preview inside each button is a <canvas> the pack paints itself, in the
+   palette that is currently on. Nothing here says what a pack looks like --
+   if it did, the swatch would start lying the first time a pack was tuned. */
+.skins {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.skins-label {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 1180px) {
+  .skins-label {
+    display: none;
+  }
+}
+
+.skin-swatch {
+  display: block;
+  width: 26px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: none;
+  line-height: 0;
+  transition:
+    border-color 0.1s,
+    transform 0.1s;
+}
+
+.skin-swatch canvas {
+  display: block;
+}
+
+.skin-swatch:hover {
+  border-color: var(--line-bright);
+}
+
+.skin-swatch[aria-pressed="true"] {
+  border-color: var(--text);
+  transform: scale(1.1);
+}
+
 /* The language picker, given the same treatment as the theme swatches it sits
    beside: a labelled group of small buttons, one of which is pressed. The
    labels are endonyms and stay as they are in any language, so the set never
@@ -686,6 +742,36 @@ button {
   min-width: 0;
   min-height: 0;
   padding: 9px 14px 10px 12px;
+}
+
+/* The bench holds three surfaces and shows two of them at a time. `data-layout`
+   is written by the chrome and is the only thing that decides the columns:
+
+     plain    the workbench, two columns -- sandbox
+     guide    a lesson rail before it, three columns -- learn, a level, the
+              contribution form
+     gallery  one full-width surface, the workbench put away -- the level list
+
+   The narrow rule below 1120px collapses all three to a single column, so
+   these three lines are the whole of the mode layout on a wide screen. */
+.bench[data-layout="guide"] {
+  /* The program column gives up some width so the lesson can have some. A
+     Karel procedure still fits at 430px without wrapping. */
+  --editor-rail: 430px;
+  grid-template-columns:
+    minmax(260px, var(--guide-rail))
+    minmax(260px, var(--editor-rail))
+    minmax(0, 1fr);
+}
+
+.bench[data-layout="gallery"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The guide is already inset by its own margin, so the program column beside
+   it does not need the frame's full left gutter as well. */
+.bench[data-layout="guide"] .workshop {
+  padding-left: 12px;
 }
 
 /* -------------------------------------------------------------- program -- */
@@ -1237,6 +1323,44 @@ button.problem:hover {
   color: var(--green);
 }
 
+/* ---------------------------------------------------------------- files -- */
+/* Open and save, next to the transport rather than inside the map editor: a
+   program is saved from either mode, and a drawer that has to be opened first
+   is a drawer nobody finds. The buttons are the masthead's ghost buttons, so
+   the group reads as chrome and not as another instrument. */
+
+.files {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.files-label {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* What just happened to a file. Empty most of the time, and it takes no width
+   when it is: the group has to sit still whether or not it is saying anything.
+   Green for something that went right, exactly as the palette's chip does it,
+   because the colour is the whole message. */
+.file-note {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.file-note[data-flash="true"] {
+  color: var(--green);
+}
+
 /* -------------------------------------------------------------- palette -- */
 /* The map editor's instrument panel. It is the same box as every other one --
    one rule, a title chip cut into the top border -- because switching to edit
@@ -1438,6 +1562,105 @@ button.problem:hover {
    ordinary, so the colour is the whole message. */
 .palette .box-note[data-flash="true"] {
   color: var(--green);
+}
+
+/* ----------------------------------------------------------- map source -- */
+/* The world's own file, beside the canvas that draws it. Two boxes: the text
+   on the left, what is wrong with it on the right, laid out exactly like the
+   program and its problems one panel over -- because it is the same job, and
+   somebody who has read one of those lists can read this one. */
+
+.map-source {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
+  gap: 10px;
+  min-width: 0;
+}
+
+.source-box {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.source-host {
+  flex: 1;
+  min-width: 0;
+  /* Tall enough for a small world whole and a large one's shape, short enough
+     that the canvas above it keeps most of the stage. */
+  height: 174px;
+  overflow: hidden;
+}
+
+.source-host .cm-editor {
+  font-size: 12px;
+}
+
+/* A box nested inside the palette stands on the palette's ground, not the
+   page's, so its title chip has to carry that ground -- otherwise the break it
+   cuts in the border shows up as a stripe of the wrong colour. The palette's
+   own chip is not touched: that one straddles the outer border, where the page
+   really is behind it. */
+.map-source .box-title,
+.map-source .box-note,
+.map-source .panel-title,
+.map-source .panel-note {
+  background: var(--bg-panel);
+}
+
+.map-problems {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.map-problems .panel-body {
+  padding: 12px 8px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+}
+
+.map-problems .panel-body::-webkit-scrollbar {
+  width: 8px;
+}
+.map-problems .panel-body::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
+/* The same answer the program box gives: the box owns the focus ring, because
+   CodeMirror's own would be drawn inside a rule that is already there. */
+.source-box:has(.cm-editor.cm-focused) {
+  border-color: var(--text);
+}
+
+/* JSON, in the same three registers the program uses: the structure of the
+   file (keys), the values in it, and the punctuation holding it together.
+   Keys take cyan -- the colour the conditions have in a program -- so the
+   shape of the file reads at a glance from across the room. */
+
+.cm-json-key {
+  color: var(--cyan);
+}
+
+.cm-json-string {
+  color: var(--amber);
+}
+
+.cm-json-number {
+  color: var(--lime);
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-json-atom {
+  color: var(--purple);
+}
+
+.cm-json-punctuation {
+  color: var(--text-faint);
 }
 
 /* -------------------------------------------------------------- readout -- */
@@ -2221,6 +2444,624 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   }
 }
 
+/* ---------------------------------------------------------------- guide -- */
+/* The third column. It is the same box as every other one on the page -- one
+   rule, a title chip cut into the top border -- and everything inside it is
+   built by the chrome, so every class below is one main.ts writes by hand.
+
+   It scrolls on its own rather than growing the page: the lesson is the only
+   long-form reading on the bench, and a chapter that pushed the world off the
+   bottom of the screen would defeat the reason the column exists. */
+
+.guide {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  margin: 9px 0 10px 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+/* `display: grid` above would otherwise beat the UA rule for [hidden]. */
+.guide[hidden] {
+  display: none;
+}
+
+.guide-scroll {
+  /* One measure for everything in the column, exactly as the manual does it:
+     blocks of different widths read as a page that could not decide where its
+     right edge was. It only binds when the column is wide -- stacked under
+     1120px the guide is the width of the page, and a line of prose a thousand
+     pixels long is unreadable. */
+  --guide-measure: 72ch;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 15px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+}
+
+.guide-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.guide-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+.guide-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--line-bright);
+}
+
+.guide-scroll:focus-visible {
+  outline-offset: -2px;
+}
+
+/* The chapter rail: eleven numbered cells, which is the whole table of
+   contents and the whole progress report in one strip. A solved chapter is
+   marked rather than coloured over, so the strip still reads as a sequence. */
+.chapter-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 14px;
+}
+
+.chapter-chip {
+  min-width: 24px;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.chapter-chip:hover {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.chapter-chip[data-solved="true"] {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+}
+
+.chapter-chip[aria-current="true"] {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.guide-head {
+  margin: 0 0 3px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+/* Difficulty, author, chapter number: the facts about the thing on screen,
+   in the register the page uses for every other note. */
+.guide-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 12px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.guide-tags b {
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+/* The task. Framed and set apart from the lesson around it, because it is the
+   one sentence a reader comes back to after every failed run. */
+.guide-task {
+  margin: 0 0 14px;
+  max-width: var(--guide-measure);
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--cyan);
+  background: var(--bg);
+}
+
+.guide-task-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.guide-task p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.guide-prose {
+  margin: 0 0 11px;
+  max-width: var(--guide-measure);
+  font-size: 12px;
+  line-height: var(--leading);
+  color: var(--text-dim);
+}
+
+/* Painted by the editor's own tokenizer, so a sample here cannot be coloured
+   differently from the same text typed into the program column. */
+.guide-code {
+  margin: 0 0 12px;
+  max-width: var(--guide-measure);
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--line-bright);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text);
+  /* Wrapping Karel source would break the indentation that shows the nesting,
+     so a long line scrolls instead. */
+  overflow-x: auto;
+  tab-size: 4;
+}
+
+.guide-rule {
+  margin: 14px 0;
+  border: none;
+  border-top: 1px dotted var(--line);
+}
+
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 12px 0;
+}
+
+.guide-button {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.guide-button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.guide-button.primary {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.guide-button.primary:hover:not(:disabled) {
+  background: var(--cyan);
+  color: var(--bg);
+}
+
+.guide-button:disabled {
+  color: var(--text-faint);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* A hint, once it has been asked for. Numbered, because asking twice should
+   visibly give you a second thing rather than replace the first. */
+.guide-hint {
+  display: grid;
+  max-width: var(--guide-measure);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  margin: 0 0 7px;
+  padding: 7px 10px;
+  border-left: 2px solid var(--amber);
+  background: var(--bg);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.guide-hint b {
+  color: var(--amber);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.guide-note {
+  margin: 8px 0 12px;
+  max-width: var(--guide-measure);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.guide-note[data-tone="good"] {
+  color: var(--green);
+}
+.guide-note[data-tone="warn"] {
+  color: var(--amber);
+}
+
+/* --------------------------------------------------------------- verdict -- */
+/* What the check said, the moment a program finished. Sober on purpose: the
+   page marks the result the way it marks everything else -- an inverse-video
+   chip and a sentence -- because the sentence is the useful half. */
+
+.verdict {
+  margin: 14px 0 12px;
+  max-width: var(--guide-measure);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--line-bright);
+  background: var(--bg);
+}
+
+.verdict[data-tone="solved"] {
+  border-left-color: var(--green);
+}
+
+.verdict[data-tone="miss"] {
+  border-left-color: var(--amber);
+}
+
+.verdict-mark {
+  display: inline-block;
+  margin-bottom: 7px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: var(--green);
+  color: var(--bg);
+}
+
+.verdict[data-tone="miss"] .verdict-mark {
+  background: var(--amber);
+}
+
+.verdict p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------ guide form -- */
+/* The contribution form. Fields drawn the way the map editor's number fields
+   are drawn: a rule around a bare input, no chrome of the browser's own. */
+
+.guide-steps {
+  margin: 0 0 14px;
+  max-width: var(--guide-measure);
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.guide-steps li {
+  position: relative;
+  margin-bottom: 8px;
+  padding-left: 24px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  counter-increment: step;
+}
+
+.guide-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--text-faint);
+}
+
+.guide-steps li[data-done="true"]::before {
+  background: var(--green);
+}
+
+.guide-form {
+  display: grid;
+  gap: 10px;
+  max-width: var(--guide-measure);
+}
+
+.guide-form > .toggle,
+.guide-form .tools {
+  justify-self: start;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.text-input {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+textarea.text-input {
+  resize: vertical;
+  min-height: 58px;
+}
+
+.text-input::placeholder {
+  color: var(--text-faint);
+}
+
+/* What buildLevel refused, listed the way the program's problems are listed.
+   The wording is the loader's own and is English only -- it is addressed to a
+   contributor writing a file, which is a English-language act in this repo. */
+.guide-errors {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-errors li {
+  padding: 3px 8px;
+  border-left: 2px solid var(--red);
+  background: var(--bg);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* The level file itself, for the two cases where a link cannot carry it: too
+   long, or a clipboard that said no. Selectable, which is the whole point. */
+.guide-file {
+  max-height: 220px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  overflow: auto;
+  user-select: all;
+  white-space: pre;
+}
+
+.guide-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--cyan);
+  word-break: break-all;
+}
+
+/* -------------------------------------------------------------- gallery -- */
+/* Fifteen worlds to choose from. One box over the whole bench, the levels in
+   difficulty bands, one card each -- a card is the smallest thing that can
+   carry a title, a sentence and a tick without becoming a table. */
+
+.gallery {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  margin: 9px 14px 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.gallery[hidden] {
+  display: none;
+}
+
+.gallery-scroll {
+  overflow-y: auto;
+  padding: 18px 18px 26px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+}
+
+.gallery-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.gallery-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
+.gallery-scroll:focus-visible {
+  outline-offset: -2px;
+}
+
+.gallery-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  align-items: start;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .gallery-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gallery-lead {
+  max-width: 68ch;
+  margin: 0;
+  font-size: 12px;
+  line-height: var(--leading);
+  color: var(--text-dim);
+}
+
+.gallery-group {
+  margin-bottom: 22px;
+}
+
+.gallery-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 9px;
+  padding-bottom: 5px;
+  border-bottom: 1px dotted var(--line);
+}
+
+.gallery-group-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pink);
+}
+
+.gallery-group-count {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 7px;
+}
+
+.level-card {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  text-align: left;
+  transition:
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.level-card:hover {
+  border-color: var(--line-bright);
+  background: var(--bg-raised);
+}
+
+.level-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.level-card-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+
+/* The tick a solved level carries. It is the only colour on the card, so it
+   can be found by scanning rather than by reading. */
+.level-tick {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.level-card[data-solved="true"] .level-tick {
+  color: var(--green);
+}
+
+.level-card[data-solved="true"] {
+  border-left: 2px solid var(--green);
+}
+
+.level-card-brief {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.level-card-meta {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* The way in to the contribution form, given the width of a card of its own so
+   it reads as one more thing you can do here rather than as fine print. */
+.gallery-contribute {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-bright);
+  background: var(--bg);
+}
+
+.gallery-contribute p {
+  max-width: 68ch;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* `display` set by the rules above would otherwise beat the UA rule for
+   [hidden], and the chrome hides all of these by attribute. */
+.workshop[hidden],
+.stage[hidden],
+.toggle[hidden],
+.guide-errors[hidden],
+.guide-hint[hidden],
+.guide-link[hidden] {
+  display: none;
+}
+
 /* ----------------------------------------------------------------- a11y -- */
 /* Focus, said the way everything else here is said.
 
@@ -2293,6 +3134,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
    works inside them. This ring goes outside instead, onto the page ground,
    where `--text` is safe again. The five-pixel gap between swatches is enough
    to hold it without touching the neighbour. */
+.skin-swatch:focus-visible,
 .theme-swatch:focus-visible {
   outline-offset: 2px;
 }
@@ -2344,6 +3186,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 
 .masthead,
+.guide,
+.gallery,
 .editor,
 .problems,
 .viewport,
@@ -2356,6 +3200,10 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 
 .masthead {
   animation-delay: 0.02s;
+}
+.guide,
+.gallery {
+  animation-delay: 0.04s;
 }
 .editor {
   animation-delay: 0.06s;
@@ -2428,8 +3276,28 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .workshop {
+  /* More specific than the rule above, so it has to be unwound by name. */
+  .bench[data-layout="guide"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workshop,
+  .bench[data-layout="guide"] .workshop {
     padding: 9px 12px 0;
+  }
+
+  /* Stacked, the guide and the gallery have no parent height to fill, so they
+     grow with their content and the page scrolls -- a rail scrolling inside a
+     scrolling page is the one thing worse than a long page. */
+  .guide,
+  .gallery {
+    grid-template-rows: auto;
+    margin: 9px 12px 0;
+  }
+
+  .guide-scroll,
+  .gallery-scroll {
+    overflow-y: visible;
   }
 
   .editor {
@@ -2497,5 +3365,21 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 
   .palette-hint {
     display: none;
+  }
+
+  .files-label {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  /* Side by side, neither the file nor the reasons it will not load has room
+     to be read. Stacked, both do, and the list is the shorter of the two. */
+  .map-source {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .source-host {
+    height: 148px;
   }
 }

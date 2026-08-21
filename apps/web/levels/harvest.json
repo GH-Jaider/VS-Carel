@@ -1,0 +1,46 @@
+{
+  "id": "harvest",
+  "difficulty": "hard",
+  "order": 10,
+  "author": "GH-Jaider",
+  "title": { "en": "harvest", "es": "la cosecha" },
+  "brief": {
+    "en": "Twenty corners, a beeper on every one. Sweep the field row by row, turning at each wall, until nothing is left on the ground.",
+    "es": "Veinte esquinas y un zumbador en cada una. Barre el campo fila a fila, girando en cada muro, hasta no dejar nada en el suelo."
+  },
+  "ignoreFacing": true,
+  "world": {
+    "dimensions": { "width": 5, "height": 4 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [
+      { "x": 1, "y": 1, "count": 1 },
+      { "x": 1, "y": 2, "count": 1 },
+      { "x": 1, "y": 3, "count": 1 },
+      { "x": 1, "y": 4, "count": 1 },
+      { "x": 2, "y": 1, "count": 1 },
+      { "x": 2, "y": 2, "count": 1 },
+      { "x": 2, "y": 3, "count": 1 },
+      { "x": 2, "y": 4, "count": 1 },
+      { "x": 3, "y": 1, "count": 1 },
+      { "x": 3, "y": 2, "count": 1 },
+      { "x": 3, "y": 3, "count": 1 },
+      { "x": 3, "y": 4, "count": 1 },
+      { "x": 4, "y": 1, "count": 1 },
+      { "x": 4, "y": 2, "count": 1 },
+      { "x": 4, "y": 3, "count": 1 },
+      { "x": 4, "y": 4, "count": 1 },
+      { "x": 5, "y": 1, "count": 1 },
+      { "x": 5, "y": 2, "count": 1 },
+      { "x": 5, "y": 3, "count": 1 },
+      { "x": 5, "y": 4, "count": 1 }
+    ],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 5, "height": 4 },
+    "karel": { "x": 1, "y": 4, "facing": "west", "beepers": 20 },
+    "beepers": [],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION turnright AS\n    BEGIN\n        turnleft;\n        turnleft;\n        turnleft\n    END\n    DEFINE-NEW-INSTRUCTION harvest-row AS\n    BEGIN\n        pickbeeper;\n        WHILE front-is-clear DO\n        BEGIN\n            move;\n            pickbeeper\n        END\n    END\n    DEFINE-NEW-INSTRUCTION next-row AS\n    BEGIN\n        IF facing-east THEN\n        BEGIN\n            turnleft;\n            move;\n            turnleft\n        END\n        ELSE\n        BEGIN\n            turnright;\n            move;\n            turnright\n        END\n    END\n    BEGINNING-OF-EXECUTION\n        harvest-row;\n        ITERATE 3 TIMES\n        BEGIN\n            next-row;\n            harvest-row\n        END\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

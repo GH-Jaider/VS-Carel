@@ -10,6 +10,7 @@
 
 import { validateKarelMap, type KarelMap } from "@karel/core";
 import { t } from "./i18n.js";
+import { serializeWorld } from "./mapsource.js";
 
 export interface Exercise {
   id: string;
@@ -235,9 +236,17 @@ export function parseWorldFile(text: string): ImportResult {
   return { ok: true, world: validated.map };
 }
 
-/** Offer `world` as a .klm download, in the exact shape the CLI expects. */
+/**
+ * Offer `world` as a .klm download, in the exact shape the CLI expects.
+ *
+ * Written by `serializeWorld` rather than by `JSON.stringify`, so the file
+ * that lands in the visitor's downloads is byte for byte the text the map
+ * editor's source panel was showing them -- one wall per line, one pile per
+ * line, always in the same order -- instead of a second, differently shaped
+ * spelling of the same world.
+ */
 export function downloadWorld(world: KarelMap, filename: string): void {
-  const blob = new Blob([`${JSON.stringify(world, null, 2)}\n`], { type: "application/json" });
+  const blob = new Blob([`${serializeWorld(world)}\n`], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

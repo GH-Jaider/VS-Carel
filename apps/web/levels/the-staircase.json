@@ -1,0 +1,35 @@
+{
+  "id": "the-staircase",
+  "difficulty": "tricky",
+  "order": 20,
+  "author": "GH-Jaider",
+  "title": { "en": "the staircase", "es": "la escalera" },
+  "brief": {
+    "en": "Four steps rise between Karel and the beeper. Climb one riser at a time and never come back down.",
+    "es": "Cuatro escalones separan a Karel del zumbador. Sube de uno en uno y no vuelvas a bajar."
+  },
+  "ignoreFacing": true,
+  "world": {
+    "dimensions": { "width": 7, "height": 6 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 7, "y": 5, "count": 1 }],
+    "walls": [
+      { "from": { "x": 2, "y": 1 }, "to": { "x": 3, "y": 1 } },
+      { "from": { "x": 3, "y": 2 }, "to": { "x": 4, "y": 2 } },
+      { "from": { "x": 4, "y": 3 }, "to": { "x": 5, "y": 3 } },
+      { "from": { "x": 5, "y": 4 }, "to": { "x": 6, "y": 4 } }
+    ]
+  },
+  "goal": {
+    "dimensions": { "width": 7, "height": 6 },
+    "karel": { "x": 7, "y": 5, "facing": "east", "beepers": 1 },
+    "beepers": [],
+    "walls": [
+      { "from": { "x": 2, "y": 1 }, "to": { "x": 3, "y": 1 } },
+      { "from": { "x": 3, "y": 2 }, "to": { "x": 4, "y": 2 } },
+      { "from": { "x": 4, "y": 3 }, "to": { "x": 5, "y": 3 } },
+      { "from": { "x": 5, "y": 4 }, "to": { "x": 6, "y": 4 } }
+    ]
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION turnright AS\n    BEGIN\n        turnleft;\n        turnleft;\n        turnleft\n    END\n    BEGINNING-OF-EXECUTION\n        WHILE not-next-to-a-beeper DO\n        BEGIN\n            IF front-is-clear THEN\n                move\n            ELSE\n            BEGIN\n                turnleft;\n                move;\n                turnright\n            END\n        END\n        pickbeeper;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

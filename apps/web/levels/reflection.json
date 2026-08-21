@@ -1,0 +1,38 @@
+{
+  "id": "reflection",
+  "difficulty": "tricky",
+  "order": 60,
+  "author": "GH-Jaider",
+  "title": { "en": "reflection", "es": "el reflejo" },
+  "brief": {
+    "en": "Copy the bottom row onto the row above it: wherever a beeper stands, put one directly north of it. The bag has one to spare.",
+    "es": "Copia la fila de abajo en la de arriba: donde haya un zumbador, deja otro justo al norte. La mochila trae uno de sobra."
+  },
+  "world": {
+    "dimensions": { "width": 8, "height": 2 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 5 },
+    "beepers": [
+      { "x": 2, "y": 1, "count": 1 },
+      { "x": 3, "y": 1, "count": 1 },
+      { "x": 6, "y": 1, "count": 1 },
+      { "x": 8, "y": 1, "count": 1 }
+    ],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 8, "height": 2 },
+    "karel": { "x": 8, "y": 1, "facing": "east", "beepers": 1 },
+    "beepers": [
+      { "x": 2, "y": 1, "count": 1 },
+      { "x": 3, "y": 1, "count": 1 },
+      { "x": 6, "y": 1, "count": 1 },
+      { "x": 8, "y": 1, "count": 1 },
+      { "x": 2, "y": 2, "count": 1 },
+      { "x": 3, "y": 2, "count": 1 },
+      { "x": 6, "y": 2, "count": 1 },
+      { "x": 8, "y": 2, "count": 1 }
+    ],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION copy-up AS\n    BEGIN\n        turnleft;\n        move;\n        putbeeper;\n        turnleft;\n        turnleft;\n        move;\n        turnleft\n    END\n    BEGINNING-OF-EXECUTION\n        WHILE front-is-clear DO\n        BEGIN\n            IF next-to-a-beeper THEN\n                copy-up;\n            move\n        END\n        IF next-to-a-beeper THEN\n            copy-up;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

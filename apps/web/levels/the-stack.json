@@ -1,0 +1,24 @@
+{
+  "id": "the-stack",
+  "difficulty": "starter",
+  "order": 40,
+  "author": "GH-Jaider",
+  "title": { "en": "the stack", "es": "la pila" },
+  "brief": {
+    "en": "Three steps east, then put all four beepers down on the same corner. A pile is just four putbeepers in one place.",
+    "es": "Tres pasos al este y deja los cuatro zumbadores en la misma esquina. Una pila no es más que cuatro putbeeper en el mismo sitio."
+  },
+  "world": {
+    "dimensions": { "width": 6, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 4 },
+    "beepers": [],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 6, "height": 1 },
+    "karel": { "x": 4, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 4, "y": 1, "count": 4 }],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    BEGINNING-OF-EXECUTION\n        ITERATE 3 TIMES\n        BEGIN\n            move\n        END\n        ITERATE 4 TIMES\n        BEGIN\n            putbeeper\n        END\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

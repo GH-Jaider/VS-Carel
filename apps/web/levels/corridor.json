@@ -1,0 +1,24 @@
+{
+  "id": "corridor",
+  "difficulty": "starter",
+  "order": 10,
+  "author": "GH-Jaider",
+  "title": { "en": "corridor", "es": "el pasillo" },
+  "brief": {
+    "en": "Nine corners in a line and a wall at the end. Walk Karel to the far corner without counting the steps by hand.",
+    "es": "Nueve esquinas en fila y un muro al final. Lleva a Karel hasta la última esquina sin contar los pasos a mano."
+  },
+  "world": {
+    "dimensions": { "width": 9, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 9, "height": 1 },
+    "karel": { "x": 9, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    BEGINNING-OF-EXECUTION\n        WHILE front-is-clear DO\n            move;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

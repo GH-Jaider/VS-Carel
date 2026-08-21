@@ -1,0 +1,25 @@
+{
+  "id": "detour",
+  "difficulty": "starter",
+  "order": 50,
+  "author": "GH-Jaider",
+  "title": { "en": "detour", "es": "el rodeo" },
+  "brief": {
+    "en": "One wall stands across the bottom row. Step around it, fetch the beeper at the end and stop there.",
+    "es": "Un muro corta la fila de abajo. Rodéalo, recoge el zumbador del final y párate allí."
+  },
+  "ignoreFacing": true,
+  "world": {
+    "dimensions": { "width": 7, "height": 3 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 7, "y": 1, "count": 1 }],
+    "walls": [{ "from": { "x": 4, "y": 1 }, "to": { "x": 5, "y": 1 } }]
+  },
+  "goal": {
+    "dimensions": { "width": 7, "height": 3 },
+    "karel": { "x": 7, "y": 1, "facing": "east", "beepers": 1 },
+    "beepers": [],
+    "walls": [{ "from": { "x": 4, "y": 1 }, "to": { "x": 5, "y": 1 } }]
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION turnright AS\n    BEGIN\n        turnleft;\n        turnleft;\n        turnleft\n    END\n    BEGINNING-OF-EXECUTION\n        move;\n        move;\n        move;\n        turnleft;\n        move;\n        turnright;\n        move;\n        turnright;\n        move;\n        turnleft;\n        move;\n        move;\n        pickbeeper;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

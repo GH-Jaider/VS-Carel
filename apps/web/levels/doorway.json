@@ -1,0 +1,35 @@
+{
+  "id": "doorway",
+  "difficulty": "tricky",
+  "order": 30,
+  "author": "GH-Jaider",
+  "title": { "en": "doorway", "es": "el hueco" },
+  "brief": {
+    "en": "A wall runs the whole height of the room with a single gap in it. Find the gap, go through, take the beeper.",
+    "es": "Un muro recorre la sala de arriba abajo y tiene un único hueco. Encuéntralo, pasa y recoge el zumbador."
+  },
+  "ignoreFacing": true,
+  "world": {
+    "dimensions": { "width": 7, "height": 5 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 7, "y": 3, "count": 1 }],
+    "walls": [
+      { "from": { "x": 4, "y": 1 }, "to": { "x": 5, "y": 1 } },
+      { "from": { "x": 4, "y": 2 }, "to": { "x": 5, "y": 2 } },
+      { "from": { "x": 4, "y": 4 }, "to": { "x": 5, "y": 4 } },
+      { "from": { "x": 4, "y": 5 }, "to": { "x": 5, "y": 5 } }
+    ]
+  },
+  "goal": {
+    "dimensions": { "width": 7, "height": 5 },
+    "karel": { "x": 7, "y": 3, "facing": "east", "beepers": 1 },
+    "beepers": [],
+    "walls": [
+      { "from": { "x": 4, "y": 1 }, "to": { "x": 5, "y": 1 } },
+      { "from": { "x": 4, "y": 2 }, "to": { "x": 5, "y": 2 } },
+      { "from": { "x": 4, "y": 4 }, "to": { "x": 5, "y": 4 } },
+      { "from": { "x": 4, "y": 5 }, "to": { "x": 5, "y": 5 } }
+    ]
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION turnright AS\n    BEGIN\n        turnleft;\n        turnleft;\n        turnleft\n    END\n    BEGINNING-OF-EXECUTION\n        WHILE front-is-clear DO\n            move;\n        turnleft;\n        WHILE right-is-blocked DO\n            move;\n        turnright;\n        WHILE front-is-clear DO\n            move;\n        pickbeeper;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

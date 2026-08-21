@@ -64,6 +64,25 @@ const en = {
   wallNotAdjacent: (n: number, x1: number, y1: number, x2: number, y2: number) =>
     `Wall #${n}: cells (${x1}, ${y1}) and (${x2}, ${y2}) are not adjacent`,
 
+  // Goals. Read by a student in the browser and by a marker on the command
+  // line, so they are written for whoever is reading, not as a diff.
+  goalDifferentSize: (w: number, h: number, ew: number, eh: number) =>
+    `the world is ${w}x${h} but the expected world is ${ew}x${eh}`,
+  goalDifferentWallCount: (has: number, expected: number) =>
+    `the world has ${has} ${has === 1 ? "wall" : "walls"} but the expected world has ${expected}`,
+  goalWallNotInExpected: (where: string) =>
+    `the world has a wall at ${where} that the expected world does not`,
+  goalWrongCorner: (ex: number, ey: number, ax: number, ay: number) =>
+    `expected Karel at (${ex}, ${ey}), found (${ax}, ${ay})`,
+  goalWrongFacing: (expected: string, found: string) =>
+    `expected Karel facing ${expected}, found ${found}`,
+  goalWrongBag: (expected: number, found: number) =>
+    `expected ${expected} ${expected === 1 ? "beeper" : "beepers"} in the bag, found ${found}`,
+  goalWrongPile: (expected: number, corner: string, found: number) =>
+    `expected ${expected} ${expected === 1 ? "beeper" : "beepers"} at ${corner}, found ${found}`,
+  goalUnexpectedPile: (corner: string, found: number) =>
+    `expected no beepers at ${corner}, found ${found}`,
+
   // Parser
   emptyProgram: () => "The program is empty. Start with BEGINNING-OF-PROGRAM",
   missingProgramStart: () => "Missing BEGINNING-OF-PROGRAM at the start of the program",
@@ -138,6 +157,23 @@ const es: Catalogue = {
   wallOutOfBounds: (n) => `El muro n.º ${n} toca una celda fuera del mundo`,
   wallNotAdjacent: (n, x1, y1, x2, y2) =>
     `Muro n.º ${n}: las celdas (${x1}, ${y1}) y (${x2}, ${y2}) no son adyacentes`,
+
+  // Goals
+  goalDifferentSize: (w, h, ew, eh) =>
+    `el mundo es de ${w}x${h} pero el esperado es de ${ew}x${eh}`,
+  goalDifferentWallCount: (has, expected) =>
+    `el mundo tiene ${has} ${has === 1 ? "muro" : "muros"} pero el esperado tiene ${expected}`,
+  goalWallNotInExpected: (where) => `el mundo tiene un muro en ${where} que el esperado no tiene`,
+  goalWrongCorner: (ex, ey, ax, ay) =>
+    `se esperaba a Karel en (${ex}, ${ey}), está en (${ax}, ${ay})`,
+  goalWrongFacing: (expected, found) =>
+    `se esperaba a Karel mirando al ${expected}, mira al ${found}`,
+  goalWrongBag: (expected, found) =>
+    `se esperaban ${expected} ${expected === 1 ? "zumbador" : "zumbadores"} en la mochila, hay ${found}`,
+  goalWrongPile: (expected, corner, found) =>
+    `se esperaban ${expected} ${expected === 1 ? "zumbador" : "zumbadores"} en ${corner}, hay ${found}`,
+  goalUnexpectedPile: (corner, found) =>
+    `no se esperaba ningún zumbador en ${corner}, hay ${found}`,
 
   // Parser
   emptyProgram: () => "El programa está vacío. Empieza con BEGINNING-OF-PROGRAM",

@@ -1,0 +1,30 @@
+{
+  "id": "pick-the-row",
+  "difficulty": "starter",
+  "order": 20,
+  "author": "GH-Jaider",
+  "title": { "en": "pick the row", "es": "recoger la fila" },
+  "brief": {
+    "en": "Five beepers lie ahead, one per corner. Collect every one of them and stop at the far wall.",
+    "es": "Hay cinco zumbadores por delante, uno por esquina. Recógelos todos y párate junto al muro del fondo."
+  },
+  "world": {
+    "dimensions": { "width": 7, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [
+      { "x": 2, "y": 1, "count": 1 },
+      { "x": 3, "y": 1, "count": 1 },
+      { "x": 4, "y": 1, "count": 1 },
+      { "x": 5, "y": 1, "count": 1 },
+      { "x": 6, "y": 1, "count": 1 }
+    ],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 7, "height": 1 },
+    "karel": { "x": 7, "y": 1, "facing": "east", "beepers": 5 },
+    "beepers": [],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    BEGINNING-OF-EXECUTION\n        WHILE front-is-clear DO\n        BEGIN\n            move;\n            IF next-to-a-beeper THEN\n                pickbeeper\n        END\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

@@ -11,7 +11,7 @@
     <meta
       name="description"
       data-i18n-content="page.description"
-      content="Write Karel programs in the browser and watch the robot walk the grid, pick up beepers and turn off. Four exercises, a map editor, and a link you can share."
+      content="Write Karel programs in the browser and watch the robot walk the grid, pick up beepers and turn off. A guided course, a collection of levels, a map editor, and a link you can share."
     />
     <meta name="theme-color" content="#0c0c12" />
 
@@ -39,7 +39,7 @@
     <meta property="og:title" content="Karel · a robot on a grid" />
     <meta
       property="og:description"
-      content="Write Karel programs in the browser and watch the robot walk the grid, pick up beepers and turn off. Four exercises, a map editor, and a link you can share."
+      content="Write Karel programs in the browser and watch the robot walk the grid, pick up beepers and turn off. A guided course, a collection of levels, a map editor, and a link you can share."
     />
     <meta property="og:url" content="https://gh-jaider.github.io/karel/" />
     <meta property="og:image" content="https://gh-jaider.github.io/karel/og-image.png" />
@@ -106,13 +106,10 @@
           <span class="subtitle" data-i18n="masthead.subtitle">a robot on a grid</span>
         </div>
 
-        <!-- Filled by the chrome: one .channel button per bundled world. -->
-        <nav
-          class="channels"
-          id="worlds"
-          data-i18n-aria="masthead.worlds"
-          aria-label="Worlds"
-        ></nav>
+        <!-- Filled by the chrome: one .channel button per mode. The three of
+             them are what this page is: a guided course, a collection of
+             levels, and a free world. Exactly one is active at a time. -->
+        <nav class="channels" id="modes" data-i18n-aria="masthead.modes" aria-label="Modes"></nav>
 
         <div class="masthead-end">
           <!-- Filled by the chrome: one .lang-option per language. -->
@@ -124,6 +121,19 @@
             aria-label="Language"
           >
             <span class="langs-label" data-i18n="masthead.language">lang</span>
+          </div>
+          <!-- Filled by the renderer: one .skin-swatch per pack, each one a
+               miniature the pack draws with its own hand. A pack decides the
+               shapes on the canvas; the theme beside it decides the colours,
+               and the two are chosen independently on purpose. -->
+          <div
+            class="skins"
+            id="skins"
+            role="group"
+            data-i18n-aria="masthead.skins"
+            aria-label="Map skin"
+          >
+            <span class="skins-label" data-i18n="masthead.skin">skin</span>
           </div>
           <!-- Filled by the chrome: one .theme-swatch per palette. -->
           <div
@@ -163,7 +173,30 @@
         </div>
       </header>
 
-      <main class="bench">
+      <main class="bench" id="bench" data-layout="plain" data-mode="sandbox">
+        <!-- The guide. A third column rather than a panel over the editor,
+             because the lesson, the program and the world all have to be
+             readable at the same moment: the whole act of learning here is
+             reading a paragraph, changing a line and watching the robot. It
+             is absent in sandbox, where there is nothing to guide.
+
+             Filled by the chrome, which decides what a guide is per mode:
+             the chapter in learn, the brief in a level, the form when a
+             level is being sent. -->
+        <aside
+          class="guide"
+          id="guide"
+          data-i18n-aria="guide.group"
+          aria-label="The lesson and the task"
+          hidden
+        >
+          <!-- Written by the chrome, which is the only thing that knows whether
+               this column is a lesson, a level or a form. -->
+          <span class="box-title" id="guide-title">lesson</span>
+          <span class="box-note" id="guide-note"></span>
+          <div class="guide-scroll" id="guide-body" tabindex="0"></div>
+        </aside>
+
         <section class="workshop">
           <div class="editor">
             <span class="box-title" data-i18n="panel.program">program</span>
@@ -234,6 +267,72 @@
                 data-i18n-aria="speed.label"
                 aria-label="Speed"
               ></div>
+            </div>
+
+            <!-- Files. Dropping a .klm on the page still works and is still
+                 the fastest way in, but it is invisible until someone tries
+                 it and impossible on a phone, so the same two formats get a
+                 button apiece. One opener for both: the extension decides
+                 what a file is, exactly as it does for a drop, and a picker
+                 that offers one button is easier to use on a small screen
+                 than two that each refuse half the files. -->
+            <div
+              class="files"
+              id="files"
+              role="group"
+              data-i18n-aria="files.group"
+              aria-label="Files"
+            >
+              <span class="files-label" data-i18n="files.label">files</span>
+              <button
+                class="ghost-button"
+                id="open-file"
+                type="button"
+                data-i18n-title="files.openTitle"
+                title="Open a .kli program or a .klm world from this device"
+              >
+                <span class="key-cap" aria-hidden="true">↑</span
+                ><span data-i18n="files.open">open</span>
+              </button>
+              <!-- The button in front of it is the control; this is the input
+                   it clicks. `accept` names both extensions and the two MIME
+                   types a browser is likely to guess for them, since a phone
+                   that recognises neither offers nothing at all. -->
+              <!-- No class of its own: it is `hidden`, the button in front of
+                   it is the control, and a class the stylesheet never mentions
+                   is a name that means nothing. -->
+              <input
+                id="file-input"
+                type="file"
+                hidden
+                accept=".kli,.klm,application/json,text/plain"
+                data-i18n-aria="files.openTitle"
+                aria-label="Open a .kli program or a .klm world from this device"
+              />
+              <button
+                class="ghost-button"
+                id="save-program"
+                type="button"
+                data-i18n-title="files.saveProgramTitle"
+                title="Download the program as a .kli file"
+              >
+                <span class="key-cap" aria-hidden="true">↓</span
+                ><span data-i18n="files.saveProgram">save .kli</span>
+              </button>
+              <button
+                class="ghost-button"
+                id="save-world"
+                type="button"
+                data-i18n-title="files.saveWorldTitle"
+                title="Download the world as a .klm file"
+              >
+                <span class="key-cap" aria-hidden="true">↓</span
+                ><span data-i18n="files.saveWorld">save .klm</span>
+              </button>
+              <!-- What just happened to a file, for a few seconds. The palette
+                   has a chip of its own, but it is only on screen in edit
+                   mode and saving a program is not an edit-mode act. -->
+              <span class="file-note" id="file-note" role="status"></span>
             </div>
 
             <!-- The mode switch is markup because it is not a view option: it
@@ -425,14 +524,42 @@
               <span class="palette-spacer"></span>
               <button
                 class="palette-button"
-                id="export-world"
+                id="format-map"
                 type="button"
-                data-i18n="palette.export"
-                data-i18n-title="palette.exportTitle"
-                title="Download this world as a .klm file"
+                data-i18n="palette.format"
+                data-i18n-title="palette.formatTitle"
+                title="Lay the file out again, the way the canvas writes it"
               >
-                export .klm
+                format
               </button>
+            </div>
+
+            <!-- The map as text: the same .klm the CLI grades, open for
+                 editing. Two boxes side by side, because a file that will not
+                 load has to say why somewhere, and the program's problems
+                 panel is the shape this page already uses for that. -->
+            <div class="map-source">
+              <div class="source-box">
+                <span class="box-title" data-i18n="panel.mapSource">map source</span>
+                <!-- The format, stated where the text is, so nobody has to
+                     guess which of the two files this one is. Not translated
+                     and not rewritten: ".klm" is the extension in every
+                     language. -->
+                <span class="box-note">.klm</span>
+                <!-- CodeMirror mounts here and is the only thing allowed to
+                     own it. -->
+                <div class="source-host" id="map-source-host"></div>
+              </div>
+
+              <div class="panel map-problems">
+                <span class="panel-title" data-i18n="panel.problems">problems</span>
+                <span class="panel-note" id="map-problems-note"></span>
+                <div class="panel-body">
+                  <!-- Filled by the chrome: one .problem per fault, exactly as
+                       the program's panel is filled. -->
+                  <div class="problem-list" id="map-problems"></div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -443,6 +570,22 @@
             data-i18n-aria="panel.readout"
             aria-label="Readings"
           ></aside>
+        </section>
+
+        <!-- The level gallery. It takes the whole bench rather than living in
+             the guide column, because choosing between fifteen worlds is a
+             browsing act and a 360-pixel rail is the wrong shape for it. The
+             workbench comes back the moment a level is opened. -->
+        <section
+          class="gallery"
+          id="gallery"
+          data-i18n-aria="levels.group"
+          aria-label="Levels"
+          hidden
+        >
+          <span class="box-title" data-i18n="levels.title">levels</span>
+          <span class="box-note" id="gallery-note"></span>
+          <div class="gallery-scroll" id="gallery-body" tabindex="0"></div>
         </section>
       </main>
 
@@ -457,8 +600,13 @@
         >
         <span class="hint"><b>esc</b> <span data-i18n="hint.stop">stop</span></span>
         <span class="hint"><b>r</b> <span data-i18n="hint.reset">reset</span></span>
-        <span class="hint"><b>e</b> <span data-i18n="hint.editMap">edit map</span></span>
-        <span class="hint"><b>1-4</b> <span data-i18n="hint.world">world</span></span>
+        <!-- Hidden by the chrome wherever the world is not the visitor's to
+             change: a chapter's world is fixed, and a key hint for a key that
+             does nothing is worse than no hint. -->
+        <span class="hint" id="hint-edit"
+          ><b>e</b> <span data-i18n="hint.editMap">edit map</span></span
+        >
+        <span class="hint"><b>1-3</b> <span data-i18n="hint.mode">mode</span></span>
         <span class="hint"><b>?</b> <span data-i18n="hint.help">help</span></span>
         <span class="statusbar-end" id="status" data-state="idle">idle</span>
       </footer>

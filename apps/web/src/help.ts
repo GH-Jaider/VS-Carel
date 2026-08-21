@@ -470,7 +470,14 @@ function richText(text: string): DocumentFragment {
  * program column, so a sample here and the same text typed in there are
  * literally the same colours, forever, without a rule being written twice.
  */
-function highlight(source: string): HTMLElement {
+/**
+ * Karel source as coloured nodes, painted by the editor's own tokenizer.
+ *
+ * Exported because the lesson column in main.ts shows the same kind of sample
+ * the manual does, and a second highlighter would be a second keyword table to
+ * keep in step with the lexer.
+ */
+export function highlight(source: string): HTMLElement {
   const code = document.createElement("code");
 
   for (const [index, line] of source.split("\n").entries()) {

@@ -11,13 +11,28 @@
  * The geometry is exported as free functions over a plain `Layout` record so
  * the map editor can ask "which cell is this pixel?" -- and so the whole of it
  * can be tested without a canvas.
+ *
+ * What the world is drawn *as* is not here. This file owns the layout, the hit
+ * test and the order the frame is painted in; `skins.ts` owns the shapes. The
+ * seam is deliberate and one-way: a skin is handed the geometry it needs
+ * rather than deriving it, so a pack can change every mark on the canvas
+ * without being able to move where a click lands.
  */
 
 import type { Dimensions, KarelMap, Wall } from "@karel/core";
 import type { HitTarget, RenderOptions, ThemeColors, WorldRenderer } from "../contracts";
+import { activeSkin, onSkinChange, type SkinContext } from "./skins";
 import { colors, onThemeChange } from "./theme";
 
-/** Walls are objects in the world, not hairlines: they are drawn thick. */
+/**
+ * The strip the layout reserves around the grid for the rim.
+ *
+ * It is a layout constant, not a style: it decides how big the bitmap is and
+ * where the origin sits, so it has to be the same whichever skin is on. A
+ * skin may draw a wall anywhere up to twice this wide -- the rim is stroked
+ * centred on the boundary, so half of it falls into the reserve -- and is
+ * told so through `SkinContext.maxWallWidth`.
+ */
 const WALL_WIDTH = 4;
 /** Room along the bottom and the left for the 1-based axis numbers. */
 const AXIS_MARGIN = 25;
@@ -34,16 +49,6 @@ export const EDGE_THRESHOLD = 0.25;
 
 /** Used when there is nothing to measure yet -- a detached or unstyled canvas. */
 const FALLBACK_AVAILABLE: Dimensions = { width: 640, height: 480 };
-
-const MONO = '"JetBrains Mono", ui-monospace, monospace';
-
-/** Karel's triangle points north at rest; each facing is a rotation of it. */
-const ROTATIONS: Record<string, number> = {
-  north: 0,
-  west: -Math.PI / 2,
-  south: Math.PI,
-  east: Math.PI / 2,
-};
 
 export interface Point {
   x: number;
@@ -255,7 +260,7 @@ class CanvasWorldRenderer implements WorldRenderer {
     this.paint();
   }
 
-  /** Draw the last world again, unchanged -- after a theme swap, say. */
+  /** Draw the last world again, unchanged -- after a theme or skin swap, say. */
   refresh(): void {
     this.paint();
   }
@@ -285,6 +290,15 @@ class CanvasWorldRenderer implements WorldRenderer {
     return FALLBACK_AVAILABLE;
   }
 
+  /**
+   * One frame.
+   *
+   * The order is the whole of this method's opinion, and it is not the skin's
+   * to change: the cursor goes under everything because it is a highlight of
+   * the ground, not of what is standing on it; walls go over beepers because a
+   * wall is between corners rather than on one; Karel goes over all of it
+   * because he is what the eye is following.
+   */
   private paint(): void {
     const world = this.world;
     if (!world) {
@@ -309,198 +323,68 @@ class CanvasWorldRenderer implements WorldRenderer {
     this.canvas.style.height = `${layout.canvasHeight}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const palette = colors();
-    ctx.fillStyle = palette.background;
-    ctx.fillRect(0, 0, layout.canvasWidth, layout.canvasHeight);
+    const skin = activeSkin();
+    const c = skinContext(ctx, layout, colors());
+
+    skin.drawBackground(c);
 
     const cursor = this.options.cursor;
-    if (cursor) {
-      this.paintCursor(layout, palette, cursor);
+    const { width, height } = layout.world;
+    if (cursor && cursor.x >= 1 && cursor.x <= width && cursor.y >= 1 && cursor.y <= height) {
+      skin.drawCursor(c, cursor);
     }
     if (this.options.edge) {
-      this.paintEdgeCursor(layout, palette, this.options.edge);
+      skin.drawEdgeCursor(c, this.options.edge);
     }
     if (showAxes) {
-      this.paintAxes(layout, palette);
+      skin.drawAxes(c);
     }
-    this.paintGrid(layout, palette);
-    this.paintBeepers(layout, palette, world);
-    this.paintWalls(layout, palette, world);
-    this.paintKarel(layout, palette, world);
-  }
+    skin.drawGrid(c);
+    skin.drawBeepers(c, world.beepers);
+    skin.drawWalls(c, world.walls);
+    skin.drawKarel(c, world.karel);
 
-  /** Video inverse: the selected cell is a solid block, as in a terminal. */
-  private paintCursor(layout: Layout, palette: ThemeColors, cursor: Point): void {
-    const { width, height } = layout.world;
-    if (cursor.x < 1 || cursor.x > width || cursor.y < 1 || cursor.y > height) {
-      return;
-    }
-    const corner = cellCorner(layout, cursor.x, cursor.y);
-    this.ctx.fillStyle = palette.cursor;
-    this.ctx.fillRect(corner.x, corner.y, layout.cell, layout.cell);
-  }
-
-  /**
-   * The wall a click would place, drawn where it would land and a little
-   * thicker than a real one, so it reads as an intention rather than as
-   * something already there.
-   */
-  private paintEdgeCursor(layout: Layout, palette: ThemeColors, wall: Wall): void {
-    const segment = wallSegment(layout, wall);
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.strokeStyle = palette.cursor;
-    ctx.lineWidth = WALL_WIDTH + 2;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(segment.x1, segment.y1);
-    ctx.lineTo(segment.x2, segment.y2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  private paintAxes(layout: Layout, palette: ThemeColors): void {
-    const ctx = this.ctx;
-    const { width, height } = layout.world;
-    ctx.fillStyle = palette.label;
-    ctx.font = `10px ${MONO}`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (let x = 1; x <= width; x++) {
-      const center = cellCenter(layout, x, 1);
-      ctx.fillText(String(x), center.x, layout.canvasHeight - AXIS_MARGIN / 2);
-    }
-    for (let y = 1; y <= height; y++) {
-      const center = cellCenter(layout, 1, y);
-      ctx.fillText(String(y), AXIS_MARGIN / 2, center.y);
-    }
-  }
-
-  /**
-   * The interior lattice, dotted -- the rim is drawn later as a solid wall,
-   * because the border of the world really is walled.
-   */
-  private paintGrid(layout: Layout, palette: ThemeColors): void {
-    const ctx = this.ctx;
-    const { cell, originX, originY, world } = layout;
-    ctx.strokeStyle = palette.grid;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([1, 3]);
-    ctx.beginPath();
-    // The half-pixel keeps a 1px line on a pixel instead of across two.
-    for (let x = 1; x < world.width; x++) {
-      const px = Math.round(originX + x * cell) + 0.5;
-      ctx.moveTo(px, originY);
-      ctx.lineTo(px, originY + world.height * cell);
-    }
-    for (let y = 1; y < world.height; y++) {
-      const py = Math.round(originY + y * cell) + 0.5;
-      ctx.moveTo(originX, py);
-      ctx.lineTo(originX + world.width * cell, py);
-    }
-    ctx.stroke();
+    // A skin is one object shared by every renderer on the page, so it is not
+    // allowed to leave state behind on the context. Resetting the two settings
+    // that survive a `save`/`restore` mismatch is cheaper than trusting three
+    // packs to be perfectly balanced for ever.
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
   }
+}
 
-  /**
-   * A pile and its count. The count is the point of the exercise, so it is
-   * always drawn, even for a single beeper.
-   */
-  private paintBeepers(layout: Layout, palette: ThemeColors, world: KarelMap): void {
-    const ctx = this.ctx;
-    const radius = layout.cell * 0.28;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (const beeper of world.beepers) {
-      if (beeper.count < 1) {
-        continue;
-      }
-      const center = cellCenter(layout, beeper.x, beeper.y);
-
-      ctx.fillStyle = palette.beeper;
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      const label = String(beeper.count);
-      ctx.fillStyle = palette.beeperLabel;
-      ctx.font = `${this.fitLabel(label, radius * 1.7, layout.cell * 0.34)}px ${MONO}`;
-      ctx.fillText(label, center.x, center.y);
-    }
-  }
-
-  /** The largest size in the type scale at which `text` still fits `maxWidth`. */
-  private fitLabel(text: string, maxWidth: number, preferred: number): number {
-    const scale = [9.5, 10, 10.5, 11, 11.5, 12, 12.5];
-    let chosen = scale[0]!;
-    for (const size of scale) {
-      if (size > preferred) {
-        break;
-      }
-      this.ctx.font = `${size}px ${MONO}`;
-      if (this.ctx.measureText(text).width > maxWidth) {
-        break;
-      }
-      chosen = size;
-    }
-    return chosen;
-  }
-
-  private paintWalls(layout: Layout, palette: ThemeColors, world: KarelMap): void {
-    const ctx = this.ctx;
-    ctx.strokeStyle = palette.wall;
-    ctx.lineWidth = WALL_WIDTH;
-    ctx.lineCap = "square";
-    ctx.beginPath();
-    for (const wall of world.walls) {
-      const segment = wallSegment(layout, wall);
-      ctx.moveTo(segment.x1, segment.y1);
-      ctx.lineTo(segment.x2, segment.y2);
-    }
-    ctx.stroke();
-
-    // The rim, which is walled by definition and never stored in the map.
-    ctx.strokeRect(
-      layout.originX - WALL_WIDTH / 2,
-      layout.originY - WALL_WIDTH / 2,
-      layout.world.width * layout.cell + WALL_WIDTH,
-      layout.world.height * layout.cell + WALL_WIDTH
-    );
-  }
-
-  private paintKarel(layout: Layout, palette: ThemeColors, world: KarelMap): void {
-    const ctx = this.ctx;
-    const center = cellCenter(layout, world.karel.x, world.karel.y);
-    const size = layout.cell * 0.7;
-
-    ctx.save();
-    ctx.translate(center.x, center.y);
-    ctx.rotate(ROTATIONS[world.karel.facing] ?? 0);
-
-    ctx.fillStyle = palette.karel;
-    ctx.beginPath();
-    ctx.moveTo(0, -size / 2);
-    ctx.lineTo(-size / 3, size / 3);
-    ctx.lineTo(size / 3, size / 3);
-    ctx.closePath();
-    ctx.fill();
-
-    // Outlined in the background colour so Karel stays legible standing on a
-    // pile of beepers.
-    ctx.strokeStyle = palette.background;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = "miter";
-    ctx.stroke();
-
-    ctx.restore();
-  }
+/**
+ * The handle a skin draws through.
+ *
+ * Everything positional is a closure over this layout, which is why a pack
+ * cannot invent its own arithmetic: the only way to find out where cell (3,4)
+ * is, is to ask the function the hit test is the inverse of.
+ */
+function skinContext(
+  ctx: CanvasRenderingContext2D,
+  layout: Layout,
+  palette: ThemeColors
+): SkinContext {
+  return {
+    ctx,
+    layout,
+    palette,
+    // A wall may be twice the reserve wide, because the rim can grow inward;
+    // past that even a rim pinned to the edge of the reserve would spill.
+    maxWallWidth: WALL_WIDTH * 2,
+    rimRoom: WALL_WIDTH,
+    center: (x, y) => cellCenter(layout, x, y),
+    corner: (x, y) => cellCorner(layout, x, y),
+    segment: (wall) => wallSegment(layout, wall),
+  };
 }
 
 export function createRenderer(canvas: HTMLCanvasElement): WorldRenderer {
   const renderer = new CanvasWorldRenderer(canvas);
-  // The palette lives in CSS, so a theme swap changes every colour on the
-  // canvas without the rest of the app being involved. Repaint from here
-  // rather than asking every caller to remember to.
+  // The palette lives in CSS and the shapes live in skins.ts, so a theme swap
+  // or a pack swap changes the canvas without the rest of the app being
+  // involved. Repaint from here rather than asking every caller to remember to.
   onThemeChange(() => renderer.refresh());
+  onSkinChange(() => renderer.refresh());
   return renderer;
 }

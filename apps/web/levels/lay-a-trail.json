@@ -1,0 +1,31 @@
+{
+  "id": "lay-a-trail",
+  "difficulty": "starter",
+  "order": 30,
+  "author": "GH-Jaider",
+  "title": { "en": "lay a trail", "es": "dejar rastro" },
+  "brief": {
+    "en": "Karel's bag holds six beepers and the row is six corners long. Empty the bag, one beeper per corner, without counting.",
+    "es": "La mochila de Karel lleva seis zumbadores y la fila mide seis esquinas. Vacía la mochila, un zumbador por esquina, sin contar."
+  },
+  "world": {
+    "dimensions": { "width": 6, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 6 },
+    "beepers": [],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 6, "height": 1 },
+    "karel": { "x": 6, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [
+      { "x": 1, "y": 1, "count": 1 },
+      { "x": 2, "y": 1, "count": 1 },
+      { "x": 3, "y": 1, "count": 1 },
+      { "x": 4, "y": 1, "count": 1 },
+      { "x": 5, "y": 1, "count": 1 },
+      { "x": 6, "y": 1, "count": 1 }
+    ],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    BEGINNING-OF-EXECUTION\n        WHILE beeper-in-bag DO\n        BEGIN\n            putbeeper;\n            IF front-is-clear THEN\n                move\n        END\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

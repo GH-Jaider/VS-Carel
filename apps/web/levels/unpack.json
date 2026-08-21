@@ -1,0 +1,29 @@
+{
+  "id": "unpack",
+  "difficulty": "tricky",
+  "order": 40,
+  "author": "GH-Jaider",
+  "title": { "en": "unpack", "es": "repartir" },
+  "brief": {
+    "en": "A pile of four sits under Karel's feet. Carry it east and deal it out, one beeper per corner, stopping when the bag runs dry.",
+    "es": "Hay una pila de cuatro bajo los pies de Karel. Llévala al este y repártela, un zumbador por esquina, y para cuando la mochila se vacíe."
+  },
+  "world": {
+    "dimensions": { "width": 8, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 1, "y": 1, "count": 4 }],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 8, "height": 1 },
+    "karel": { "x": 5, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [
+      { "x": 2, "y": 1, "count": 1 },
+      { "x": 3, "y": 1, "count": 1 },
+      { "x": 4, "y": 1, "count": 1 },
+      { "x": 5, "y": 1, "count": 1 }
+    ],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    BEGINNING-OF-EXECUTION\n        WHILE next-to-a-beeper DO\n            pickbeeper;\n        WHILE beeper-in-bag DO\n        BEGIN\n            move;\n            putbeeper\n        END\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

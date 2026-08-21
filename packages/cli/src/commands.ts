@@ -13,10 +13,17 @@ import {
   Parser,
   RuntimeError,
   World,
+  compareWorlds,
+  type CompareOptions,
   type Diagnostic,
   type KarelMap,
   type RuntimeErrorKind,
 } from "@karel/core";
+
+// sameExercise and compareWorlds moved into the core so the browser checks a
+// chapter with the same rule this grades a submission with. Re-exported here
+// because main.ts imports it from this module.
+export { sameExercise } from "@karel/core";
 
 export interface Failure {
   kind: RuntimeErrorKind | "assert-world";
@@ -131,102 +138,4 @@ function toFailure(error: unknown): Failure {
     return { kind: error.kind, message: error.message, line: error.line };
   }
   return { kind: "internal", message: error instanceof Error ? error.message : String(error) };
-}
-
-/**
- * Do these two files describe the same exercise?
- *
- * Dimensions and walls are the parts of a world no instruction can reach, so a
- * difference there is not a grading signal — it is proof that the expected
- * world came from somewhere else. Left unchecked it fails silently in the
- * dangerous direction: a submission that happens to end on the right corner
- * passes against an expected file for a completely different problem.
- *
- * Returns null when they match, or a description of the first difference.
- */
-export function sameExercise(world: KarelMap, expected: KarelMap): string | null {
-  const w = world.dimensions;
-  const e = expected.dimensions;
-  if (w.width !== e.width || w.height !== e.height) {
-    return `the world is ${w.width}x${w.height} but the expected world is ${e.width}x${e.height}`;
-  }
-
-  // Wall order is whatever the file happened to list, and a wall is the same
-  // wall read from either side, so compare canonical keys as sets.
-  const inWorld = wallKeys(world);
-  const inExpected = wallKeys(expected);
-  if (inWorld.size !== inExpected.size) {
-    return `the world has ${plural(inWorld.size, "wall")} but the expected world has ${inExpected.size}`;
-  }
-  for (const key of inWorld) {
-    if (!inExpected.has(key)) {
-      return `the world has a wall at ${key} that the expected world does not`;
-    }
-  }
-
-  return null;
-}
-
-function wallKeys(map: KarelMap): Set<string> {
-  return new Set(
-    map.walls.map(({ from, to }) => {
-      const ends = [`(${from.x}, ${from.y})`, `(${to.x}, ${to.y})`].sort();
-      return `${ends[0]}–${ends[1]}`;
-    })
-  );
-}
-
-export interface CompareOptions {
-  /** Accept any final orientation. Many exercises only say where to end up. */
-  ignoreFacing?: boolean;
-}
-
-/**
- * Compare the parts of a world a program can change, and describe the first
- * difference in the terms a student would use — "a beeper at (3, 4)", not a
- * JSON diff. Dimensions and walls are not compared here; they are checked up
- * front by sameExercise, because a difference there means the run itself was
- * set up wrong.
- */
-function compareWorlds(
-  expected: KarelMap,
-  actual: KarelMap,
-  options: CompareOptions = {}
-): string | null {
-  const e = expected.karel;
-  const a = actual.karel;
-
-  if (e.x !== a.x || e.y !== a.y) {
-    return `expected Karel at (${e.x}, ${e.y}), found (${a.x}, ${a.y})`;
-  }
-  if (!options.ignoreFacing && e.facing !== a.facing) {
-    return `expected Karel facing ${e.facing}, found ${a.facing}`;
-  }
-  if (e.beepers !== a.beepers) {
-    return `expected ${plural(e.beepers, "beeper")} in the bag, found ${a.beepers}`;
-  }
-
-  const expectedPiles = pileMap(expected);
-  const actualPiles = pileMap(actual);
-  for (const [corner, count] of expectedPiles) {
-    const found = actualPiles.get(corner) ?? 0;
-    if (found !== count) {
-      return `expected ${plural(count, "beeper")} at ${corner}, found ${found}`;
-    }
-  }
-  for (const [corner, count] of actualPiles) {
-    if (!expectedPiles.has(corner)) {
-      return `expected no beepers at ${corner}, found ${plural(count, "beeper")}`;
-    }
-  }
-
-  return null;
-}
-
-function pileMap(map: KarelMap): Map<string, number> {
-  return new Map(map.beepers.filter((b) => b.count > 0).map((b) => [`(${b.x}, ${b.y})`, b.count]));
-}
-
-function plural(n: number, noun: string): string {
-  return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }

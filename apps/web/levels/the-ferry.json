@@ -1,0 +1,24 @@
+{
+  "id": "the-ferry",
+  "difficulty": "hard",
+  "order": 30,
+  "author": "GH-Jaider",
+  "title": { "en": "the ferry", "es": "el transbordo" },
+  "brief": {
+    "en": "Karel can only carry what he picks up, and the pile must cross the row one beeper at a time. Rebuild it on the far corner and come home empty-handed.",
+    "es": "Karel sólo lleva lo que recoge, y la pila tiene que cruzar la fila de un zumbador en un zumbador. Recompónla en la esquina del fondo y vuelve con las manos vacías."
+  },
+  "world": {
+    "dimensions": { "width": 6, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 1, "y": 1, "count": 5 }],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 6, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 6, "y": 1, "count": 5 }],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION turnaround AS\n    BEGIN\n        turnleft;\n        turnleft\n    END\n    BEGINNING-OF-EXECUTION\n        WHILE next-to-a-beeper DO\n        BEGIN\n            pickbeeper;\n            WHILE front-is-clear DO\n                move;\n            putbeeper;\n            turnaround;\n            WHILE front-is-clear DO\n                move;\n            turnaround\n        END\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

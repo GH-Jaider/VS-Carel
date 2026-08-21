@@ -1,0 +1,33 @@
+{
+  "id": "hurdles",
+  "difficulty": "tricky",
+  "order": 10,
+  "author": "GH-Jaider",
+  "title": { "en": "hurdles", "es": "las vallas" },
+  "brief": {
+    "en": "Three hurdles block the track and the beeper is past the last one. Jump what you must, walk what you can.",
+    "es": "Tres vallas cortan la pista y el zumbador está pasada la última. Salta lo que haga falta y camina el resto."
+  },
+  "ignoreFacing": true,
+  "world": {
+    "dimensions": { "width": 8, "height": 3 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 8, "y": 1, "count": 1 }],
+    "walls": [
+      { "from": { "x": 2, "y": 1 }, "to": { "x": 3, "y": 1 } },
+      { "from": { "x": 4, "y": 1 }, "to": { "x": 5, "y": 1 } },
+      { "from": { "x": 7, "y": 1 }, "to": { "x": 8, "y": 1 } }
+    ]
+  },
+  "goal": {
+    "dimensions": { "width": 8, "height": 3 },
+    "karel": { "x": 8, "y": 1, "facing": "east", "beepers": 1 },
+    "beepers": [],
+    "walls": [
+      { "from": { "x": 2, "y": 1 }, "to": { "x": 3, "y": 1 } },
+      { "from": { "x": 4, "y": 1 }, "to": { "x": 5, "y": 1 } },
+      { "from": { "x": 7, "y": 1 }, "to": { "x": 8, "y": 1 } }
+    ]
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION turnright AS\n    BEGIN\n        turnleft;\n        turnleft;\n        turnleft\n    END\n    DEFINE-NEW-INSTRUCTION jump-hurdle AS\n    BEGIN\n        turnleft;\n        move;\n        turnright;\n        move;\n        turnright;\n        move;\n        turnleft\n    END\n    BEGINNING-OF-EXECUTION\n        WHILE not-next-to-a-beeper DO\n        BEGIN\n            IF front-is-clear THEN\n                move\n            ELSE\n                jump-hurdle\n        END\n        pickbeeper;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

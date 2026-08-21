@@ -28,6 +28,8 @@ import {
   type Locale,
   type MessageKey,
 } from "../src/i18n";
+import { DIFFICULTIES } from "../src/levels";
+import { EXERCISES } from "../src/worlds";
 
 const INDEX_HTML = fileURLToPath(new URL("../index.html", import.meta.url));
 
@@ -106,10 +108,28 @@ describe("the catalogues", () => {
 
   it("names every bundled exercise in every language", () => {
     // worlds.ts reads these by id, and an exercise added there without a name
-    // would otherwise only be noticed by looking at the masthead.
-    for (const id of ["first-steps", "collect", "maze", "sandbox"]) {
-      expect(englishKeys).toContain(`world.${id}.label`);
-      expect(englishKeys).toContain(`world.${id}.brief`);
+    // would otherwise only be noticed by looking at the sandbox's box note.
+    for (const exercise of EXERCISES) {
+      expect(englishKeys).toContain(`world.${exercise.id}.label`);
+      expect(englishKeys).toContain(`world.${exercise.id}.brief`);
+    }
+  });
+
+  it("names every mode in every language", () => {
+    // The masthead reads these by mode id. A mode with no name would show as
+    // an empty button, which is exactly the sort of thing nobody notices on a
+    // page they already know their way around.
+    for (const id of ["learn", "levels", "sandbox"]) {
+      expect(englishKeys).toContain(`mode.${id}`);
+      expect(englishKeys).toContain(`mode.${id}Title`);
+    }
+  });
+
+  it("names every difficulty band in every language", () => {
+    // levels.ts deliberately keeps ids rather than labels in the level files,
+    // so the wording lives here and a band added there needs a key here.
+    for (const band of DIFFICULTIES) {
+      expect(englishKeys).toContain(`levels.difficulty.${band}`);
     }
   });
 });

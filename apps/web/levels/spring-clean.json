@@ -1,0 +1,34 @@
+{
+  "id": "spring-clean",
+  "difficulty": "hard",
+  "order": 20,
+  "author": "GH-Jaider",
+  "title": { "en": "spring clean", "es": "limpieza general" },
+  "brief": {
+    "en": "Piles of every size are strewn about the room, and nobody told Karel how big they are. Leave the floor bare and go back to where you started.",
+    "es": "Hay pilas de todos los tamaños repartidas por la sala y nadie le ha dicho a Karel cuántos zumbadores tiene cada una. Deja el suelo limpio y vuelve a la esquina de la que saliste."
+  },
+  "ignoreFacing": true,
+  "world": {
+    "dimensions": { "width": 6, "height": 5 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [
+      { "x": 2, "y": 1, "count": 2 },
+      { "x": 5, "y": 1, "count": 1 },
+      { "x": 6, "y": 2, "count": 1 },
+      { "x": 1, "y": 3, "count": 3 },
+      { "x": 4, "y": 3, "count": 1 },
+      { "x": 2, "y": 4, "count": 1 },
+      { "x": 6, "y": 4, "count": 2 },
+      { "x": 3, "y": 5, "count": 4 }
+    ],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 6, "height": 5 },
+    "karel": { "x": 1, "y": 1, "facing": "south", "beepers": 15 },
+    "beepers": [],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    DEFINE-NEW-INSTRUCTION turnright AS\n    BEGIN\n        turnleft;\n        turnleft;\n        turnleft\n    END\n    DEFINE-NEW-INSTRUCTION clean-corner AS\n    BEGIN\n        WHILE next-to-a-beeper DO\n            pickbeeper\n    END\n    DEFINE-NEW-INSTRUCTION clean-row AS\n    BEGIN\n        clean-corner;\n        WHILE front-is-clear DO\n        BEGIN\n            move;\n            clean-corner\n        END\n    END\n    DEFINE-NEW-INSTRUCTION next-row AS\n    BEGIN\n        IF facing-east THEN\n        BEGIN\n            turnleft;\n            move;\n            turnleft\n        END\n        ELSE\n        BEGIN\n            turnright;\n            move;\n            turnright\n        END\n    END\n    DEFINE-NEW-INSTRUCTION go-home AS\n    BEGIN\n        turnleft;\n        turnleft;\n        WHILE front-is-clear DO\n            move;\n        turnleft;\n        WHILE front-is-clear DO\n            move\n    END\n    BEGINNING-OF-EXECUTION\n        clean-row;\n        ITERATE 4 TIMES\n        BEGIN\n            next-row;\n            clean-row\n        END\n        go-home;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

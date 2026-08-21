@@ -1,0 +1,29 @@
+{
+  "id": "stack-them-up",
+  "difficulty": "tricky",
+  "order": 50,
+  "author": "GH-Jaider",
+  "title": { "en": "stack them up", "es": "amontonar" },
+  "brief": {
+    "en": "Four beepers are scattered along the row. Sweep them up and leave the whole pile on the last corner.",
+    "es": "Hay cuatro zumbadores repartidos por la fila. Recógelos todos y deja la pila entera en la última esquina."
+  },
+  "world": {
+    "dimensions": { "width": 7, "height": 1 },
+    "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [
+      { "x": 2, "y": 1, "count": 1 },
+      { "x": 3, "y": 1, "count": 1 },
+      { "x": 5, "y": 1, "count": 1 },
+      { "x": 7, "y": 1, "count": 1 }
+    ],
+    "walls": []
+  },
+  "goal": {
+    "dimensions": { "width": 7, "height": 1 },
+    "karel": { "x": 7, "y": 1, "facing": "east", "beepers": 0 },
+    "beepers": [{ "x": 7, "y": 1, "count": 4 }],
+    "walls": []
+  },
+  "solution": "BEGINNING-OF-PROGRAM\n    BEGINNING-OF-EXECUTION\n        WHILE front-is-clear DO\n        BEGIN\n            WHILE next-to-a-beeper DO\n                pickbeeper;\n            move\n        END\n        WHILE next-to-a-beeper DO\n            pickbeeper;\n        WHILE beeper-in-bag DO\n            putbeeper;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+}

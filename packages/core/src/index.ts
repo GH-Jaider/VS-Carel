@@ -34,4 +34,10 @@ export { BUILT_IN_INSTRUCTIONS, VALID_CONDITIONS } from "./parsing/constants";
 // The message catalogue itself stays internal: hosts branch on RuntimeErrorKind
 // and Diagnostic.severity, never on prose. Only the language switch is public.
 export { setLocale, getLocale } from "./messages";
+
+// Goal checking. The browser and the command line share it deliberately: a
+// student must not pass a chapter here and fail the same check when it is
+// graded there.
+export { sameExercise, compareWorlds } from "./goal";
+export type { CompareOptions } from "./goal";
 export type { Locale } from "./messages";

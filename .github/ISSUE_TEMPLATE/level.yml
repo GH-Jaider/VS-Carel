@@ -1,0 +1,112 @@
+name: Level
+description: Send a level for the practice collection
+title: "level: <title> (<id>)"
+labels: ["level"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A level is one file in `apps/web/levels/`, so contributing one is
+        sending one file. The easiest way to produce it is the web app itself:
+        build the world, build the goal, write a solution, then press
+        **share this level** — it fills this form in for you.
+
+        Filling it in by hand is fine too. The fields below are the same ones
+        the app sends, in the same order, so both arrive looking alike.
+
+  - type: input
+    id: level-id
+    attributes:
+      label: Level id
+      description: >-
+        Lower-case, hyphenated, unique. It becomes the file name
+        (`apps/web/levels/<id>.json`) and must match the `id` inside the JSON.
+      placeholder: the-long-way-round
+    validations:
+      required: true
+
+  - type: input
+    id: author
+    attributes:
+      label: Author
+      description: Your GitHub handle, or the name you would like credited.
+      placeholder: "@octocat"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Difficulty
+      description: >-
+        starter — one new idea, a handful of instructions.
+        tricky — a loop and a condition working together.
+        hard — several ideas at once, or a world that has to be explored.
+      options:
+        - starter
+        - tricky
+        - hard
+    validations:
+      required: true
+
+  - type: textarea
+    id: level-json
+    attributes:
+      label: Level JSON
+      description: >-
+        The whole level file. `world` and `goal` are .klm maps and must agree
+        about dimensions and walls — those are the parts no instruction can
+        change. `solution` is a program that turns `world` into `goal`; CI runs
+        it, so a level nobody can solve does not get merged.
+      render: json
+      placeholder: |
+        {
+          "id": "the-long-way-round",
+          "difficulty": "starter",
+          "author": "@octocat",
+          "title": { "en": "the long way round", "es": "el camino largo" },
+          "brief": {
+            "en": "One sentence saying what Karel has to do.",
+            "es": "Una frase que diga qué tiene que hacer Karel."
+          },
+          "ignoreFacing": true,
+          "world": {
+            "dimensions": { "width": 5, "height": 1 },
+            "karel": { "x": 1, "y": 1, "facing": "east", "beepers": 0 },
+            "beepers": [{ "x": 5, "y": 1, "count": 1 }],
+            "walls": []
+          },
+          "goal": {
+            "dimensions": { "width": 5, "height": 1 },
+            "karel": { "x": 5, "y": 1, "facing": "east", "beepers": 1 },
+            "beepers": [],
+            "walls": []
+          },
+          "solution": "BEGINNING-OF-PROGRAM\n    BEGINNING-OF-EXECUTION\n        WHILE front-is-clear DO\n            move;\n        pickbeeper;\n        turnoff\n    END-OF-EXECUTION\nEND-OF-PROGRAM\n"
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: >-
+        Anything a reviewer should know. If the English text is a placeholder
+        copy of another language, say so here and someone will translate it.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The solution runs to `turnoff` and leaves the world in the `goal` state.
+          required: true
+        - label: >-
+            `world` and `goal` have the same dimensions and the same walls
+            (nothing Karel cannot change is different between them).
+          required: true
+        - label: The level is mine to give, under the repository's MIT licence.
+          required: true
