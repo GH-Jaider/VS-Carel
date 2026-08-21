@@ -284,3 +284,36 @@ describe("Lexer", () => {
     });
   });
 });
+
+describe("whitespace the tokenizer must not choke on", () => {
+  // Regression: the outer skip loop handled only space, tab and CR while the
+  // inner word loop stopped at every \s. Anything in that gap advanced the
+  // index by nothing and appended an empty token until the process ran out of
+  // memory — a non-breaking space pasted from a Word or PDF assignment sheet
+  // was enough to hang the editor on a student's first keystroke.
+  const separators: Array<[string, string]> = [
+    ["non-breaking space", "\u00A0"],
+    ["vertical tab", "\u000B"],
+    ["form feed", "\u000C"],
+    ["byte order mark", "\uFEFF"],
+    ["line separator", "\u2028"],
+    ["paragraph separator", "\u2029"],
+    ["em space", "\u2003"],
+  ];
+
+  it.each(separators)("treats a %s as a separator", (_name, separator) => {
+    const tokens = new Lexer(`move${separator}turnoff`).tokenize();
+
+    expect(valuesOf(tokens.filter((t) => t.type !== TokenType.EOF))).toEqual(["move", "turnoff"]);
+  });
+
+  it("never emits an empty token", () => {
+    const source = separators.map(([, sep]) => `move${sep}turnoff`).join("\n");
+
+    const tokens = new Lexer(source).tokenize();
+
+    expect(tokens.filter((t) => t.type !== TokenType.EOF).every((t) => t.value.length > 0)).toBe(
+      true
+    );
+  });
+});

@@ -43,7 +43,7 @@ export class Lexer {
     while (i < code.length) {
       const ch = code[i];
 
-      if (ch === " " || ch === "\t" || ch === "\r") {
+      if (isSpace(ch)) {
         i++;
         continue;
       }
@@ -55,7 +55,7 @@ export class Lexer {
       }
 
       const start = i;
-      while (i < code.length && !/[\s;]/.test(code[i])) {
+      while (i < code.length && !isSpace(code[i]) && code[i] !== ";") {
         i++;
       }
       this.addWord(code.slice(start, i), line, start);
@@ -124,4 +124,16 @@ export class Lexer {
 
     this.tokens.push({ type, value: word, line, column });
   }
+}
+
+/**
+ * The two loops in tokenizeLine must agree on what counts as whitespace, and
+ * sharing one predicate is the only way to guarantee they do. While they
+ * disagreed - the outer one skipping space, tab and CR, the inner one stopping
+ * at every \s - any character in the gap advanced the index by nothing and
+ * appended an empty token forever, until the process ran out of memory. A
+ * non-breaking space pasted out of a Word or PDF assignment sheet was enough.
+ */
+function isSpace(ch: string): boolean {
+  return /\s/.test(ch);
 }
