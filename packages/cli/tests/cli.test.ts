@@ -24,11 +24,35 @@ const CLI = join(packageRoot, "dist", "karel.mjs");
 const DEMO_PROGRAM = join(repoRoot, "examples", "demo-program.kli");
 const DEMO_WORLD = join(repoRoot, "examples", "simple-world.klm");
 
+interface Wall {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+}
+
+/**
+ * The walls of examples/simple-world.klm, taken from the world itself rather
+ * than copied: an expected world has to describe the same exercise, walls
+ * included, and reading them here is what the documented
+ * `karel run ref.kli -w start.klm --json | jq .world > solved.klm` flow does
+ * for a teacher.
+ */
+const DEMO_WALLS: Wall[] = JSON.parse(readFileSync(DEMO_WORLD, "utf8")).walls;
+
+/** Five walls of the right shape, none of them in the demo world. */
+const ELSEWHERE_WALLS: Wall[] = [
+  { from: { x: 1, y: 1 }, to: { x: 1, y: 2 } },
+  { from: { x: 2, y: 2 }, to: { x: 2, y: 3 } },
+  { from: { x: 3, y: 6 }, to: { x: 4, y: 6 } },
+  { from: { x: 7, y: 4 }, to: { x: 7, y: 5 } },
+  { from: { x: 9, y: 7 }, to: { x: 9, y: 8 } },
+];
+
 /** The exit codes from src/exit.ts, restated here so a change to them fails. */
 const OK = 0;
 const FAILED = 1;
 const PARSE_ERROR = 2;
 const LIMIT = 3;
+const TIMEOUT = 4;
 const USAGE = 64;
 
 interface Invocation {
@@ -37,10 +61,11 @@ interface Invocation {
   stderr: string;
 }
 
-function karel(...args: string[]): Invocation {
+function invoke(args: string[], env?: NodeJS.ProcessEnv): Invocation {
   const result = spawnSync(process.execPath, [CLI, ...args], {
     encoding: "utf8",
     cwd: repoRoot,
+    ...(env ? { env } : {}),
   });
   if (result.error) {
     throw result.error;
@@ -49,6 +74,25 @@ function karel(...args: string[]): Invocation {
     throw new Error(`karel ${args.join(" ")} was killed by ${result.signal}`);
   }
   return { code: result.status ?? -1, stdout: result.stdout, stderr: result.stderr };
+}
+
+function karel(...args: string[]): Invocation {
+  return invoke(args);
+}
+
+/**
+ * The same call with extra environment variables. Only --timeout cares: it
+ * spawns a child and marks it, and the marker is observable from out here.
+ */
+function karelWithEnv(env: Record<string, string>, ...args: string[]): Invocation {
+  return invoke(args, { ...process.env, ...env });
+}
+
+/** Wall-clock milliseconds an invocation took, for the --timeout tests. */
+function timed(run: () => Invocation): { result: Invocation; elapsed: number } {
+  const started = Date.now();
+  const result = run();
+  return { result, elapsed: Date.now() - started };
 }
 
 // --- fixtures ---------------------------------------------------------------
@@ -69,7 +113,8 @@ function worldFixture(name: string, map: unknown): string {
 /**
  * The world examples/demo-program.kli leaves behind: Karel two corners east of
  * where he started, facing south, one beeper of his five dropped at (2, 3).
- * Walls are omitted because --assert-world never compares them.
+ * The walls come along because they are how the CLI recognises the exercise:
+ * an expected world without them is a file from somewhere else.
  */
 function expectedFinalWorld() {
   return {
@@ -81,7 +126,7 @@ function expectedFinalWorld() {
       { x: 8, y: 2, count: 3 },
       { x: 2, y: 3, count: 1 },
     ],
-    walls: [] as unknown[],
+    walls: structuredClone(DEMO_WALLS),
   };
 }
 
@@ -436,10 +481,12 @@ describe("--assert-world", () => {
     expect(stderr).not.toContain("stopped after");
   });
 
-  it("ignores walls and dimensions, which no instruction can change", () => {
-    const expected = assertWorld("no-walls.klm", (m) => {
-      m.dimensions = { width: 20, height: 20 };
-      m.walls = [{ from: { x: 1, y: 1 }, to: { x: 2, y: 1 } }];
+  it("compares only what a program can change", () => {
+    // Walls and dimensions are checked before the run, by sameExercise; what
+    // is left for the comparison is Karel and the beepers. A file that agrees
+    // on those passes even though it lists its walls in another order.
+    const expected = assertWorld("reordered-walls.klm", (m) => {
+      m.walls = m.walls.slice().reverse();
     });
     const { code } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", expected);
     expect(code).toBe(OK);
@@ -613,9 +660,17 @@ describe("help and version", () => {
 
   it("documents every exit code it can return", () => {
     const { stdout } = karel("--help");
-    for (const code of ["0", "1", "2", "3", "64"]) {
+    for (const code of ["0", "1", "2", "3", "4", "64"]) {
       expect(stdout).toMatch(new RegExp(`^\\s*${code}\\s`, "m"));
     }
+  });
+
+  it("documents the flags that change how a run is graded", () => {
+    // A marker who only ever reads --help has to be able to find the escape
+    // hatch and the clock, or they will not know either exists.
+    const { stdout } = karel("--help");
+    expect(stdout).toContain("--timeout");
+    expect(stdout).toContain("--ignore-facing");
   });
 
   it("--version exits 0 and writes the version to stdout", () => {
@@ -636,6 +691,399 @@ describe("help and version", () => {
     expect(code).toBe(USAGE);
     expect(stdout).toBe("");
     expect(stderr).toContain("Usage:");
+  });
+});
+
+// --- the expected world has to be from this exercise ------------------------
+
+describe("--assert-world from another exercise exits 64", () => {
+  it("names both sizes when the dimensions differ", () => {
+    const other = assertWorld("other-size.klm", (m) => {
+      m.dimensions = { width: 20, height: 20 };
+    });
+    const { code, stdout, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", other);
+    expect(code).toBe(USAGE);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("describes a different exercise");
+    // Both numbers, so the teacher can see at a glance which file is the odd
+    // one out instead of going back to open them.
+    expect(stderr).toContain("10x8");
+    expect(stderr).toContain("20x20");
+  });
+
+  it("counts the walls when the expected world has fewer", () => {
+    const other = assertWorld("fewer-walls.klm", (m) => {
+      m.walls.pop();
+    });
+    const { code, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", other);
+    expect(code).toBe(USAGE);
+    expect(stderr).toContain("the world has 5 walls but the expected world has 4");
+  });
+
+  it("counts the walls when the expected world has more", () => {
+    const other = assertWorld("more-walls.klm", (m) => {
+      m.walls.push({ from: { x: 9, y: 7 }, to: { x: 9, y: 8 } });
+    });
+    const { code, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", other);
+    expect(code).toBe(USAGE);
+    expect(stderr).toContain("the world has 5 walls but the expected world has 6");
+  });
+
+  it("names a wall that moved, when the count is the same", () => {
+    const other = assertWorld("moved-wall.klm", (m) => {
+      m.walls[0] = { from: { x: 1, y: 1 }, to: { x: 1, y: 2 } };
+    });
+    const { code, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", other);
+    expect(code).toBe(USAGE);
+    expect(stderr).toContain(
+      "the world has a wall at (4, 3)–(4, 4) that the expected world does not"
+    );
+  });
+
+  it("rejects an expected world the submission would otherwise satisfy", () => {
+    // This is the whole reason the check exists. The file below agrees with
+    // the demo's real outcome on every part a program can reach — same corner,
+    // same facing, same bag, same piles — and differs only in its walls, which
+    // no instruction can move. While walls went uncompared this graded as a
+    // pass: a correct submission for one exercise, marked correct against a
+    // completely different exercise's solution.
+    const solved = JSON.parse(readFileSync(exactWorld, "utf8"));
+    solved.walls = ELSEWHERE_WALLS;
+    const other = worldFixture("false-pass.klm", solved);
+
+    const { code, stdout, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", other);
+    expect(code).toBe(USAGE);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("describes a different exercise");
+    // ...and the proof that the walls were the only difference: put this
+    // exercise's walls back and the very same comparison passes.
+    expect(karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", exactWorld).code).toBe(OK);
+  });
+
+  it("happens before the program runs", () => {
+    // hit-wall.kli would shut off on a wall a step in. The reported problem
+    // has to be the teacher's — the wrong expected file — because grading a
+    // submission against a file from another exercise is meaningless whatever
+    // the submission does.
+    const other = assertWorld("wrong-exercise-and-shutoff.klm", (m) => {
+      m.dimensions = { width: 20, height: 20 };
+    });
+    const { code, stdout, stderr } = karel("run", hitWall, "-w", DEMO_WORLD, "-a", other);
+    expect(code).toBe(USAGE);
+    expect(stderr).toContain("describes a different exercise");
+    // Not the shutoff, which is what this would report if the check came later.
+    expect(stderr).not.toContain("the front is blocked");
+    expect(stdout).toBe("");
+  });
+
+  it("is not fooled by the order the walls are listed in", () => {
+    // A wall set is a set. The file a teacher generates does not have to list
+    // them in the order the starting world happened to.
+    const shuffled = assertWorld("shuffled-walls.klm", (m) => {
+      m.walls = [m.walls[3], m.walls[0], m.walls[4], m.walls[2], m.walls[1]];
+    });
+    expect(karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", shuffled).code).toBe(OK);
+  });
+
+  it("is not fooled by a wall recorded from its other side", () => {
+    // A wall between two corners is the same wall read either way round.
+    const flipped = assertWorld("flipped-walls.klm", (m) => {
+      m.walls = m.walls.map((w) => ({ from: w.to, to: w.from }));
+    });
+    expect(karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", flipped).code).toBe(OK);
+  });
+
+  it("goes on to compare properly once the exercise matches", () => {
+    // The control for the two cases above: reordered and flipped walls must
+    // not merely stop short of exit 64, they must reach the real comparison.
+    // A wrong facing on the same file proves the run happened and was graded.
+    const flipped = assertWorld("flipped-walls-wrong-facing.klm", (m) => {
+      const backwards = m.walls.slice().reverse();
+      m.walls = backwards.map((w) => ({ from: w.to, to: w.from }));
+      m.karel.facing = "north";
+    });
+    const { code, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", flipped);
+    expect(code).toBe(FAILED);
+    expect(stderr).toContain("expected Karel facing north, found south");
+    expect(stderr).not.toContain("different exercise");
+  });
+
+  it("accepts the world a reference run writes out", () => {
+    // The flow from the README, end to end: run the reference solution, keep
+    // the world it produced, hand that back as --assert-world. It carries the
+    // walls, which is what closes the circle with the check above.
+    const { stdout } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "--json");
+    const produced = worldFixture("round-trip.klm", JSON.parse(stdout).world);
+    const { code, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", produced);
+    expect(code).toBe(OK);
+    expect(stderr).toBe("");
+  });
+});
+
+// --- --timeout --------------------------------------------------------------
+
+describe("--timeout", () => {
+  it("changes nothing about a run that finishes", () => {
+    const supervised = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-t", "10");
+    const plain = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD);
+    expect(supervised.code).toBe(OK);
+    // Byte for byte: the extra process must be invisible to the marker.
+    expect(supervised).toEqual(plain);
+  });
+
+  it("exits 4 when the run refuses to finish", () => {
+    // A step budget far beyond anything a lesson needs, so the only thing that
+    // can stop this is the clock. 100,000 steps take about 36ms, which is why
+    // one second is not a bound a legitimate program can run into.
+    const { result, elapsed } = timed(() =>
+      karel("run", infinite, "-w", DEMO_WORLD, "-m", "500000000", "-t", "1")
+    );
+    expect(result.code).toBe(TIMEOUT);
+    expect(result.stderr).toContain("gave up after 1 seconds");
+    // The point of the flag is that it gives up roughly when it said it would.
+    // The bound is loose because this runs on shared CI hardware; what it rules
+    // out is the failure that matters — waiting out the whole step budget.
+    expect(elapsed).toBeGreaterThanOrEqual(500);
+    expect(elapsed).toBeLessThan(15_000);
+  });
+
+  it("distinguishes a timeout (4) from a blown budget (3) on the same program", () => {
+    const budget = karel("run", infinite, "-w", DEMO_WORLD, "-m", "20", "-t", "10");
+    const clock = karel("run", infinite, "-w", DEMO_WORLD, "-m", "500000000", "-t", "1");
+    expect(budget.code).toBe(LIMIT);
+    expect(clock.code).toBe(TIMEOUT);
+  });
+
+  it.each(["0", "-1", "abc", "", "Infinity", "NaN"])("rejects --timeout=%j", (value) => {
+    const { code, stdout, stderr } = karel(
+      "run",
+      DEMO_PROGRAM,
+      "-w",
+      DEMO_WORLD,
+      `--timeout=${value}`
+    );
+    expect(code).toBe(USAGE);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("--timeout needs a positive number of seconds");
+    // The value is quoted back, so an empty one is still visible in the log.
+    expect(stderr).toContain(`got '${value}'`);
+  });
+
+  it("rejects a bad --timeout before reading anything else", () => {
+    const missing = join(dir, "never-submitted.kli");
+    const { code, stderr } = karel("run", missing, "-w", DEMO_WORLD, "--timeout=0");
+    expect(code).toBe(USAGE);
+    expect(stderr).toContain("--timeout needs a positive number of seconds");
+  });
+
+  it("keeps stdout pure JSON through the supervising process", () => {
+    // The child inherits this process's stdio rather than being piped, so the
+    // JSON has to arrive unmangled and with nothing of the parent's mixed in.
+    const supervised = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "--json", "-t", "10");
+    expect(supervised.code).toBe(OK);
+    expect(() => JSON.parse(supervised.stdout)).not.toThrow();
+    expect(JSON.parse(supervised.stdout).steps).toBe(13);
+    expect(supervised.stdout).toBe(karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "--json").stdout);
+  });
+
+  it("carries a failing exit code back out of the child", () => {
+    // Everything below 64 comes from the child; the parent only replaces it
+    // when it had to kill something.
+    expect(karel("run", hitWall, "-w", DEMO_WORLD, "-t", "10").code).toBe(FAILED);
+    expect(karel("run", syntaxError, "-w", DEMO_WORLD, "-t", "10").code).toBe(PARSE_ERROR);
+    const asserted = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", exactWorld, "-t", "10");
+    expect(asserted.code).toBe(OK);
+  });
+
+  it("is accepted by check, unlike run's other flags", () => {
+    // check refuses --world, --assert-world, --max-steps and --ignore-facing
+    // because taking them silently would pass every submission. --timeout is
+    // not in that family: it grades nothing, it only bounds the clock, and a
+    // parse can hang the same way a run can.
+    const { code, stdout } = karel("check", DEMO_PROGRAM, "-t", "10");
+    expect(code).toBe(OK);
+    expect(stdout).toContain("no errors");
+    expect(JSON.parse(karel("check", DEMO_PROGRAM, "--json", "-t", "10").stdout)).toEqual({
+      status: "ok",
+      diagnostics: [],
+    });
+    expect(karel("check", syntaxError, "-t", "10").code).toBe(PARSE_ERROR);
+  });
+
+  it("does not supervise again inside the child", () => {
+    // KAREL_SUPERVISED is what keeps the CLI from spawning copies of itself for
+    // ever, so the marker has to be observable from out here. A timeout far too
+    // short for any run to survive makes it so: supervising, it kills the run;
+    // believing itself the child, it never spawns anything to kill and the same
+    // program finishes normally.
+    const supervising = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "--timeout=0.001");
+    expect(supervising.code).toBe(TIMEOUT);
+
+    const asChild = karelWithEnv(
+      { KAREL_SUPERVISED: "1" },
+      "run",
+      DEMO_PROGRAM,
+      "-w",
+      DEMO_WORLD,
+      "--timeout=0.001"
+    );
+    expect(asChild.code).toBe(OK);
+    expect(asChild.stdout).toContain("finished after 13 steps");
+
+    // And the flag is still validated in the child, so a stray marker in the
+    // environment cannot turn a bad invocation into a silent success.
+    const badInChild = karelWithEnv(
+      { KAREL_SUPERVISED: "1" },
+      "run",
+      DEMO_PROGRAM,
+      "-w",
+      DEMO_WORLD,
+      "--timeout=abc"
+    );
+    expect(badInChild.code).toBe(USAGE);
+  });
+
+  it("costs one extra process, not a growing chain of them", () => {
+    // A chain would show up twice over: as a run that never comes back, and as
+    // a wall-clock cost that climbs with each level. One node start-up is the
+    // whole price, so the same work under -t stays in the same order of time.
+    const plain = timed(() => karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD));
+    const supervised = timed(() => karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-t", "10"));
+    expect(supervised.result.code).toBe(OK);
+    expect(supervised.elapsed).toBeLessThan(plain.elapsed + 5_000);
+  });
+});
+
+// --- --ignore-facing --------------------------------------------------------
+
+describe("--ignore-facing", () => {
+  let wrongFacing: string;
+
+  beforeAll(() => {
+    wrongFacing = assertWorld("ignore-facing.klm", (m) => {
+      m.karel.facing = "north";
+    });
+  });
+
+  it("fails on the orientation by default", () => {
+    // A grader defaults to strict: the flag has to be asked for.
+    const { code, stderr } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", wrongFacing);
+    expect(code).toBe(FAILED);
+    expect(stderr).toContain("expected Karel facing north, found south");
+  });
+
+  it("accepts the same world with the flag", () => {
+    const { code, stdout, stderr } = karel(
+      "run",
+      DEMO_PROGRAM,
+      "-w",
+      DEMO_WORLD,
+      "-a",
+      wrongFacing,
+      "--ignore-facing"
+    );
+    expect(code).toBe(OK);
+    expect(stdout).toContain("finished after 13 steps");
+    expect(stderr).toBe("");
+  });
+
+  const stillCompared: Array<[string, (m: FinalWorld) => void, string]> = [
+    [
+      "where Karel ended up",
+      (m) => {
+        m.karel.x = 5;
+        m.karel.y = 5;
+      },
+      "expected Karel at (5, 5), found (2, 1)",
+    ],
+    [
+      "what is left in the bag",
+      (m) => {
+        m.karel.beepers = 0;
+      },
+      "expected 0 beepers in the bag, found 4",
+    ],
+    [
+      "the piles on the floor",
+      (m) => {
+        m.beepers[0].count = 99;
+      },
+      "expected 99 beepers at (3, 3), found 2",
+    ],
+  ];
+
+  it.each(stillCompared)("still compares %s", (label, mutate, message) => {
+    // The valve opens exactly one notch. Each of these files has the wrong
+    // facing as well, so it fails either way — the point is that with the flag
+    // it fails on the other difference rather than passing.
+    const expected = assertWorld(`ignore-facing-${label.replace(/\W+/g, "-")}.klm`, (m) => {
+      m.karel.facing = "north";
+      mutate(m);
+    });
+    const strict = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", expected);
+    expect(strict.code).toBe(FAILED);
+
+    const relaxed = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "-a", expected, "--ignore-facing");
+    expect(relaxed.code).toBe(FAILED);
+    expect(relaxed.stderr).toContain(message);
+    expect(relaxed.stderr).not.toContain("facing");
+  });
+
+  it("does not relax the exercise check", () => {
+    // Walls are not a matter of orientation: a file from another exercise is
+    // still a setup error, flag or no flag.
+    const other = assertWorld("ignore-facing-other-exercise.klm", (m) => {
+      m.walls = ELSEWHERE_WALLS;
+      m.karel.facing = "north";
+    });
+    const { code, stderr } = karel(
+      "run",
+      DEMO_PROGRAM,
+      "-w",
+      DEMO_WORLD,
+      "-a",
+      other,
+      "--ignore-facing"
+    );
+    expect(code).toBe(USAGE);
+    expect(stderr).toContain("describes a different exercise");
+  });
+
+  it("is inert without --assert-world", () => {
+    const { code, stdout } = karel("run", DEMO_PROGRAM, "-w", DEMO_WORLD, "--ignore-facing");
+    expect(code).toBe(OK);
+    expect(stdout).toContain("finished after 13 steps");
+  });
+
+  it("is refused by check", () => {
+    // Same reasoning as check's other refusals: a flag that loosens grading
+    // must never be silently ignored by the command that does no grading.
+    const { code, stdout, stderr } = karel("check", DEMO_PROGRAM, "--ignore-facing");
+    expect(code).toBe(USAGE);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("check does not take --ignore-facing");
+    expect(stderr).toContain("did you mean 'karel run'?");
+  });
+
+  it("reports the mismatch it did find in --json", () => {
+    const expected = assertWorld("ignore-facing-json.klm", (m) => {
+      m.karel.facing = "north";
+      m.karel.beepers = 0;
+    });
+    const { code, stdout } = karel(
+      "run",
+      DEMO_PROGRAM,
+      "-w",
+      DEMO_WORLD,
+      "-a",
+      expected,
+      "--ignore-facing",
+      "--json"
+    );
+    expect(code).toBe(FAILED);
+    const payload = JSON.parse(stdout);
+    expect(payload.kind).toBe("assert-world");
+    expect(payload.message).toContain("expected 0 beepers in the bag, found 4");
   });
 });
 

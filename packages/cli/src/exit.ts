@@ -13,6 +13,13 @@ export const Exit = {
   PARSE_ERROR: 2,
   /** The step budget ran out: almost always an infinite loop. */
   LIMIT: 3,
+  /**
+   * --timeout expired. Distinct from LIMIT because a blown step budget is a
+   * statement about the program, while this is a statement about the tool:
+   * something outside the interpreter — reading, tokenizing, parsing — failed
+   * to finish, and the run says nothing about the submission either way.
+   */
+  TIMEOUT: 4,
   /** Bad invocation: unknown flag, missing file, malformed world. */
   USAGE: 64,
 } as const;

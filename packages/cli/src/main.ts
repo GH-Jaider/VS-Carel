@@ -11,20 +11,23 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { parseArgs } from "node:util";
 import { validateKarelMap, type KarelMap } from "@karel/core";
-import { check, run, type Result } from "./commands.js";
+import { check, run, sameExercise, type Result } from "./commands.js";
 import { Exit, type ExitCode } from "./exit.js";
 import { renderJson, renderText } from "./output.js";
+import { isSupervisedChild, superviseSelf } from "./supervise.js";
 
 const USAGE = `karel — run and grade Karel programs
 
 Usage:
   karel run <program.kli> --world <world.klm> [options]
-  karel check <program.kli> [--json]
+  karel check <program.kli> [--timeout <seconds>] [--json]
 
 Options:
   -w, --world <file>       World the program runs in (required for run)
   -a, --assert-world <file>  Require this final world; mismatch exits 1
   -m, --max-steps <n>      Instruction budget before declaring a loop
+  -t, --timeout <seconds>  Give up if the whole run takes longer
+      --ignore-facing      Accept any final orientation under --assert-world
       --json               Machine-readable result on stdout
   -h, --help               Show this message
   -v, --version            Show the version
@@ -34,6 +37,7 @@ Exit codes:
   1  error shutoff, or the final world did not match
   2  the program did not parse
   3  ran past the step budget: almost certainly a loop
+  4  --timeout expired: the run itself failed to finish
   64 bad invocation
 
 Examples:
@@ -42,7 +46,7 @@ Examples:
   karel check submission.kli --json
 
   for f in submissions/*.kli; do
-    karel run "$f" -w start.klm -a solved.klm >/dev/null 2>&1 \\
+    karel run "$f" -w start.klm -a solved.klm -t 10 >/dev/null 2>&1 \\
       && echo "PASS $f" || echo "FAIL $f ($?)"
   done
 `;
@@ -61,6 +65,8 @@ function main(argv: string[]): ExitCode {
         world: { type: "string", short: "w" },
         "assert-world": { type: "string", short: "a" },
         "max-steps": { type: "string", short: "m" },
+        timeout: { type: "string", short: "t" },
+        "ignore-facing": { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
         version: { type: "boolean", short: "v", default: false },
@@ -79,6 +85,27 @@ function main(argv: string[]): ExitCode {
   if (values.version) {
     process.stdout.write(`${VERSION}\n`);
     return Exit.OK;
+  }
+
+  // Validate outside the supervision guard. Inside it, a stray KAREL_SUPERVISED
+  // in the environment would make a bad --timeout silently acceptable as well
+  // as silently inert — the flag would do nothing and say nothing.
+  let timeoutMs: number | undefined;
+  if (values.timeout !== undefined) {
+    const seconds = Number(values.timeout);
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      return usageError(`--timeout needs a positive number of seconds, got '${values.timeout}'`);
+    }
+    // Round up to whole milliseconds: spawnSync rejects a fractional timeout
+    // with a RangeError, which would surface as an exit code a marker reads as
+    // "the submission is wrong" rather than "the invocation is wrong".
+    timeoutMs = Math.ceil(seconds * 1000);
+  }
+
+  // Before anything is read or parsed, since the whole point is to bound the
+  // phases a step budget cannot reach.
+  if (timeoutMs !== undefined && !isSupervisedChild()) {
+    return superviseSelf(timeoutMs, values.timeout as string);
   }
 
   const [command, programPath, ...extra] = positionals;
@@ -108,8 +135,8 @@ function main(argv: string[]): ExitCode {
     // who types `check` where they meant `run` — or who bolts --assert-world
     // onto the check line from --help — gets exit 0 for every submission in
     // the directory, including the empty ones.
-    const misplaced = (["world", "assert-world", "max-steps"] as const).find(
-      (flag) => values[flag] !== undefined
+    const misplaced = (["world", "assert-world", "max-steps", "ignore-facing"] as const).find(
+      (flag) => values[flag] !== undefined && values[flag] !== false
     );
     if (misplaced) {
       return usageError(`check does not take --${misplaced}; did you mean 'karel run'?`);
@@ -132,6 +159,14 @@ function main(argv: string[]): ExitCode {
     if (asserted instanceof Error) {
       return usageError(asserted.message);
     }
+    // Dimensions and walls are beyond any instruction's reach, so a difference
+    // is not a wrong answer: it means this expected file belongs to another
+    // exercise. Caught here it is a setup error; left to the comparison it
+    // would quietly pass any submission that ends on the right corner.
+    const different = sameExercise(map, asserted);
+    if (different) {
+      return usageError(`'${values["assert-world"]}' describes a different exercise: ${different}`);
+    }
     expected = asserted;
   }
 
@@ -143,7 +178,11 @@ function main(argv: string[]): ExitCode {
     }
   }
 
-  return report(run({ source, map, maxSteps, expected }), programName, values.json);
+  return report(
+    run({ source, map, maxSteps, expected, compare: { ignoreFacing: values["ignore-facing"] } }),
+    programName,
+    values.json
+  );
 }
 
 function report(result: Result, programName: string, json: boolean): ExitCode {
