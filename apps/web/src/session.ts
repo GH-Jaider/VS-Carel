@@ -16,6 +16,7 @@
 
 import { Interpreter, World, type Diagnostic, type KarelMap } from "@karel/core";
 import type { SessionState, SessionView } from "./contracts.js";
+import { t } from "./i18n.js";
 
 export const SPEED_PRESETS: { label: string; ms: number }[] = [
   { label: "0.25x", ms: 1000 },
@@ -200,7 +201,7 @@ export class Session {
     }
 
     if (this.blockingErrors().length > 0) {
-      this.message = "Fix the errors in the program first.";
+      this.message = t("error.fixProgram");
       this.setState("error");
       return false;
     }
@@ -212,7 +213,7 @@ export class Session {
     const interpreter = new Interpreter(this.world);
     this.diagnostics = interpreter.load(this.source);
     if (this.blockingErrors().length > 0) {
-      this.message = "Fix the errors in the program first.";
+      this.message = t("error.fixProgram");
       this.setState("error");
       return false;
     }

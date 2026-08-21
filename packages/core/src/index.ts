@@ -30,3 +30,8 @@ export { RuntimeError } from "./types/errors";
 export type { RuntimeErrorKind } from "./types/errors";
 export type { Diagnostic } from "./types/errors";
 export { BUILT_IN_INSTRUCTIONS, VALID_CONDITIONS } from "./parsing/constants";
+
+// The message catalogue itself stays internal: hosts branch on RuntimeErrorKind
+// and Diagnostic.severity, never on prose. Only the language switch is public.
+export { setLocale, getLocale } from "./messages";
+export type { Locale } from "./messages";

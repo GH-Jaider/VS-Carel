@@ -424,6 +424,10 @@ button {
   border-color: var(--line);
 }
 
+.channel-label {
+  white-space: nowrap;
+}
+
 .channel .index {
   font-size: 10px;
   color: var(--text-faint);
@@ -557,6 +561,65 @@ button {
   background: var(--sw-paper-b);
 }
 
+/* The language picker, given the same treatment as the theme swatches it sits
+   beside: a labelled group of small buttons, one of which is pressed. The
+   labels are endonyms and stay as they are in any language, so the set never
+   changes width when the page changes language. */
+.langs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.langs-label {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 1180px) {
+  .langs-label {
+    display: none;
+  }
+}
+
+.lang-option {
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-right-width: 0;
+  background: none;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  transition:
+    color 0.1s,
+    background 0.1s,
+    border-color 0.1s;
+}
+
+/* One box around the set rather than one per button, so it reads as a single
+   switch. Only the last button carries the right-hand edge. */
+.lang-option + .lang-option {
+  margin-left: -1px;
+}
+.lang-option:last-child {
+  border-right-width: 1px;
+}
+
+.lang-option:hover {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.lang-option[aria-pressed="true"] {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: var(--bg);
+  font-weight: 700;
+}
+
 .ghost-button {
   display: inline-flex;
   align-items: center;
@@ -654,8 +717,13 @@ button {
   font-size: 12.5px;
 }
 
-/* The box already has a rule around it; a focus ring inside it would double. */
-.cm-editor.cm-focused {
+/* CodeMirror's own ring would sit inside a box that already has a rule around
+   it, so the box itself answers for focus instead -- see the focus section
+   near the foot of this file. The inner element must then say nothing, and
+   that includes `.cm-content`, which is the node that actually takes focus and
+   would otherwise pick up the house ring. */
+.cm-editor.cm-focused,
+.cm-editor .cm-content:focus-visible {
   outline: none;
 }
 
@@ -1323,17 +1391,6 @@ button.problem:hover {
   margin: 0;
 }
 
-/* One focus ring for the whole panel, in the accent the fields already use.
-   The default one is a rounded halo, which no other control here has. */
-.number:focus-visible,
-.tool:focus-visible,
-.stepper-button:focus-visible,
-.palette-button:focus-visible,
-.share-url:focus-visible {
-  outline: 1px solid var(--cyan);
-  outline-offset: -1px;
-}
-
 .palette-button {
   padding: 3px 10px;
   border: 1px solid var(--line);
@@ -1737,6 +1794,14 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 
 /* ---------------------------------------------------------------- about -- */
+/* The manual. It is the only long-form reading in a page otherwise made of
+   chips and readouts, so it gets a body text size, a real line height and a
+   column narrow enough to track — while every frame around it stays the same
+   one-pixel rule the rest of the instrument is drawn with.
+
+   Layout is a fixed index beside a scrolling document, rather than a sticky
+   index inside one: nothing then slides underneath the index, and the reader's
+   place in a nine-section reference is always one glance away. */
 
 .about {
   border: 1px solid var(--line-bright);
@@ -1744,8 +1809,17 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   background: var(--bg-panel);
   color: var(--text);
   padding: 0;
-  max-width: 660px;
+  max-width: 820px;
   width: calc(100% - 32px);
+  max-height: min(88dvh, 780px);
+  overflow: hidden;
+}
+
+/* Only when open: `display` on a bare `dialog` would defeat the UA rule that
+   hides a closed one, and the dialog would be on screen from first paint. */
+.about[open] {
+  display: flex;
+  flex-direction: column;
 }
 
 .about::backdrop {
@@ -1753,16 +1827,18 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 
 .about-body {
-  padding: 16px 20px 20px;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
-.about-body header {
+.about-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
+  padding: 13px 16px 11px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1775,8 +1851,125 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   color: var(--pink);
 }
 
+/* The index down the left, the document to its right. This element does not
+   scroll; .help-doc does. */
+.about-scroll {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* ----------------------------------------------------------- help index -- */
+
+.help-index {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  padding: 12px 10px;
+  border-right: 1px solid var(--line);
+  background: var(--bg);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.help-tab {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  background: none;
+  text-align: left;
+  color: var(--text-faint);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition:
+    color 0.1s,
+    background 0.1s,
+    border-color 0.1s;
+}
+
+.help-tab:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+/* Inverse video, the way every other selected thing on this page is marked. */
+.help-tab[aria-selected="true"] {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------- help doc -- */
+
+.help-doc {
+  /* One measure for everything in the column — prose, samples, tables, the
+     brief. Blocks of different widths inside one document read as a page that
+     could not decide where its right edge was; a single ragged edge at about
+     seventy characters is what makes it a page. */
+  --help-measure: 74ch;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+  /* Right padding wider than left, so the measure stops well short of the
+     scrollbar instead of running into it. The deep bottom pad is what lets the
+     last section scroll up to the top edge when its tab is clicked; without it
+     the index can point at a section the reader cannot bring into view. */
+  padding: 18px 26px 32vh 18px;
+}
+
+.help-doc::-webkit-scrollbar {
+  width: 8px;
+}
+.help-doc::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
+.help-doc:focus-visible {
+  outline: 1px solid var(--line-bright);
+  outline-offset: -1px;
+}
+
+/* The exercise on screen, before anything general is said. A box with its
+   title cut into the border, like every other box, but raised and in the
+   attention colour: this is the one paragraph that changes. */
+.help-brief {
+  position: relative;
+  max-width: var(--help-measure);
+  margin: 5px 0 4px;
+  padding: 13px 14px 12px;
+  border: 1px solid var(--line-bright);
+  background: var(--bg-raised);
+}
+
+.help-brief .box-title {
+  color: var(--amber);
+  background: var(--bg-panel);
+}
+
+.help-brief .box-note {
+  background: var(--bg-panel);
+  color: var(--text-dim);
+}
+
+.help-brief p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.help-section {
+  /* Scroll margin, so a section jumped to from the index lands under the top
+     edge rather than flush against it. */
+  scroll-margin-top: 10px;
+}
+
 .about-body h3 {
-  margin: 16px 0 5px;
+  margin: 26px 0 8px;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -1788,41 +1981,340 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   content: "▌ ";
 }
 
+.about-body h4 {
+  margin: 0 0 3px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+/* A section's second half, announced rather than run on. */
+.help-lead {
+  margin: 18px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
 .about-body p {
-  margin: 0 0 8px;
+  margin: 0 0 9px;
+  max-width: var(--help-measure);
   font-size: 12.5px;
   line-height: 1.7;
   color: var(--text-dim);
 }
 
-.about-body em {
-  font-style: normal;
-  color: var(--cyan);
-}
-
-.about-body strong {
-  color: var(--text);
-  font-weight: 700;
-}
-
+/* Any word that is language rather than English. Same amber the editor gives
+   a name the program defined for itself. */
 .about-body code {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 0.94em;
   color: var(--amber);
 }
 
-.about-body ul {
-  margin: 0;
-  padding-left: 0;
-  list-style: none;
-  font-size: 12.5px;
-  line-height: 1.75;
+/* ------------------------------------------------------------ help code -- */
+
+.help-figure {
+  margin: 0 0 12px;
+  max-width: var(--help-measure);
+}
+
+.help-figure figcaption {
+  margin-bottom: 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.help-figure figcaption code {
   color: var(--text-dim);
 }
 
-.about-body li::before {
-  content: "· ";
-  color: var(--pink);
+.help-code {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--line-bright);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  /* A sample is one long line on a phone before it is a wrapped one: wrapping
+     Karel source would break the indentation that shows the nesting. */
+  overflow-x: auto;
+  tab-size: 4;
+}
+
+/* The snippets are painted by the editor's own tokenizer, so they arrive
+   wearing the .cm-karel-* classes the program column already defines. */
+
+/* ----------------------------------------------------------- help table -- */
+
+.help-table {
+  width: 100%;
+  max-width: var(--help-measure);
+  margin: 0 0 10px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.help-table th,
+.help-table td {
+  padding: 6px 10px 6px 0;
+  text-align: left;
+  vertical-align: baseline;
+  border-bottom: 1px solid var(--line);
+}
+
+.help-table thead th {
+  padding-bottom: 4px;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom-color: var(--line-bright);
+}
+
+.help-table tbody th {
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.help-table td {
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.help-table tbody tr:last-child th,
+.help-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* -------------------------------------------------------- help families -- */
+/* Eighteen conditions in four groups. The group is the unit that gets learned,
+   so the group gets the heading and the sentence, and the names underneath are
+   a set of chips rather than a list of entries. */
+
+.help-families {
+  max-width: var(--help-measure);
+  display: grid;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.help-family {
+  padding-left: 11px;
+  border-left: 1px solid var(--line);
+}
+
+.help-family p {
+  margin-bottom: 6px;
+}
+
+.help-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.help-chips code {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 11.5px;
+  color: var(--cyan);
+}
+
+/* ------------------------------------------------------------ help keys -- */
+
+.help-keys {
+  max-width: var(--help-measure);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+.help-keys dt {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.help-keys .key-cap {
+  font-size: 11px;
+  padding: 1px 5px;
+}
+
+.help-key-join {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.help-keys dd {
+  margin: 0;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  /* No room for a column of section names beside the text. The index becomes a
+     strip across the top, scrolling sideways, and the document takes the whole
+     width underneath it. */
+  .about {
+    max-height: 90dvh;
+  }
+
+  .about-scroll {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .help-index {
+    flex-direction: row;
+    gap: 4px;
+    padding: 8px 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+
+  .help-doc {
+    padding: 14px 14px 40vh;
+  }
+
+  .help-keys {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .help-keys dt {
+    justify-self: start;
+    margin-top: 8px;
+  }
+}
+
+/* ----------------------------------------------------------------- a11y -- */
+/* Focus, said the way everything else here is said.
+
+   The house ring is a one-pixel solid outline drawn just inside the control,
+   which is the same rule every box and every segmented control is already
+   drawn with -- a terminal has no soft glows and no rounded halos, and the
+   browser's default is both. It is declared once on `:focus-visible` so that
+   anything focusable, including a control added later, is covered by default
+   rather than by remembering to add it.
+
+   The colour is `--text` rather than an accent. Nothing else in the interface
+   uses `--text` for a rule, so the ring never reads as a state some control
+   already has; and `--text` against `--bg` is the widest gap any of the four
+   themes offers -- 12.7:1 in ember, the narrowest of them -- so the ring
+   clears 3:1 everywhere without a per-theme exception.
+
+   `:focus-visible` rather than `:focus`: a click on a button should not leave
+   a ring behind, and the browser already knows the difference. */
+
+/* The ring's colour is held in its own registered property rather than being
+   read from `--text` at the point of use, and the reason is the swatches.
+   Each one carries `data-theme` so it can preview its own palette, and the
+   theme rules at the top of this file are plain attribute selectors -- so a
+   swatch does not merely look like onyx, it *is* onyx as far as every custom
+   property is concerned, `--text` included. A ring written as `var(--text)`
+   would therefore be drawn in the palette the swatch advertises rather than
+   the one the page is running, which puts near-black paper ink on a near-black
+   charm ground three times out of four.
+
+   Registering the property with `inherits: true` makes it compute to a colour
+   at `:root`, where `--text` still means the running theme, and inherit that
+   computed colour past any element that redefines the palette under it. The
+   initial value is charm's `--text`, which is what an engine that does not
+   support `@property` falls back to. */
+@property --focus-ring {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e6e6f0;
+}
+
+:root {
+  --focus-ring: var(--text);
+}
+
+:focus-visible {
+  outline: 1px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+/* Controls whose own state fills them with a pale accent -- the selected
+   world, the selected speed, the tool in hand, a primary button under the
+   pointer. `--text` on any of those is one light colour on another; the ring
+   has to be drawn in the ground colour instead, which is exactly the pairing
+   the fill was chosen for and so is legible by construction. */
+.channel[aria-selected="true"]:focus-visible,
+.lang-option[aria-pressed="true"]:focus-visible,
+.rate-option[aria-pressed="true"]:focus-visible,
+.tool[aria-pressed="true"]:focus-visible,
+.list-row[aria-pressed="true"]:focus-visible,
+.ghost-button:hover:focus-visible,
+.transport-button.primary:hover:focus-visible,
+.palette-button.primary:hover:focus-visible,
+.list-action:hover:focus-visible {
+  outline-color: var(--bg);
+}
+
+/* The swatches are the exception that proves the colour rule: each one is
+   painted in the palette it would switch to, so one of them is always light
+   and one is always dark whichever theme is running, and no single ring colour
+   works inside them. This ring goes outside instead, onto the page ground,
+   where `--text` is safe again. The five-pixel gap between swatches is enough
+   to hold it without touching the neighbour. */
+.theme-swatch:focus-visible {
+  outline-offset: 2px;
+}
+
+/* The program box answers for the editor inside it, since CodeMirror's node
+   sits within a rule that is already drawn. The border going from `--line`
+   (1.4:1 against the ground -- a hairline you read as an edge, not as a
+   signal) to `--text` is unmistakable, and it costs no layout. */
+.editor:has(.cm-editor.cm-focused) {
+  border-color: var(--text);
+}
+
+/* A scroll container is focusable in its own right so it can be scrolled from
+   the keyboard, and it is a box like any other, so the ring goes on its rule
+   rather than inside its padding. */
+.problems .panel-body:focus-visible,
+.cm-editor .cm-scroller:focus-visible {
+  outline-offset: -1px;
+}
+
+/* Present to a screen reader, absent from the page. Used for the document's
+   h1, which the masthead draws as a wordmark rather than as a heading.
+   `clip-path` over `display: none` because a hidden element is not read at
+   all, and 1px over 0 because a zero-sized box is skipped by some engines. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 /* ------------------------------------------------------------ page load -- */
@@ -1884,13 +2376,25 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   animation-delay: 0.32s;
 }
 
+/* Two animations run on this page and both are ornament: the wipe above, and
+   the inverse-video flash that marks a reading as it changes. Neither carries
+   information the page does not also state in words, so under a reduced-motion
+   preference they are replaced by their end state rather than by a very fast
+   version of themselves.
+
+   The delays have to go with the durations. `paint` fills backwards, so a
+   delay left in place would hold a panel at opacity 0 for up to a third of a
+   second and then snap it in -- which is not less motion, it is a flash. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

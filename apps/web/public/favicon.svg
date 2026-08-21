@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="Karel">
+  <!--
+    Karel, drawn the way the app draws him: a triangle at rest pointing north,
+    standing on a grid, with one beeper on a corner.
+
+    Laid out on a 16-unit board so that at 16x16 (the size that actually
+    matters, and the one this was proofed at) every rule lands on a whole
+    pixel. That is why the grid is two lines each way rather than a real
+    lattice: a 4x4 of 4px cells turns to mud at this size. It is why the beeper
+    is a 3px square rather than the disc the canvas renderer paints: a 3px disc
+    is a smudge either way. And the triangle is 8 wide by 10 tall because that
+    is the renderer's own proportion, base 2/3 of size against height 5/6.
+
+    Colours are charm, the default theme, straight off :root in main.css. The
+    rule uses the line-bright token rather than line, because a 1px rule at
+    line is invisible against the ground at this size.
+
+    Every colour is a presentation attribute with the dark value, so a
+    rasteriser that ignores the stylesheet still gets a correct icon; the
+    stylesheet only overrides. The app itself does not follow the system
+    scheme (it opens on charm and remembers what you picked), but a favicon
+    has no such memory and is stamped straight onto the browser's own chrome,
+    so here the system preference is the only signal there is. Light chrome
+    gets the paper palette.
+  -->
+  <style>
+    @media (prefers-color-scheme: light) {
+      .ground { fill: #f2efe7; }
+      .rule { fill: #a79e8b; }
+      .karel { fill: #c2255c; }
+      .beeper { fill: #0b7285; }
+    }
+  </style>
+  <rect class="ground" width="16" height="16" fill="#0c0c12"/>
+  <g class="rule" fill="#45455a" shape-rendering="crispEdges">
+    <rect x="5" y="0" width="1" height="16"/>
+    <rect x="10" y="0" width="1" height="16"/>
+    <rect x="0" y="5" width="16" height="1"/>
+    <rect x="0" y="10" width="16" height="1"/>
+  </g>
+  <path class="karel" d="M8 2 L12 12 L4 12 Z" fill="#ff5fa2"/>
+  <rect class="beeper" x="1" y="12" width="3" height="3" fill="#4fe3d2" shape-rendering="crispEdges"/>
+</svg>

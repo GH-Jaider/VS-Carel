@@ -3,12 +3,65 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Karel · a robot on a grid</title>
+    <!-- Every node carrying a data-i18n* attribute is filled in from the
+         catalogue in src/i18n.ts before first paint and again on every
+         language change; the English here is what a visitor sees if the
+         module never runs at all. -->
+    <title data-i18n="page.title">Karel the Robot · a robot on a grid, in your browser</title>
     <meta
       name="description"
-      content="Karel the Robot in the browser. Write a program, watch it walk the grid, pick up the beepers, build your own world."
+      data-i18n-content="page.description"
+      content="Write Karel programs in the browser and watch the robot walk the grid, pick up beepers and turn off. Four exercises, a map editor, and a link you can share."
     />
     <meta name="theme-color" content="#0c0c12" />
+
+    <!-- The icon, drawn by hand: Karel's triangle at rest on a grid, with one
+         beeper on a corner. The SVG carries a light variant for light browser
+         chrome; the PNG is there for anything that will not take an SVG icon,
+         and the touch icon insets the same artwork so iOS can round the
+         corners off empty ground. Root-absolute paths, which Vite rewrites to
+         the "/karel/" production base. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- This product is, mostly, a link somebody pastes into a chat window or
+         onto a slide, and everything below is what that paste looks like.
+         Deliberately not translated: a crawler fetches the page once, without
+         running any of its JavaScript, so there is no locale to read and an
+         empty card would be the only other outcome.
+
+         The image URL has to be absolute -- a crawler does not resolve a
+         relative one against a page it never rendered -- so it names the
+         deployment directly rather than going through Vite's base. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Karel" />
+    <meta property="og:title" content="Karel · a robot on a grid" />
+    <meta
+      property="og:description"
+      content="Write Karel programs in the browser and watch the robot walk the grid, pick up beepers and turn off. Four exercises, a map editor, and a link you can share."
+    />
+    <meta property="og:url" content="https://gh-jaider.github.io/karel/" />
+    <meta property="og:image" content="https://gh-jaider.github.io/karel/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The Karel workbench: a program in the editor with the running line lit, and the robot part-way across a ten-by-eight grid of walls and beepers."
+    />
+    <meta property="og:locale" content="en" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Karel · a robot on a grid" />
+    <meta
+      name="twitter:description"
+      content="Write Karel programs in the browser and watch the robot walk the grid, pick up beepers and turn off."
+    />
+    <meta name="twitter:image" content="https://gh-jaider.github.io/karel/og-image.png" />
+    <meta
+      name="twitter:image:alt"
+      content="The Karel workbench: a program in the editor with the running line lit, and the robot part-way across a ten-by-eight grid of walls and beepers."
+    />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -29,6 +82,15 @@
           document.documentElement.dataset.theme = t;
         }
       } catch (e) {}
+      try {
+        // Same idea for the language, as far as it can go without the
+        // catalogue: the document declares what it is in before anything
+        // reads it. The words themselves are the module's job.
+        var l = localStorage.getItem("karel.locale");
+        if (["en", "es"].indexOf(l) >= 0) {
+          document.documentElement.lang = l;
+        }
+      } catch (e) {}
     </script>
   </head>
   <body>
@@ -37,25 +99,51 @@
     <div class="frame">
       <header class="masthead">
         <div class="identity">
-          <span class="wordmark">KAREL</span>
-          <span class="subtitle">a robot on a grid</span>
+          <h1 class="visually-hidden" data-i18n="page.title">
+            Karel the Robot · a robot on a grid, in your browser
+          </h1>
+          <span class="wordmark" aria-hidden="true">KAREL</span>
+          <span class="subtitle" data-i18n="masthead.subtitle">a robot on a grid</span>
         </div>
 
         <!-- Filled by the chrome: one .channel button per bundled world. -->
-        <nav class="channels" id="worlds" aria-label="Worlds"></nav>
+        <nav
+          class="channels"
+          id="worlds"
+          data-i18n-aria="masthead.worlds"
+          aria-label="Worlds"
+        ></nav>
 
         <div class="masthead-end">
+          <!-- Filled by the chrome: one .lang-option per language. -->
+          <div
+            class="langs"
+            id="langs"
+            role="group"
+            data-i18n-aria="masthead.languages"
+            aria-label="Language"
+          >
+            <span class="langs-label" data-i18n="masthead.language">lang</span>
+          </div>
           <!-- Filled by the chrome: one .theme-swatch per palette. -->
-          <div class="themes" id="themes" role="group" aria-label="Colour theme">
-            <span class="themes-label">theme</span>
+          <div
+            class="themes"
+            id="themes"
+            role="group"
+            data-i18n-aria="masthead.themes"
+            aria-label="Colour theme"
+          >
+            <span class="themes-label" data-i18n="masthead.theme">theme</span>
           </div>
           <button
             class="ghost-button"
             id="share-link"
             type="button"
+            data-i18n-title="masthead.shareTitle"
             title="Copy a link that opens this program and this world"
           >
-            <span class="key-cap">↺</span>share
+            <span class="key-cap" aria-hidden="true">↺</span
+            ><span data-i18n="masthead.share">share</span>
           </button>
           <!-- Shown only when the clipboard refuses: a link nobody can copy is
                not a share, so there has to be something to select. -->
@@ -65,10 +153,12 @@
             type="text"
             readonly
             hidden
+            data-i18n-aria="masthead.shareUrl"
             aria-label="Link to this program and world"
           />
           <button class="ghost-button" id="about-button" type="button">
-            <span class="key-cap">?</span>how it works
+            <span class="key-cap" aria-hidden="true">?</span
+            ><span data-i18n="masthead.about">how it works</span>
           </button>
         </div>
       </header>
@@ -76,14 +166,14 @@
       <main class="bench">
         <section class="workshop">
           <div class="editor">
-            <span class="box-title">program</span>
+            <span class="box-title" data-i18n="panel.program">program</span>
             <span class="box-note" id="program-note"></span>
             <!-- CodeMirror mounts here and is the only thing allowed to own it. -->
             <div class="editor-host" id="editor-host"></div>
           </div>
 
           <div class="panel problems">
-            <span class="panel-title">problems</span>
+            <span class="panel-title" data-i18n="panel.problems">problems</span>
             <span class="panel-note" id="problems-note"></span>
             <div class="panel-body">
               <!-- Filled by the chrome: one .problem per diagnostic. Kept as a
@@ -96,54 +186,67 @@
 
         <section class="stage">
           <div class="viewport" id="viewport">
-            <span class="box-title">world</span>
+            <span class="box-title" data-i18n="panel.world">world</span>
             <span class="box-note" id="world-note"></span>
-            <canvas id="world-canvas"></canvas>
+            <canvas
+              id="world-canvas"
+              role="img"
+              aria-label="Karel's world"
+              aria-describedby="readout"
+            ></canvas>
           </div>
 
           <div class="console">
-            <div class="transport">
-              <button
-                class="transport-button primary"
-                id="run"
-                type="button"
-                aria-label="Run or stop"
-              >
-                <span class="glyph" id="run-glyph">▶</span><span id="run-label">run</span>
+            <div class="transport" role="group" aria-label="Transport">
+              <button class="transport-button primary" id="run" type="button">
+                <span class="glyph" id="run-glyph" aria-hidden="true">▶</span
+                ><span id="run-label">run</span>
               </button>
               <button
                 class="transport-button"
                 id="step"
                 type="button"
+                data-i18n-title="transport.stepTitle"
                 title="Execute one instruction"
               >
-                <span class="glyph">▶❚</span><span>step</span>
+                <span class="glyph" aria-hidden="true">▶❚</span
+                ><span data-i18n="transport.step">step</span>
               </button>
               <button
                 class="transport-button"
                 id="reset"
                 type="button"
+                data-i18n-title="transport.resetTitle"
                 title="Put the world back as it started"
               >
-                <span class="glyph">↺</span><span>reset</span>
+                <span class="glyph" aria-hidden="true">↺</span
+                ><span data-i18n="transport.reset">reset</span>
               </button>
             </div>
 
             <div class="rate">
-              <span class="rate-label">speed</span>
+              <span class="rate-label" data-i18n="speed.label">speed</span>
               <!-- Filled by the chrome: one .rate-option per speed. -->
-              <div class="rate-options" id="rate-options"></div>
+              <div
+                class="rate-options"
+                id="rate-options"
+                role="group"
+                data-i18n-aria="speed.label"
+                aria-label="Speed"
+              ></div>
             </div>
 
             <!-- The mode switch is markup because it is not a view option: it
                  decides whether the canvas is a readout or an instrument. The
                  chrome appends the view toggles after it. -->
-            <div class="toggles" id="toggles">
+            <div class="toggles" id="toggles" role="group" aria-label="View">
               <button
                 class="toggle"
                 id="mode-toggle"
                 type="button"
                 aria-pressed="false"
+                data-i18n="toggle.editMap"
+                data-i18n-title="toggle.editMapTitle"
                 title="Build the world by hand"
               >
                 edit map
@@ -153,28 +256,43 @@
 
           <!-- The map editor. Hidden until the mode toggle turns it on, because
                every control in it acts on a world that is not running. -->
-          <section class="palette" id="palette" aria-label="Map editor" hidden>
-            <span class="box-title">map</span>
+          <section
+            class="palette"
+            id="palette"
+            data-i18n-aria="palette.group"
+            aria-label="Map editor"
+            hidden
+          >
+            <span class="box-title" data-i18n="panel.map">map</span>
             <span class="box-note" id="palette-note"></span>
 
             <div class="palette-row">
-              <span class="palette-label">tool</span>
-              <div class="tools" id="tools" role="group" aria-label="Tool">
+              <span class="palette-label" data-i18n="palette.tool">tool</span>
+              <div
+                class="tools"
+                id="tools"
+                role="group"
+                data-i18n-aria="palette.tools"
+                aria-label="Tool"
+              >
                 <button class="tool" id="tool-wall" type="button" data-tool="wall">
-                  <span class="glyph">┃</span>wall
+                  <span class="glyph" aria-hidden="true">┃</span
+                  ><span data-i18n="palette.toolWall">wall</span>
                 </button>
                 <button class="tool" id="tool-beeper" type="button" data-tool="beeper">
-                  <span class="glyph">●</span>beeper
+                  <span class="glyph" aria-hidden="true">●</span
+                  ><span data-i18n="palette.toolBeeper">beeper</span>
                 </button>
                 <button class="tool" id="tool-karel" type="button" data-tool="karel">
-                  <span class="glyph">▲</span>karel
+                  <span class="glyph" aria-hidden="true">▲</span
+                  ><span data-i18n="palette.toolKarel">karel</span>
                 </button>
               </div>
               <span class="palette-hint" id="tool-hint"></span>
             </div>
 
             <div class="palette-row">
-              <span class="palette-label">size</span>
+              <span class="palette-label" data-i18n="palette.size">size</span>
               <div class="stepper">
                 <button
                   class="stepper-button"
@@ -182,6 +300,7 @@
                   type="button"
                   data-target="world-width"
                   data-step="-1"
+                  data-i18n-aria="palette.narrower"
                   aria-label="Narrower"
                 >
                   -
@@ -194,6 +313,7 @@
                   max="100"
                   step="1"
                   inputmode="numeric"
+                  data-i18n-aria="palette.width"
                   aria-label="World width"
                 />
                 <button
@@ -202,6 +322,7 @@
                   type="button"
                   data-target="world-width"
                   data-step="1"
+                  data-i18n-aria="palette.wider"
                   aria-label="Wider"
                 >
                   +
@@ -217,6 +338,7 @@
                   type="button"
                   data-target="world-height"
                   data-step="-1"
+                  data-i18n-aria="palette.shorter"
                   aria-label="Shorter"
                 >
                   -
@@ -229,6 +351,7 @@
                   max="100"
                   step="1"
                   inputmode="numeric"
+                  data-i18n-aria="palette.height"
                   aria-label="World height"
                 />
                 <button
@@ -237,13 +360,14 @@
                   type="button"
                   data-target="world-height"
                   data-step="1"
+                  data-i18n-aria="palette.taller"
                   aria-label="Taller"
                 >
                   +
                 </button>
               </div>
 
-              <span class="palette-label">bag</span>
+              <span class="palette-label" data-i18n="palette.bag">bag</span>
               <div class="stepper">
                 <button
                   class="stepper-button"
@@ -251,6 +375,7 @@
                   type="button"
                   data-target="karel-bag"
                   data-step="-1"
+                  data-i18n-aria="palette.bagFewer"
                   aria-label="One beeper fewer"
                 >
                   -
@@ -263,6 +388,7 @@
                   max="999"
                   step="1"
                   inputmode="numeric"
+                  data-i18n-aria="palette.bagField"
                   aria-label="Beepers in Karel's bag"
                 />
                 <button
@@ -271,6 +397,7 @@
                   type="button"
                   data-target="karel-bag"
                   data-step="1"
+                  data-i18n-aria="palette.bagMore"
                   aria-label="One beeper more"
                 >
                   +
@@ -279,13 +406,29 @@
             </div>
 
             <div class="palette-row">
-              <button class="palette-button" id="clear-beepers" type="button">clear beepers</button>
-              <button class="palette-button" id="clear-walls" type="button">clear walls</button>
+              <button
+                class="palette-button"
+                id="clear-beepers"
+                type="button"
+                data-i18n="palette.clearBeepers"
+              >
+                clear beepers
+              </button>
+              <button
+                class="palette-button"
+                id="clear-walls"
+                type="button"
+                data-i18n="palette.clearWalls"
+              >
+                clear walls
+              </button>
               <span class="palette-spacer"></span>
               <button
                 class="palette-button"
                 id="export-world"
                 type="button"
+                data-i18n="palette.export"
+                data-i18n-title="palette.exportTitle"
                 title="Download this world as a .klm file"
               >
                 export .klm
@@ -294,29 +437,51 @@
           </section>
 
           <!-- Filled by the chrome: .panel blocks of readings. -->
-          <aside class="readout" id="readout" aria-label="Readings"></aside>
+          <aside
+            class="readout"
+            id="readout"
+            data-i18n-aria="panel.readout"
+            aria-label="Readings"
+          ></aside>
         </section>
       </main>
 
       <footer class="statusbar">
-        <span class="hint"><b data-mod>ctrl</b>+<b>enter</b> run</span>
-        <span class="hint"><b data-mod>ctrl</b>+<b>.</b> step</span>
-        <span class="hint"><b>esc</b> stop</span>
-        <span class="hint"><b>r</b> reset</span>
-        <span class="hint"><b>e</b> edit map</span>
-        <span class="hint"><b>1-4</b> world</span>
-        <span class="hint"><b>?</b> help</span>
+        <!-- The word after each chord is its own node so it can be translated
+             without the key caps around it going through innerHTML. -->
+        <span class="hint"
+          ><b data-mod>ctrl</b>+<b>enter</b> <span data-i18n="hint.run">run</span></span
+        >
+        <span class="hint"
+          ><b data-mod>ctrl</b>+<b>.</b> <span data-i18n="hint.step">step</span></span
+        >
+        <span class="hint"><b>esc</b> <span data-i18n="hint.stop">stop</span></span>
+        <span class="hint"><b>r</b> <span data-i18n="hint.reset">reset</span></span>
+        <span class="hint"><b>e</b> <span data-i18n="hint.editMap">edit map</span></span>
+        <span class="hint"><b>1-4</b> <span data-i18n="hint.world">world</span></span>
+        <span class="hint"><b>?</b> <span data-i18n="hint.help">help</span></span>
         <span class="statusbar-end" id="status" data-state="idle">idle</span>
       </footer>
     </div>
 
-    <dialog class="about" id="about">
+    <!-- The manual. Long enough to need its own scroll and its own index, and
+         both live inside #about-content: help.ts fills it with a fixed list of
+         sections beside the document that scrolls past them. -->
+    <dialog class="about" id="about" aria-labelledby="about-title">
       <article class="about-body">
-        <header>
-          <h2>how it works</h2>
-          <button class="ghost-button" id="about-close" type="button">esc</button>
+        <header class="about-head">
+          <h2 id="about-title" data-i18n="about.title">how it works</h2>
+          <button
+            class="ghost-button"
+            id="about-close"
+            type="button"
+            data-i18n="about.close"
+            aria-label="Close"
+          >
+            esc
+          </button>
         </header>
-        <div id="about-content"></div>
+        <div class="about-scroll" id="about-content"></div>
       </article>
     </dialog>
 

@@ -9,12 +9,21 @@
  */
 
 import { validateKarelMap, type KarelMap } from "@karel/core";
+import { t } from "./i18n.js";
 
 export interface Exercise {
   id: string;
-  label: string;
-  /** Shown in the "how it works" dialog when this exercise is selected. */
-  brief: string;
+  /**
+   * The name in the masthead, and the paragraph shown in the "how it works"
+   * dialog when this exercise is selected.
+   *
+   * Both are read from the catalogue at the moment they are asked for rather
+   * than being stored here, so switching language re-words an exercise that
+   * is already on screen. Anything that keeps one of these has kept a string
+   * in one language; read them off the exercise each time instead.
+   */
+  readonly label: string;
+  readonly brief: string;
   world: KarelMap;
   /** The program the editor opens with. */
   program: string;
@@ -40,10 +49,12 @@ function world(source: unknown): KarelMap {
 export const EXERCISES: Exercise[] = [
   {
     id: "first-steps",
-    label: "first steps",
-    brief:
-      "An empty 8 by 8 world. Move Karel around and get a feel for the four " +
-      "instructions that do anything: move, turnleft, pickbeeper, putbeeper.",
+    get label() {
+      return t("world.first-steps.label");
+    },
+    get brief() {
+      return t("world.first-steps.brief");
+    },
     world: world({
       dimensions: { width: 8, height: 8 },
       karel: { x: 1, y: 1, facing: "east", beepers: 0 },
@@ -54,10 +65,12 @@ export const EXERCISES: Exercise[] = [
   },
   {
     id: "collect",
-    label: "collect",
-    brief:
-      "Three beepers sit in a row ahead of Karel. Pick up all of them and " +
-      "come back to the corner you started from.",
+    get label() {
+      return t("world.collect.label");
+    },
+    get brief() {
+      return t("world.collect.brief");
+    },
     world: world({
       dimensions: { width: 8, height: 5 },
       karel: { x: 1, y: 1, facing: "east", beepers: 0 },
@@ -72,10 +85,12 @@ export const EXERCISES: Exercise[] = [
   },
   {
     id: "maze",
-    label: "maze",
-    brief:
-      "A wall stands between Karel and the beeper. Walls block movement in " +
-      "both directions, and front-is-clear is how Karel finds out.",
+    get label() {
+      return t("world.maze.label");
+    },
+    get brief() {
+      return t("world.maze.brief");
+    },
     world: world({
       dimensions: { width: 8, height: 6 },
       karel: { x: 1, y: 1, facing: "north", beepers: 0 },
@@ -91,10 +106,12 @@ export const EXERCISES: Exercise[] = [
   },
   {
     id: "sandbox",
-    label: "sandbox",
-    brief:
-      "The world from the repository's examples, with a few piles and a few " +
-      "walls. Nothing to solve — a place to try things.",
+    get label() {
+      return t("world.sandbox.label");
+    },
+    get brief() {
+      return t("world.sandbox.brief");
+    },
     world: world({
       dimensions: { width: 10, height: 8 },
       karel: { x: 1, y: 1, facing: "north", beepers: 5 },
@@ -209,7 +226,7 @@ export function parseWorldFile(text: string): ImportResult {
   try {
     data = JSON.parse(text);
   } catch (error) {
-    return { ok: false, error: `That file is not valid JSON: ${(error as Error).message}` };
+    return { ok: false, error: t("error.notJson", { message: (error as Error).message }) };
   }
   const validated = validateKarelMap(data);
   if (!validated.ok || !validated.map) {

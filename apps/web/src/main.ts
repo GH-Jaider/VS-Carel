@@ -23,9 +23,20 @@
 import { MAX_WORLD_SIZE, type KarelMap, type Wall } from "@karel/core";
 import { createEditor } from "./editor/editor.js";
 import { createRenderer } from "./render/world.js";
+import { renderHelp } from "./help.js";
 import { THEMES, currentTheme, onThemeChange, restoreTheme, setTheme } from "./render/theme.js";
 import { DEFAULT_SPEED_MS, SPEED_PRESETS, Session } from "./session.js";
-import type { HitTarget, KarelEditor, WorldRenderer } from "./contracts.js";
+import type { HitTarget, KarelEditor, SessionState, WorldRenderer } from "./contracts.js";
+import {
+  LOCALES,
+  applyStaticText,
+  currentLocale,
+  onLocaleChange,
+  restoreLocale,
+  setLocale,
+  t,
+  type MessageKey,
+} from "./i18n.js";
 import {
   changeBeepers,
   clearBeepers,
@@ -116,10 +127,38 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 /** What each tool does, said once, where the tool is chosen. */
-const TOOL_HINT: Record<Tool, string> = {
-  wall: "click the edge between two corners · again to remove",
-  beeper: "click adds one · alt or right click takes one back",
-  karel: "click sets him down · r turns him left",
+const TOOL_HINT: Record<Tool, MessageKey> = {
+  wall: "palette.hintWall",
+  beeper: "palette.hintBeeper",
+  karel: "palette.hintKarel",
+};
+
+/**
+ * The word for each speed, keyed on the interval rather than on the position
+ * in SPEED_PRESETS: a preset inserted in the middle would otherwise silently
+ * shift every label by one. A preset with no entry keeps its own label.
+ */
+const SPEED_LABEL: Record<number, MessageKey> = {
+  1000: "speed.quarter",
+  500: "speed.half",
+  250: "speed.normal",
+  120: "speed.double",
+  50: "speed.quad",
+};
+
+const STATUS_LABEL: Record<SessionState, MessageKey> = {
+  idle: "status.idle",
+  running: "status.running",
+  stepping: "status.stepping",
+  done: "status.done",
+  error: "status.error",
+};
+
+const FACING_LABEL: Record<KarelMap["karel"]["facing"], MessageKey> = {
+  north: "facing.north",
+  south: "facing.south",
+  east: "facing.east",
+  west: "facing.west",
 };
 
 class Application {
@@ -144,6 +183,7 @@ class Application {
     canvas: query<HTMLCanvasElement>("#world-canvas"),
     worlds: query("#worlds"),
     themes: query("#themes"),
+    langs: query("#langs"),
     rate: query("#rate-options"),
     toggles: query("#toggles"),
     readout: query("#readout"),
@@ -205,6 +245,7 @@ class Application {
 
     this.buildExercises();
     this.buildThemes();
+    this.buildLanguages();
     this.buildSpeeds();
     this.buildToggles();
     this.buildReadout();
@@ -216,6 +257,15 @@ class Application {
     this.bindCanvas();
 
     onThemeChange(() => this.render());
+    onLocaleChange(() => {
+      // Three things have to move, and none of them may touch the program or
+      // the world: the document's own text, the diagnostics (which the core
+      // worded when the source was last parsed, so they are re-parsed rather
+      // than left in the previous language), and everything render() writes.
+      applyStaticText();
+      this.session.setSource(this.editor.getSource());
+      this.render();
+    });
     new ResizeObserver(() => {
       this.renderer.resize();
       this.render();
@@ -239,7 +289,15 @@ class Application {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "channel";
-      button.innerHTML = `<span class="index">${index + 1}</span>${exercise.label}`;
+      // Two nodes rather than one string, because the name is translated and
+      // the number is not; render() rewrites only the half that changes.
+      const number = document.createElement("span");
+      number.className = "index";
+      number.textContent = String(index + 1);
+      const label = document.createElement("span");
+      label.className = "channel-label";
+      label.textContent = exercise.label;
+      button.append(number, label);
       button.addEventListener("click", () => this.selectExercise(exercise));
       this.dom.worlds.append(button);
     }
@@ -253,10 +311,36 @@ class Application {
       // keyed on this attribute.
       button.className = "theme-swatch";
       button.dataset.theme = theme.id;
+      // The palette's own name is not translated -- "charm" is what it is
+      // called either way -- so only the sentence around it goes through the
+      // catalogue, and the sweep re-words it on a language change.
       button.title = theme.label;
-      button.setAttribute("aria-label", `${theme.label} theme`);
+      button.dataset["i18nAria"] = "masthead.themeOption";
+      button.setAttribute("aria-label", t("masthead.themeOption", { name: theme.label }));
       button.addEventListener("click", () => setTheme(theme.id));
       this.dom.themes.append(button);
+    }
+  }
+
+  /**
+   * The language picker, built like the theme swatches next to it: one small
+   * button per choice, pressed state carried by aria-pressed so the
+   * stylesheet and a screen reader read it from the same place.
+   *
+   * The label is the language's own endonym, never a translation of it: a
+   * visitor looking for Spanish is looking for the word "Español".
+   */
+  private buildLanguages(): void {
+    for (const entry of LOCALES) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "lang-option";
+      button.dataset["locale"] = entry.id;
+      button.textContent = entry.label;
+      button.title = entry.name;
+      button.setAttribute("aria-label", t("masthead.languageOption", { name: entry.name }));
+      button.addEventListener("click", () => setLocale(entry.id));
+      this.dom.langs.append(button);
     }
   }
 
@@ -265,7 +349,13 @@ class Application {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "rate-option";
-      button.textContent = preset.label;
+      const key = SPEED_LABEL[preset.ms];
+      if (key) {
+        // Marked for the sweep rather than rewritten by render(): a speed's
+        // label depends on nothing but the language.
+        button.dataset["i18n"] = key;
+      }
+      button.textContent = key ? t(key) : preset.label;
       button.addEventListener("click", () => {
         this.session.setSpeed(preset.ms);
         this.persist();
@@ -279,7 +369,8 @@ class Application {
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "toggle";
-    toggle.textContent = "coordinates";
+    toggle.dataset["i18n"] = "toggle.coordinates";
+    toggle.textContent = t("toggle.coordinates");
     toggle.addEventListener("click", () => {
       this.showAxes = !this.showAxes;
       this.render();
@@ -295,8 +386,9 @@ class Application {
       const panel = document.createElement("section");
       panel.className = "panel";
       panel.innerHTML =
-        `<span class="panel-title">${label}</span>` +
+        `<span class="panel-title" data-i18n="${label}"></span>` +
         `<div class="panel-body"><span class="metric-value" data-metric="${key}">—</span></div>`;
+      panel.querySelector(".panel-title")!.textContent = t(label);
       this.dom.readout.append(panel);
     }
   }
@@ -406,7 +498,7 @@ class Application {
         const result = parseWorldFile(text);
         if (!result.ok) {
           this.session.reset();
-          this.dom.worldNote.textContent = "invalid world";
+          this.dom.worldNote.textContent = t("error.invalidWorld");
           return;
         }
         this.customWorld = result.world;
@@ -463,7 +555,7 @@ class Application {
 
     this.dom.exportWorld.addEventListener("click", () => {
       downloadWorld(this.session.startingMap(), `${this.exercise.id}.klm`);
-      this.note("saved as .klm", true);
+      this.note(t("note.exported"), true);
     });
 
     this.dom.shareLink.addEventListener("click", () => void this.share());
@@ -552,7 +644,7 @@ class Application {
         // is walled by the interpreter and cannot be changed at all. Saying so
         // once per stroke beats a click that silently does nothing.
         if (first) {
-          this.note("a wall goes on the edge between two corners");
+          this.note(t("note.wallOnEdge"));
         }
         return;
       }
@@ -657,14 +749,14 @@ class Application {
     });
     if (await copyText(url)) {
       this.dom.shareUrlField.hidden = true;
-      this.note("link copied to the clipboard", true);
+      this.note(t("note.linkCopied"), true);
       return;
     }
     // Nothing was copied, so the link has to be somewhere it can be reached.
     this.dom.shareUrlField.hidden = false;
     this.dom.shareUrlField.value = url;
     this.dom.shareUrlField.select();
-    this.note("the clipboard refused — copy the link below");
+    this.note(t("note.clipboardRefused"));
   }
 
   /** A word in the palette's note chip, gone again a few seconds later. */
@@ -720,12 +812,16 @@ class Application {
 
     const action = this.session.primaryAction();
     this.dom.runGlyph.textContent = ACTION_GLYPH[action];
-    this.dom.runLabel.textContent = action;
+    this.dom.runLabel.textContent = t(ACTION_LABEL[action]);
     this.dom.run.disabled = editing;
     this.dom.step.disabled = editing || view.state === "running";
     this.dom.reset.disabled = editing;
 
-    this.dom.status.textContent = editing ? "edit" : (view.message ?? view.state);
+    // A message is prose the core or the session already worded; a state is
+    // one of ours and goes through the catalogue on the way out.
+    this.dom.status.textContent = editing
+      ? t("status.edit")
+      : (view.message ?? t(STATUS_LABEL[view.state]));
     this.dom.status.dataset.state = editing ? "edit" : view.state;
 
     const { width, height } = view.world.dimensions;
@@ -736,7 +832,7 @@ class Application {
     this.renderProblems();
     this.renderMetrics(view.world, view.steps);
     this.renderSelections();
-    this.dom.aboutContent.textContent = this.exercise.brief;
+    renderHelp(this.dom.aboutContent, this.exercise);
   }
 
   private renderPalette(world: KarelMap): void {
@@ -746,7 +842,7 @@ class Application {
     for (const button of this.dom.tools.querySelectorAll<HTMLButtonElement>(".tool")) {
       button.setAttribute("aria-pressed", String(button.dataset.tool === this.tool));
     }
-    this.dom.toolHint.textContent = TOOL_HINT[this.tool];
+    this.dom.toolHint.textContent = t(TOOL_HINT[this.tool]);
     this.writeNumbers(world, false);
   }
 
@@ -774,13 +870,14 @@ class Application {
 
   private renderProblems(): void {
     const diagnostics = this.session.currentDiagnostics();
-    this.dom.problemsNote.textContent = diagnostics.length === 0 ? "none" : `${diagnostics.length}`;
+    this.dom.problemsNote.textContent =
+      diagnostics.length === 0 ? t("problems.none") : `${diagnostics.length}`;
 
     if (diagnostics.length === 0) {
       // Stated rather than left blank: an empty panel reads as broken.
       const empty = document.createElement("p");
       empty.className = "problems-empty";
-      empty.textContent = "the program parses";
+      empty.textContent = t("problems.clean");
       this.dom.problems.replaceChildren(empty);
       return;
     }
@@ -807,7 +904,7 @@ class Application {
   private renderMetrics(world: KarelMap, steps: number): void {
     const values: Record<MetricKey, string> = {
       position: `${world.karel.x}, ${world.karel.y}`,
-      facing: world.karel.facing,
+      facing: t(FACING_LABEL[world.karel.facing]),
       bag: String(world.karel.beepers),
       steps: String(steps),
     };
@@ -827,8 +924,13 @@ class Application {
 
   private renderSelections(): void {
     for (const [index, button] of [...this.dom.worlds.children].entries()) {
-      const selected = EXERCISES[index]?.id === this.exercise.id && !this.customWorld;
+      const exercise = EXERCISES[index];
+      const selected = exercise?.id === this.exercise.id && !this.customWorld;
       button.setAttribute("aria-selected", String(selected));
+      const label = button.querySelector(".channel-label");
+      if (exercise && label) {
+        label.textContent = exercise.label;
+      }
     }
     for (const [index, button] of [...this.dom.rate.children].entries()) {
       button.setAttribute(
@@ -839,17 +941,20 @@ class Application {
     for (const [index, button] of [...this.dom.themes.children].entries()) {
       button.setAttribute("aria-pressed", String(THEMES[index]?.id === currentTheme()));
     }
+    for (const button of this.dom.langs.querySelectorAll<HTMLButtonElement>(".lang-option")) {
+      button.setAttribute("aria-pressed", String(button.dataset["locale"] === currentLocale()));
+    }
     this.axesToggle?.setAttribute("aria-pressed", String(this.showAxes));
   }
 }
 
 type MetricKey = "position" | "facing" | "bag" | "steps";
 
-const METRICS: [MetricKey, string][] = [
-  ["position", "corner"],
-  ["facing", "facing"],
-  ["bag", "bag"],
-  ["steps", "steps"],
+const METRICS: [MetricKey, MessageKey][] = [
+  ["position", "metric.position"],
+  ["facing", "metric.facing"],
+  ["bag", "metric.bag"],
+  ["steps", "metric.steps"],
 ];
 
 const ACTION_GLYPH: Record<"run" | "stop", string> = {
@@ -857,7 +962,17 @@ const ACTION_GLYPH: Record<"run" | "stop", string> = {
   stop: "■",
 };
 
+const ACTION_LABEL: Record<"run" | "stop", MessageKey> = {
+  run: "transport.run",
+  stop: "transport.stop",
+};
+
 restoreTheme();
+
+// Before the app is built, so the page is never briefly in two languages at
+// once: the markup ships English, and this rewrites it in place.
+restoreLocale();
+applyStaticText();
 
 // The footer spells the modifier out, and it is not the same word everywhere.
 for (const node of document.querySelectorAll("[data-mod]")) {
