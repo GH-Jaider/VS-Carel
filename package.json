@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dev:core": "pnpm --filter @karel/core dev",
+    "dev:web": "pnpm --filter @karel/web dev",
     "watch:ext": "pnpm --filter vs-karel watch",
     "prepare": "pnpm --filter @karel/core build"
   },
