@@ -60,6 +60,10 @@ const en = {
   "panel.problems": "problems",
   "panel.world": "world",
   "panel.map": "map",
+  // The two tabs cut into the code column are two files, and the strip says so
+  // to anything that cannot see the border they are cut into.
+  "panel.documents": "Files",
+  "panel.mapTitle": "The world as a .klm file",
   "panel.readout": "Readings",
 
   "problems.none": "none",
@@ -135,9 +139,6 @@ const en = {
   "palette.clearWalls": "clear walls",
   "palette.format": "format",
   "palette.formatTitle": "Lay the file out again, the way the canvas writes it",
-
-  // ── The map as text ─────────────────────────────────────────────────────
-  "panel.mapSource": "map source",
 
   // ── Files ───────────────────────────────────────────────────────────────
   "files.group": "Files",
@@ -580,6 +581,8 @@ const es: Catalogue = {
   "panel.problems": "problemas",
   "panel.world": "mundo",
   "panel.map": "mapa",
+  "panel.documents": "Ficheros",
+  "panel.mapTitle": "El mundo como fichero .klm",
   "panel.readout": "Lecturas",
 
   "problems.none": "ninguno",
@@ -653,8 +656,6 @@ const es: Catalogue = {
   "palette.clearWalls": "quitar muros",
   "palette.format": "formatear",
   "palette.formatTitle": "Vuelve a escribir el fichero como lo escribe el lienzo",
-
-  "panel.mapSource": "código del mapa",
 
   "files.group": "Ficheros",
   "files.label": "ficheros",

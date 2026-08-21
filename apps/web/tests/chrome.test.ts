@@ -110,6 +110,72 @@ describe("every element the chrome demands is in the page", () => {
   });
 });
 
+/**
+ * The two documents in one box.
+ *
+ * A `.klm` is code, so it lives in the column where code lives: two tabs cut
+ * into the top border, two CodeMirror hosts stacked in one cell, and one
+ * problems panel per document. Each of the four checks below pins a decision
+ * that an innocent-looking edit undoes silently — the hiding mechanism above
+ * all, which fails as a missing gutter rather than as an error.
+ */
+describe("the code column holds two documents", () => {
+  it("cuts a tab per document into the top of the box", () => {
+    for (const id of ["doc-tabs", "tab-program", "tab-map"]) {
+      expect(HTML, id).toContain(`id="${id}"`);
+    }
+    // Both tabs are in the same strip, and the strip is inside the code box
+    // rather than floating above the column.
+    expect(HTML.indexOf('id="doc-tabs"')).toBeGreaterThan(HTML.indexOf('class="editor"'));
+    expect(HTML.indexOf('id="tab-map"')).toBeLessThan(HTML.indexOf('id="editor-host"'));
+  });
+
+  it("keeps the map's text in the code column, not under the world", () => {
+    const workshop = HTML.indexOf('class="workshop"');
+    const stage = HTML.indexOf('class="stage"');
+    const host = HTML.indexOf('id="map-source-host"');
+    expect(workshop).toBeGreaterThan(-1);
+    expect(host).toBeGreaterThan(workshop);
+    expect(host).toBeLessThan(stage);
+    // The file's own operation went with the file.
+    expect(HTML.indexOf('id="format-map"')).toBeLessThan(stage);
+  });
+
+  it("hides the editor that is not in front with visibility, never with display", () => {
+    // The bug this pattern always produces: CodeMirror in a box that is not
+    // displayed measures itself as zero and comes back with no gutter and no
+    // scroll position. `is-off` is the class that has to keep the box laid out.
+    expect(MAIN).toContain('this.dom.editorHost.classList.toggle("is-off", map)');
+    expect(MAIN).toContain('this.dom.mapHost.classList.toggle("is-off", !map)');
+    const rule = CSS.slice(CSS.indexOf(".editor-host.is-off"));
+    expect(rule.slice(0, rule.indexOf("}"))).toContain("visibility: hidden");
+    expect(rule.slice(0, rule.indexOf("}"))).not.toContain("display: none");
+  });
+
+  it("cuts the map's tab only where the world is the visitor's to change", () => {
+    // In learn and in an opened level a world rearranged by hand is a check
+    // that certifies nothing, so there is no document to open and no tab.
+    expect(MAIN).toContain("this.dom.mapTab.hidden = !editable");
+    expect(MAIN).toContain("const editable = this.canEditWorld()");
+    // And with one tab there is no selection worth marking: the strip goes
+    // back to looking, and behaving, like the title chip it replaced.
+    expect(MAIN).toContain('this.dom.docTabs.dataset["choice"]');
+    expect(HTML).toContain('data-choice="false"');
+    expect(CSS).toContain('.box-tabs[data-choice="true"] .box-tab[aria-selected="true"]');
+    expect(CSS).toContain('.box-tabs[data-choice="false"]');
+  });
+
+  it("gives each document its own problems panel, and shows one at a time", () => {
+    for (const id of ["program-problems", "map-problems-panel"]) {
+      expect(HTML, id).toContain(`id="${id}"`);
+    }
+    expect(MAIN).toContain("this.dom.programProblems.hidden = map");
+    expect(MAIN).toContain("this.dom.mapProblemsPanel.hidden = !map");
+    // `.problems` is a flex container, which beats the UA rule for [hidden].
+    expect(CSS).toContain(".problems[hidden]");
+  });
+});
+
 describe("the three modes are wired end to end", () => {
   it("gives the masthead a mode switch rather than a world picker", () => {
     // The nav that used to carry one .channel per bundled world now carries

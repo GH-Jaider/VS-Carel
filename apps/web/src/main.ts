@@ -147,6 +147,15 @@ type Screen = "board" | "gallery" | "contribute";
 /** What the canvas is right now: a readout, or an instrument. */
 type EditMode = "run" | "edit";
 
+/**
+ * Which of the two documents the code column is showing.
+ *
+ * They are the two files this page deals in -- the program somebody writes and
+ * the world it runs in -- and they share one box, one pair of tabs and one
+ * problems panel, because they are the same kind of thing: text you edit.
+ */
+type Doc = "program" | "map";
+
 type Tool = "wall" | "beeper" | "karel";
 
 /**
@@ -421,6 +430,18 @@ class Application {
   private mode: Mode;
   private screen: Screen;
   private editMode: EditMode = "run";
+  /**
+   * The map is only ever shown as text while the world is being edited.
+   *
+   * That is not a restriction bolted onto the tab, it is what the tab means:
+   * the file describes the world a run *starts* from, so putting it in front
+   * of somebody half-way through a run would be showing them something that is
+   * not the world on the canvas, and letting them type into it would put two
+   * owners on one state. So opening the map tab turns the map editor on,
+   * exactly as the toggle beside the world does, and leaving edit mode by any
+   * route puts the program back in front.
+   */
+  private doc: Doc = "program";
 
   // ── learn ───────────────────────────────────────────────────────────────
   private progress: LearnProgress;
@@ -517,6 +538,12 @@ class Application {
     galleryBody: query("#gallery-body"),
     workshop: query(".workshop"),
     stage: query(".stage"),
+    docTabs: query("#doc-tabs"),
+    mapTab: query<HTMLButtonElement>("#tab-map"),
+    editorHost: query("#editor-host"),
+    mapHost: query("#map-source-host"),
+    programProblems: query("#program-problems"),
+    mapProblemsPanel: query("#map-problems-panel"),
     themes: query("#themes"),
     langs: query("#langs"),
     rate: query("#rate-options"),
@@ -602,7 +629,7 @@ class Application {
     this.session.setSpeed(stored?.speedMs ?? DEFAULT_SPEED_MS);
 
     this.renderer = createRenderer(this.dom.canvas);
-    this.editor = createEditor(query("#editor-host"), this.startingProgram());
+    this.editor = createEditor(this.dom.editorHost, this.startingProgram());
     this.editor.onChange((source) => {
       this.session.setSource(source);
       this.rememberProgram(source);
@@ -614,12 +641,13 @@ class Application {
     // map editor ever edits: the panel and the canvas are two views of one
     // value, never two values kept in step.
     this.mapSource = createMapSourceEditor(
-      query("#map-source-host"),
+      this.dom.mapHost,
       serializeWorld(this.session.startingMap())
     );
     this.mapSource.onChange((text) => this.applyMapSource(text));
 
     this.buildModes();
+    this.bindTabs();
     this.buildThemes();
     this.buildLanguages();
     this.buildSpeeds();
@@ -903,6 +931,41 @@ class Application {
     }
   }
 
+  /**
+   * The two tabs cut into the top of the code column.
+   *
+   * Opening the map is opening the map editor -- see the note on `doc` for
+   * why the two cannot be separated. Going back to the program leaves the
+   * editor on, because painting a world with the program in front of you is a
+   * perfectly good way to work.
+   */
+  private bindTabs(): void {
+    for (const tab of this.dom.docTabs.querySelectorAll<HTMLButtonElement>(".box-tab")) {
+      tab.addEventListener("click", () => this.setDoc(tab.dataset.doc as Doc));
+    }
+  }
+
+  private setDoc(doc: Doc): void {
+    if (doc === "map") {
+      if (!this.canEditWorld()) {
+        return;
+      }
+      // Set before the mode changes: entering edit mode renders, and the
+      // render has to already know which document it is drawing.
+      this.doc = "map";
+      if (this.editMode === "edit") {
+        this.render();
+      } else {
+        this.setEditMode("edit"); // renders
+      }
+      this.mapSource.focus();
+      return;
+    }
+    this.doc = "program";
+    this.render();
+    this.editor.focus();
+  }
+
   private bindTransport(): void {
     this.dom.run.addEventListener("click", () => {
       if (this.session.primaryAction() === "stop") {
@@ -1073,8 +1136,10 @@ class Application {
     if (!result.ok) {
       // The world on the canvas survives a file that will not load -- losing
       // your own world to somebody else's broken one would be the worst
-      // possible answer. The text goes into the source panel with the reasons
-      // beside it, which is the one place on this page where it can be fixed.
+      // possible answer. The text goes into the map tab with the reasons under
+      // it, which is the one place on this page where it can be fixed, and the
+      // tab is opened onto it.
+      this.doc = "map";
       this.setEditMode("edit");
       this.mapSourcePinned = true;
       this.mapSource.setText(text);
@@ -1417,6 +1482,11 @@ class Application {
       return;
     }
     this.editMode = mode;
+    if (mode === "run") {
+      // The map is the file of a world nobody is changing any more, so the tab
+      // that showed it has nothing true to show. See the note on `doc`.
+      this.doc = "program";
+    }
     this.stroke = null;
     this.cursor = null;
     this.dom.shareUrlField.hidden = true;
@@ -1537,6 +1607,7 @@ class Application {
    */
   private enterContext(): void {
     this.editMode = "run";
+    this.doc = "program";
     this.stroke = null;
     this.cursor = null;
     this.edgeCursor = null;
@@ -1688,14 +1759,48 @@ class Application {
 
     const { width, height } = view.world.dimensions;
     this.dom.worldNote.textContent = `${width}x${height}`;
-    this.dom.programNote.textContent = this.contextLabel();
 
+    this.renderDocs();
     this.renderPalette(view.world);
     this.renderProblems();
     this.renderMetrics(view.world, view.steps);
     this.renderGuide(view);
     this.renderSelections();
     renderHelp(this.dom.aboutContent, { label: this.contextLabel(), brief: this.contextBrief() });
+  }
+
+  /**
+   * Which of the two documents the code column is showing.
+   *
+   * The pair of tabs, the two editors stacked in one box, the problems panel
+   * under them, the chip in the top right and the one action that belongs to
+   * the file all move together, because they are five views of one answer.
+   */
+  private renderDocs(): void {
+    // A tab for a document that cannot be opened here is worse than no tab: in
+    // learn and in an opened level the world is not the visitor's to change,
+    // and the box goes back to looking like a box with one name on it.
+    const editable = this.canEditWorld();
+    this.dom.mapTab.hidden = !editable;
+    // With one document there is no choice to mark, so the lone tab goes back
+    // to being the title chip it replaced; see the box block in main.css.
+    this.dom.docTabs.dataset["choice"] = String(editable);
+    const map = this.doc === "map" && editable;
+
+    for (const tab of this.dom.docTabs.querySelectorAll<HTMLButtonElement>(".box-tab")) {
+      tab.setAttribute("aria-selected", String((tab.dataset.doc === "map") === map));
+    }
+    // Hidden by visibility, not by display: an editor in a box that is not
+    // displayed measures itself as zero and comes back with no gutter and no
+    // scroll position. See the .editor rule in main.css.
+    this.dom.editorHost.classList.toggle("is-off", map);
+    this.dom.mapHost.classList.toggle("is-off", !map);
+    this.dom.programProblems.hidden = map;
+    this.dom.mapProblemsPanel.hidden = !map;
+    this.dom.formatMap.hidden = !map;
+    // The extension is neither translated nor rewritten: ".klm" is what the
+    // file is called in either language.
+    this.dom.programNote.textContent = map ? ".klm" : this.contextLabel();
   }
 
   private renderPalette(world: KarelMap): void {

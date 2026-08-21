@@ -199,13 +199,77 @@
 
         <section class="workshop">
           <div class="editor">
-            <span class="box-title" data-i18n="panel.program">program</span>
-            <span class="box-note" id="program-note"></span>
-            <!-- CodeMirror mounts here and is the only thing allowed to own it. -->
+            <!-- Two documents, one box. A `.klm` is code as much as a `.kli`
+                 is, so it belongs in the column where code lives rather than
+                 in a panel under the world: a tab apiece, cut into the top
+                 border where a single title chip used to be. The map's tab is
+                 only cut where the world is the visitor's to change. -->
+            <div
+              class="box-tabs"
+              id="doc-tabs"
+              role="tablist"
+              data-choice="false"
+              data-i18n-aria="panel.documents"
+              aria-label="Files"
+            >
+              <button
+                class="box-tab"
+                id="tab-program"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                data-doc="program"
+                data-i18n="panel.program"
+              >
+                program
+              </button>
+              <button
+                class="box-tab"
+                id="tab-map"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-doc="map"
+                data-i18n="panel.map"
+                data-i18n-title="panel.mapTitle"
+                title="The world as a .klm file"
+                hidden
+              >
+                map
+              </button>
+            </div>
+
+            <!-- The other end of the same border: which file this is, and the
+                 one action that belongs to the text rather than to the world.
+                 `format` follows the file, so it is only on screen with the
+                 map open -- laying a file out again is not something you do
+                 to a program you are in the middle of writing. -->
+            <div class="box-actions">
+              <span class="box-note" id="program-note"></span>
+              <button
+                class="box-action"
+                id="format-map"
+                type="button"
+                data-i18n="palette.format"
+                data-i18n-title="palette.formatTitle"
+                title="Lay the file out again, the way the canvas writes it"
+                hidden
+              >
+                format
+              </button>
+            </div>
+
+            <!-- CodeMirror mounts in each of these and is the only thing
+                 allowed to own them. Both stay laid out at all times, stacked
+                 in one grid cell, and the one behind is hidden with
+                 `visibility` rather than `display`: an editor in a box that is
+                 not displayed measures itself as zero and comes back with no
+                 gutter and no scroll position. -->
             <div class="editor-host" id="editor-host"></div>
+            <div class="editor-host source-host is-off" id="map-source-host"></div>
           </div>
 
-          <div class="panel problems">
+          <div class="panel problems" id="program-problems">
             <span class="panel-title" data-i18n="panel.problems">problems</span>
             <span class="panel-note" id="problems-note"></span>
             <div class="panel-body">
@@ -213,6 +277,19 @@
                    separate node from the panel so a rebuild cannot wipe the
                    title chip cut into the border. -->
               <div class="problem-list" id="problems"></div>
+            </div>
+          </div>
+
+          <!-- The same panel for the other document, in the same place, shown
+               while the map is open: a file that will not load has to say why,
+               and this is the shape the page already uses for saying it. -->
+          <div class="panel problems map-problems" id="map-problems-panel" hidden>
+            <span class="panel-title" data-i18n="panel.problems">problems</span>
+            <span class="panel-note" id="map-problems-note"></span>
+            <div class="panel-body">
+              <!-- Filled by the chrome: one .problem per fault, exactly as the
+                   program's panel is filled. -->
+              <div class="problem-list" id="map-problems"></div>
             </div>
           </div>
         </section>
@@ -522,44 +599,6 @@
                 clear walls
               </button>
               <span class="palette-spacer"></span>
-              <button
-                class="palette-button"
-                id="format-map"
-                type="button"
-                data-i18n="palette.format"
-                data-i18n-title="palette.formatTitle"
-                title="Lay the file out again, the way the canvas writes it"
-              >
-                format
-              </button>
-            </div>
-
-            <!-- The map as text: the same .klm the CLI grades, open for
-                 editing. Two boxes side by side, because a file that will not
-                 load has to say why somewhere, and the program's problems
-                 panel is the shape this page already uses for that. -->
-            <div class="map-source">
-              <div class="source-box">
-                <span class="box-title" data-i18n="panel.mapSource">map source</span>
-                <!-- The format, stated where the text is, so nobody has to
-                     guess which of the two files this one is. Not translated
-                     and not rewritten: ".klm" is the extension in every
-                     language. -->
-                <span class="box-note">.klm</span>
-                <!-- CodeMirror mounts here and is the only thing allowed to
-                     own it. -->
-                <div class="source-host" id="map-source-host"></div>
-              </div>
-
-              <div class="panel map-problems">
-                <span class="panel-title" data-i18n="panel.problems">problems</span>
-                <span class="panel-note" id="map-problems-note"></span>
-                <div class="panel-body">
-                  <!-- Filled by the chrome: one .problem per fault, exactly as
-                       the program's panel is filled. -->
-                  <div class="problem-list" id="map-problems"></div>
-                </div>
-              </div>
             </div>
           </section>
 

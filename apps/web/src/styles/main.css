@@ -303,6 +303,118 @@ button {
   z-index: 2;
 }
 
+/* Two names cut into one border, where a single title chip used to sit. A box
+   with one document in it still looks exactly as it always did -- same place,
+   same size, same tracking, same ground breaking the rule, and no more
+   clickable than a title is -- and the one with two reads as a choice between
+   two files rather than as a control bar bolted on top. Where there is a
+   choice, the chosen one is inverse video, the way every selected thing on
+   this page is marked, and the other is faint until it is pointed at.
+
+   `data-choice` is written by the chrome; this file is the only thing that
+   reads it. It says whether the second tab is cut at all, which is the only
+   thing that decides whether a selection is worth marking. */
+
+.box-tabs {
+  position: absolute;
+  top: 0;
+  /* Six, not the nine a title chip takes: a tab carries a border and a pad of
+     its own, and what has to line up down the column is the first glyph, not
+     the chip around it. Measured -- the P of PROGRAM sits exactly where the L
+     of LESSON and the W of WORLD do. */
+  left: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform: translateY(-50%);
+  /* The strip carries the ground, so the gap between the two tabs breaks the
+     border too rather than showing a hairline running under them. */
+  padding: 0 2px;
+  background: var(--bg);
+}
+
+.box-tab {
+  padding: 0 6px;
+  border: 1px solid transparent;
+  background: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  transition:
+    color 0.1s,
+    background 0.1s,
+    border-color 0.1s;
+}
+
+/* Nothing to choose between: the lone tab is the title chip it replaced, down
+   to being as inert as one. */
+.box-tabs[data-choice="false"] {
+  pointer-events: none;
+}
+
+.box-tab[aria-selected="true"] {
+  color: var(--pink);
+}
+
+.box-tabs[data-choice="true"] .box-tab:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.box-tabs[data-choice="true"] .box-tab[aria-selected="true"] {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: var(--bg);
+}
+
+/* The other end of the same border: the note saying which file this is, and
+   the one action that belongs to the file rather than to the world. */
+.box-actions {
+  position: absolute;
+  top: 0;
+  right: 9px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 52%;
+  min-width: 0;
+  transform: translateY(-50%);
+  padding: 0 6px;
+  background: var(--bg);
+}
+
+/* Already inside a chip that carries the ground and is placed for it. */
+.box-actions .box-note {
+  position: static;
+  max-width: none;
+  transform: none;
+  padding: 0;
+  background: none;
+}
+
+.box-action {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  transition:
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.box-action:hover {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
 .box-note,
 .panel-note {
   position: absolute;
@@ -781,7 +893,13 @@ button {
 
 .editor {
   position: relative;
-  display: flex;
+  /* One cell, two documents stacked in it. Both stay laid out at all times --
+     an editor in a box that is not displayed measures itself as zero and comes
+     back with no gutter and no scroll position -- so the one that is not in
+     front is hidden with `visibility`, which still takes it out of the tab
+     order and out of the accessibility tree. */
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   border: 1px solid var(--line);
@@ -789,11 +907,16 @@ button {
 }
 
 .editor-host {
-  flex: 1;
+  grid-area: 1 / 1;
   min-width: 0;
   min-height: 0;
   /* The frame clips the scroller; the box titles sit outside it. */
   overflow: hidden;
+}
+
+.editor-host.is-off {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .cm-editor {
@@ -1063,6 +1186,12 @@ button {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* `display: flex` above would otherwise beat the UA rule for [hidden], and
+   there is one of these panels per document -- never two on screen. */
+.problems[hidden] {
+  display: none;
 }
 
 .problems .panel-body {
@@ -1565,76 +1694,22 @@ button.problem:hover {
 }
 
 /* ----------------------------------------------------------- map source -- */
-/* The world's own file, beside the canvas that draws it. Two boxes: the text
-   on the left, what is wrong with it on the right, laid out exactly like the
-   program and its problems one panel over -- because it is the same job, and
-   somebody who has read one of those lists can read this one. */
-
-.map-source {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
-  gap: 10px;
-  min-width: 0;
-}
-
-.source-box {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
-}
-
-.source-host {
-  flex: 1;
-  min-width: 0;
-  /* Tall enough for a small world whole and a large one's shape, short enough
-     that the canvas above it keeps most of the stage. */
-  height: 174px;
-  overflow: hidden;
-}
+/* The world's own file. It is a document the way the program is a document,
+   so it is shown the way the program is shown -- the same box, the tab beside
+   the program's, the same problems panel underneath. Only the type size is its
+   own: a .klm is scanned for its shape, several nested lines at a time, rather
+   than read a line at a time like a program. */
 
 .source-host .cm-editor {
   font-size: 12px;
 }
 
-/* A box nested inside the palette stands on the palette's ground, not the
-   page's, so its title chip has to carry that ground -- otherwise the break it
-   cuts in the border shows up as a stripe of the wrong colour. The palette's
-   own chip is not touched: that one straddles the outer border, where the page
-   really is behind it. */
-.map-source .box-title,
-.map-source .box-note,
-.map-source .panel-title,
-.map-source .panel-note {
-  background: var(--bg-panel);
-}
-
-.map-problems {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.map-problems .panel-body {
-  padding: 12px 8px 10px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-bright) transparent;
-}
-
-.map-problems .panel-body::-webkit-scrollbar {
-  width: 8px;
-}
-.map-problems .panel-body::-webkit-scrollbar-thumb {
-  background: var(--line);
-}
-
-/* The same answer the program box gives: the box owns the focus ring, because
-   CodeMirror's own would be drawn inside a rule that is already there. */
-.source-box:has(.cm-editor.cm-focused) {
-  border-color: var(--text);
+/* The map's list needs nothing beyond the .problems rules it already carries.
+   It is named all the same, because its rows are text rather than buttons --
+   most faults in a .klm have no line to jump to -- and a row that cannot be
+   clicked must not offer to be selected as though it were one. */
+.map-problems .problem-text {
+  user-select: text;
 }
 
 /* JSON, in the same three registers the program uses: the structure of the
@@ -3369,17 +3444,5 @@ textarea.text-input {
 
   .files-label {
     display: none;
-  }
-}
-
-@media (max-width: 860px) {
-  /* Side by side, neither the file nor the reasons it will not load has room
-     to be read. Stacked, both do, and the list is the shorter of the two. */
-  .map-source {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .source-host {
-    height: 148px;
   }
 }
