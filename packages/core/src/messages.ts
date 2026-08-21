@@ -9,7 +9,8 @@
 export const ErrorMessages = {
   // Runtime (error shutoffs)
   moveBlocked: () => "Karel hit a wall: the front is blocked",
-  noBeepersToPickUp: (x: number, y: number) => `There is no beeper to pick up at corner (${x}, ${y})`,
+  noBeepersToPickUp: (x: number, y: number) =>
+    `There is no beeper to pick up at corner (${x}, ${y})`,
   noBeepersInBag: () => "Karel's beeper bag is empty",
   unknownInstruction: (name: string) => `Unknown instruction '${name}'`,
   unknownCondition: (name: string) => `Unknown condition '${name}'`,
@@ -32,8 +33,7 @@ export const ErrorMessages = {
   widthTooLarge: (max: number) => `"dimensions.width" cannot be larger than ${max}`,
   invalidHeight: () => '"dimensions.height" must be a whole number of at least 1',
   heightTooLarge: (max: number) => `"dimensions.height" cannot be larger than ${max}`,
-  missingKarel: () =>
-    'Missing "karel" ({ "x": ..., "y": ..., "facing": ..., "beepers": ... })',
+  missingKarel: () => 'Missing "karel" ({ "x": ..., "y": ..., "facing": ..., "beepers": ... })',
   invalidKarelPosition: () => '"karel.x" and "karel.y" must be whole numbers',
   karelOutOfBounds: (x: number, y: number, width: number, height: number) =>
     `Karel is outside the world: (${x}, ${y}) in a ${width}x${height} world`,
@@ -41,8 +41,7 @@ export const ErrorMessages = {
   unknownKarelFacing: (value: string) => `"karel.facing" has an invalid value: "${value}"`,
   invalidKarelBeepers: () => '"karel.beepers" must be a whole number of 0 or more',
   beepersNotAnArray: () => '"beepers" must be an array',
-  invalidBeeperEntry: (n: number) =>
-    `Beeper #${n} must look like { "x": 3, "y": 3, "count": 1 }`,
+  invalidBeeperEntry: (n: number) => `Beeper #${n} must look like { "x": 3, "y": 3, "count": 1 }`,
   beeperOutOfBounds: (n: number, x: number, y: number) =>
     `Beeper #${n} is outside the world: (${x}, ${y})`,
   invalidBeeperCount: (n: number) => `Beeper #${n} must have a count of at least 1`,
@@ -59,7 +58,8 @@ export const ErrorMessages = {
   missingProgramEnd: () => "Missing END-OF-PROGRAM at the end of the program",
   missingExecutionStart: () => "Missing BEGINNING-OF-EXECUTION before the instructions",
   missingExecutionEnd: () => "Missing END-OF-EXECUTION after the instructions",
-  missingTurnoff: () => "The program never calls 'turnoff'. Karel programs should end with turnoff;",
+  missingTurnoff: () =>
+    "The program never calls 'turnoff'. Karel programs should end with turnoff;",
   expectedKeyword: (keyword: string, found: string) =>
     `Expected ${keyword} but found '${found || "end of file"}'`,
   expectedInstructionName: () => "Expected an instruction name after DEFINE-NEW-INSTRUCTION",

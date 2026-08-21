@@ -298,7 +298,11 @@ export class ExecutionController implements vscode.Disposable {
         uri,
       }))
       .sort((a, b) =>
-        a.description === "matches program name" ? -1 : b.description === "matches program name" ? 1 : 0
+        a.description === "matches program name"
+          ? -1
+          : b.description === "matches program name"
+            ? 1
+            : 0
       );
 
     const picked = await vscode.window.showQuickPick(items, {
@@ -401,9 +405,7 @@ export class ExecutionController implements vscode.Disposable {
       await this.worldEditors?.openBeside(this.worldUri);
       return;
     }
-    void vscode.window.showInformationMessage(
-      "Open a Karel program (.kli) or world (.klm) first."
-    );
+    void vscode.window.showInformationMessage("Open a Karel program (.kli) or world (.klm) first.");
   }
 
   /**
@@ -526,7 +528,11 @@ export class ExecutionController implements vscode.Disposable {
     }
     if (files.length > 1) {
       const picked = await vscode.window.showQuickPick(
-        files.map((f) => ({ label: path.basename(f.fsPath), description: vscode.workspace.asRelativePath(f), uri: f })),
+        files.map((f) => ({
+          label: path.basename(f.fsPath),
+          description: vscode.workspace.asRelativePath(f),
+          uri: f,
+        })),
         { placeHolder: "Which Karel program?" }
       );
       return picked ? vscode.workspace.openTextDocument(picked.uri) : null;
@@ -716,7 +722,11 @@ export class ExecutionController implements vscode.Disposable {
     return result.map;
   }
 
-  private async showWorldFileError(uri: vscode.Uri, errors: string[], quiet = false): Promise<void> {
+  private async showWorldFileError(
+    uri: vscode.Uri,
+    errors: string[],
+    quiet = false
+  ): Promise<void> {
     const name = path.basename(uri.fsPath);
     this.log(`Invalid world file ${name}:`);
     for (const error of errors) {

@@ -2,7 +2,7 @@
 
 **Opening a `.klm` file shows the world itself** — grid, walls, beepers and Karel. Running a program animates it right there.
 
-To change the world, click the **`{}` button** in its title bar (or right-click the file → *Open With → Text Editor*). The JSON is small and has **autocomplete and validation** built in:
+To change the world, click the **`{}` button** in its title bar (or right-click the file → _Open With → Text Editor_). The JSON is small and has **autocomplete and validation** built in:
 
 ```json
 {
@@ -15,7 +15,7 @@ To change the world, click the **`{}` button** in its title bar (or right-click 
 
 - Coordinates are 1-based; **(1, 1) is the bottom-left corner**.
 - Walls block the edge between two **adjacent** cells, in both directions.
-- The drawing updates live as you type — the file is always the *initial* state; running never modifies it.
+- The drawing updates live as you type — the file is always the _initial_ state; running never modifies it.
 
 Create as many worlds as you want with **Karel: New Karel World** and switch
 between them from the `World:` link above your program.

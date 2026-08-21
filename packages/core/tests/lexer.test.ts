@@ -99,7 +99,10 @@ describe("Lexer", () => {
       for (const [lower, expected] of keywords) {
         expect(typesOf(body(lower))).toEqual([expected]);
         expect(typesOf(body(lower.toUpperCase()))).toEqual([expected]);
-        const titleCase = lower.replace(/(^|-)([a-z])/g, (_, sep, letter) => sep + letter.toUpperCase());
+        const titleCase = lower.replace(
+          /(^|-)([a-z])/g,
+          (_, sep, letter) => sep + letter.toUpperCase()
+        );
         expect(typesOf(body(titleCase))).toEqual([expected]);
       }
     });
@@ -264,7 +267,7 @@ describe("Lexer", () => {
       // them; a leak here means the word scanner over-consumed. Semicolon tokens
       // are excluded because `;` is their whole value.
       const words = tokens.filter(
-        (token) => token.type !== TokenType.Semicolon && token.type !== TokenType.EOF,
+        (token) => token.type !== TokenType.Semicolon && token.type !== TokenType.EOF
       );
       expect(words.length).toBeGreaterThan(0);
       for (const token of words) {
@@ -275,9 +278,9 @@ describe("Lexer", () => {
       // one-word one is defined once and called twice.
       expect(tokens.filter((token) => token.value === "move-to-wall")).toHaveLength(1);
       expect(tokens.filter((token) => token.value === "turnright")).toHaveLength(3);
-      expect(
-        tokens.filter((token) => token.type === TokenType.DefineNewInstruction),
-      ).toHaveLength(2);
+      expect(tokens.filter((token) => token.type === TokenType.DefineNewInstruction)).toHaveLength(
+        2
+      );
     });
   });
 });

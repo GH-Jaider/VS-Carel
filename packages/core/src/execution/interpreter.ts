@@ -151,9 +151,7 @@ export class Interpreter {
       throw new RuntimeError(ErrorMessages.programNotLoaded(), undefined, "internal");
     }
     if (!this.started) {
-      this.stack = [
-        { type: "block", statements: this.ast.execution.statements, index: 0 },
-      ];
+      this.stack = [{ type: "block", statements: this.ast.execution.statements, index: 0 }];
       this.started = true;
       this.finished = false;
       this.visibleSteps = 0;
@@ -340,7 +338,11 @@ export class Interpreter {
         default: {
           const body = this.customInstructions.get(name);
           if (!body) {
-            throw new RuntimeError(ErrorMessages.unknownInstruction(node.name), node.line, "unknown-name");
+            throw new RuntimeError(
+              ErrorMessages.unknownInstruction(node.name),
+              node.line,
+              "unknown-name"
+            );
           }
           if (this.stack.length >= MAX_STACK_DEPTH) {
             throw new RuntimeError(ErrorMessages.recursionTooDeep(node.name), node.line, "limit");

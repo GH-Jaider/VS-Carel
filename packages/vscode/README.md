@@ -12,16 +12,16 @@ The **Get Started with Karel** walkthrough (Help → Welcome) covers the same st
 
 ## Everyday flow
 
-| Action | How |
-| --- | --- |
-| Run program | `F5`, the ▶ button, or the **▶ Run** link above `BEGINNING-OF-PROGRAM` |
-| Step one instruction | `F10` (current line highlights, world updates in sync) |
-| Stop | `Shift+F5` |
-| Reset world | `Ctrl+Shift+F5` (`Cmd+Shift+F5` on Mac) |
-| See the world | Just open the `.klm` file — it opens as the drawn world, not JSON |
-| Edit a world | Click the `{}` button in the world's title bar to edit the JSON (schema-validated); the drawing updates as you type |
-| Change the world a program uses | Click **World: … (change)** above the program, or the globe in the status bar |
-| Change speed | Click the speed in the status bar (applies live) |
+| Action                          | How                                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Run program                     | `F5`, the ▶ button, or the **▶ Run** link above `BEGINNING-OF-PROGRAM`                                              |
+| Step one instruction            | `F10` (current line highlights, world updates in sync)                                                              |
+| Stop                            | `Shift+F5`                                                                                                          |
+| Reset world                     | `Ctrl+Shift+F5` (`Cmd+Shift+F5` on Mac)                                                                             |
+| See the world                   | Just open the `.klm` file — it opens as the drawn world, not JSON                                                   |
+| Edit a world                    | Click the `{}` button in the world's title bar to edit the JSON (schema-validated); the drawing updates as you type |
+| Change the world a program uses | Click **World: … (change)** above the program, or the globe in the status bar                                       |
+| Change speed                    | Click the speed in the status bar (applies live)                                                                    |
 
 A program runs in the world with the same name (`maze.kli` → `maze.klm`), or in the only world of the folder if there is one. Otherwise VS Karel asks once and remembers your choice.
 
@@ -60,7 +60,7 @@ Errors are underlined as you type (all of them, not just the first), and snippet
 
 ## Worlds (`.klm`)
 
-**Opening a `.klm` file shows the world itself** — the grid, walls, beepers and Karel — as its editor. Running a program animates it right there; there is no separate visualizer window. To see or edit the underlying JSON, click the `{}` button in the editor title (or right-click the file → *Open With → Text Editor*).
+**Opening a `.klm` file shows the world itself** — the grid, walls, beepers and Karel — as its editor. Running a program animates it right there; there is no separate visualizer window. To see or edit the underlying JSON, click the `{}` button in the editor title (or right-click the file → _Open With → Text Editor_).
 
 The JSON has schema-backed **autocomplete and validation**:
 
@@ -83,10 +83,10 @@ All under the **Karel** category in the Command Palette: Run Karel Program, Step
 
 ## Settings
 
-| Setting | Default | Description |
-| --- | --- | --- |
-| `vs-karel.enableErrorHighlighting` | `true` | Live error underlines in `.kli` files (turn off for classroom exercises) |
-| `vs-karel.executionSpeed` | `500` | Delay between steps in ms (50–2000) |
+| Setting                            | Default | Description                                                              |
+| ---------------------------------- | ------- | ------------------------------------------------------------------------ |
+| `vs-karel.enableErrorHighlighting` | `true`  | Live error underlines in `.kli` files (turn off for classroom exercises) |
+| `vs-karel.executionSpeed`          | `500`   | Delay between steps in ms (50–2000)                                      |
 
 ## Development
 

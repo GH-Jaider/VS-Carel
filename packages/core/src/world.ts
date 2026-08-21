@@ -469,7 +469,11 @@ export class World {
       case "no-beeper-in-bag":
         return !this.beeperInBag();
       default:
-        throw new RuntimeError(ErrorMessages.unknownCondition(condition), undefined, "unknown-name");
+        throw new RuntimeError(
+          ErrorMessages.unknownCondition(condition),
+          undefined,
+          "unknown-name"
+        );
     }
   }
 

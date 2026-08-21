@@ -71,7 +71,8 @@ describe("validateKarelMap", () => {
 
     // The maximum itself is still a legal world.
     expect(
-      validateKarelMap(makeMap({ dimensions: { width: MAX_WORLD_SIZE, height: MAX_WORLD_SIZE } })).ok
+      validateKarelMap(makeMap({ dimensions: { width: MAX_WORLD_SIZE, height: MAX_WORLD_SIZE } }))
+        .ok
     ).toBe(true);
   });
 
@@ -360,7 +361,10 @@ describe("evaluateCondition", () => {
   it("throws unknown-name for a condition that does not exist", () => {
     const world = makeWorld();
 
-    const error = expectRuntimeError(() => world.evaluateCondition("front-is-lava"), "unknown-name");
+    const error = expectRuntimeError(
+      () => world.evaluateCondition("front-is-lava"),
+      "unknown-name"
+    );
     expect(error.message).toBe(ErrorMessages.unknownCondition("front-is-lava"));
     // The world has no notion of lines; stamping one is the interpreter's job.
     expect(error.line).toBeUndefined();

@@ -149,7 +149,11 @@
       );
     }
     for (let y = 1; y <= height; y++) {
-      ctx.fillText(String(y), AXIS_MARGIN / 2, gridOffsetY + WALL_WIDTH + (height - y + 0.5) * cell);
+      ctx.fillText(
+        String(y),
+        AXIS_MARGIN / 2,
+        gridOffsetY + WALL_WIDTH + (height - y + 0.5) * cell
+      );
     }
 
     // Grid

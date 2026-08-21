@@ -123,7 +123,9 @@ describe("control flow", () => {
   it("runs the ELSE branch and skips the THEN branch when the condition fails", () => {
     const world = makeWorld({ karel: { x: 3, y: 3, facing: "north", beepers: 1 } });
     const { interpreter, captured } = start(
-      program("IF next-to-a-beeper THEN\nBEGIN\npickbeeper\nEND\nELSE\nBEGIN\nputbeeper\nEND\nturnoff"),
+      program(
+        "IF next-to-a-beeper THEN\nBEGIN\npickbeeper\nEND\nELSE\nBEGIN\nputbeeper\nEND\nturnoff"
+      ),
       world
     );
 
@@ -291,9 +293,13 @@ describe("execution limits", () => {
     // 0, a negative, NaN and Infinity would each disable the guard if taken at
     // face value, turning an infinite loop into a hang instead of an error.
     for (const maxSteps of [0, -1, NaN, Infinity]) {
-      const { interpreter, captured } = start(program("WHILE front-is-clear DO turnleft;"), makeWorld(), {
-        maxSteps,
-      });
+      const { interpreter, captured } = start(
+        program("WHILE front-is-clear DO turnleft;"),
+        makeWorld(),
+        {
+          maxSteps,
+        }
+      );
 
       stepToEnd(interpreter);
 
