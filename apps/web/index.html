@@ -199,74 +199,13 @@
 
         <section class="workshop">
           <div class="editor">
-            <!-- Two documents, one box. A `.klm` is code as much as a `.kli`
-                 is, so it belongs in the code column rather than in a band
-                 under the world pushing it out of the way: a tab apiece, and
-                 the world keeps the whole of its own column. The map tab is
-                 only cut where the world is the visitor's to change. -->
-            <div
-              class="box-tabs"
-              id="doc-tabs"
-              role="tablist"
-              data-i18n-aria="panel.documents"
-              aria-label="Documents"
-            >
-              <button
-                class="box-tab"
-                id="tab-program"
-                type="button"
-                role="tab"
-                data-doc="program"
-                data-i18n="panel.program"
-              >
-                program
-              </button>
-              <button
-                class="box-tab"
-                id="tab-map"
-                type="button"
-                role="tab"
-                data-doc="map"
-                data-i18n="panel.map"
-                data-i18n-title="panel.mapTitle"
-                title="The world as a .klm file"
-                hidden
-              >
-                map
-              </button>
-            </div>
-
-            <!-- The other end of the same border: which file this is, and the
-                 one action that belongs to the text rather than to the world.
-                 `format` is only ever on screen with the map open, because
-                 laying out a file is not something you do to a program you
-                 are in the middle of writing. -->
-            <div class="box-actions">
-              <span class="box-note" id="program-note"></span>
-              <button
-                class="box-action"
-                id="format-map"
-                type="button"
-                data-i18n="palette.format"
-                data-i18n-title="palette.formatTitle"
-                title="Lay the file out again, the way the canvas writes it"
-                hidden
-              >
-                format
-              </button>
-            </div>
-
-            <!-- CodeMirror mounts in each of these and is the only thing
-                 allowed to own them. Both are laid out at all times, stacked
-                 in one grid cell and hidden by visibility rather than by
-                 `display`: an editor in a box that is not displayed measures
-                 itself as zero and comes back with no gutter and no scroll
-                 position. -->
+            <span class="box-title" data-i18n="panel.program">program</span>
+            <span class="box-note" id="program-note"></span>
+            <!-- CodeMirror mounts here and is the only thing allowed to own it. -->
             <div class="editor-host" id="editor-host"></div>
-            <div class="editor-host source-host is-off" id="map-source-host"></div>
           </div>
 
-          <div class="panel problems" id="program-problems">
+          <div class="panel problems">
             <span class="panel-title" data-i18n="panel.problems">problems</span>
             <span class="panel-note" id="problems-note"></span>
             <div class="panel-body">
@@ -276,180 +215,158 @@
               <div class="problem-list" id="problems"></div>
             </div>
           </div>
-
-          <!-- The same panel for the other document, shown in its place while
-               the map is open: a file that will not load has to say why, and
-               this is the shape the page already uses for saying it. -->
-          <div class="panel problems map-problems" id="map-problems-panel" hidden>
-            <span class="panel-title" data-i18n="panel.problems">problems</span>
-            <span class="panel-note" id="map-problems-note"></span>
-            <div class="panel-body">
-              <!-- Filled by the chrome: one .problem per fault, exactly as the
-                   program's panel is filled. -->
-              <div class="problem-list" id="map-problems"></div>
-            </div>
-          </div>
         </section>
 
         <section class="stage">
-          <!-- The world's row, and the whole of the column's height that the
-               console and the readings do not need. The slot is not the frame:
-               it fills the row, and the chrome cuts the viewport inside it to
-               exactly what the renderer is about to draw, so the border ends
-               up around the drawing rather than a long way outside it. -->
-          <div class="world-slot" id="world-slot">
-            <div class="viewport" id="viewport">
-              <span class="box-title" data-i18n="panel.world">world</span>
-              <span class="box-note" id="world-note"></span>
-              <canvas
-                id="world-canvas"
-                role="img"
-                aria-label="Karel's world"
-                aria-describedby="readout"
-              ></canvas>
+          <div class="viewport" id="viewport">
+            <span class="box-title" data-i18n="panel.world">world</span>
+            <span class="box-note" id="world-note"></span>
+            <canvas
+              id="world-canvas"
+              role="img"
+              aria-label="Karel's world"
+              aria-describedby="readout"
+            ></canvas>
+          </div>
+
+          <div class="console">
+            <div class="transport" role="group" aria-label="Transport">
+              <button class="transport-button primary" id="run" type="button">
+                <span class="glyph" id="run-glyph" aria-hidden="true">▶</span
+                ><span id="run-label">run</span>
+              </button>
+              <button
+                class="transport-button"
+                id="step"
+                type="button"
+                data-i18n-title="transport.stepTitle"
+                title="Execute one instruction"
+              >
+                <span class="glyph" aria-hidden="true">▶❚</span
+                ><span data-i18n="transport.step">step</span>
+              </button>
+              <button
+                class="transport-button"
+                id="reset"
+                type="button"
+                data-i18n-title="transport.resetTitle"
+                title="Put the world back as it started"
+              >
+                <span class="glyph" aria-hidden="true">↺</span
+                ><span data-i18n="transport.reset">reset</span>
+              </button>
+            </div>
+
+            <div class="rate">
+              <span class="rate-label" data-i18n="speed.label">speed</span>
+              <!-- Filled by the chrome: one .rate-option per speed. -->
+              <div
+                class="rate-options"
+                id="rate-options"
+                role="group"
+                data-i18n-aria="speed.label"
+                aria-label="Speed"
+              ></div>
+            </div>
+
+            <!-- Files. Dropping a .klm on the page still works and is still
+                 the fastest way in, but it is invisible until someone tries
+                 it and impossible on a phone, so the same two formats get a
+                 button apiece. One opener for both: the extension decides
+                 what a file is, exactly as it does for a drop, and a picker
+                 that offers one button is easier to use on a small screen
+                 than two that each refuse half the files. -->
+            <div
+              class="files"
+              id="files"
+              role="group"
+              data-i18n-aria="files.group"
+              aria-label="Files"
+            >
+              <span class="files-label" data-i18n="files.label">files</span>
+              <button
+                class="ghost-button"
+                id="open-file"
+                type="button"
+                data-i18n-title="files.openTitle"
+                title="Open a .kli program or a .klm world from this device"
+              >
+                <span class="key-cap" aria-hidden="true">↑</span
+                ><span data-i18n="files.open">open</span>
+              </button>
+              <!-- The button in front of it is the control; this is the input
+                   it clicks. `accept` names both extensions and the two MIME
+                   types a browser is likely to guess for them, since a phone
+                   that recognises neither offers nothing at all. -->
+              <!-- No class of its own: it is `hidden`, the button in front of
+                   it is the control, and a class the stylesheet never mentions
+                   is a name that means nothing. -->
+              <input
+                id="file-input"
+                type="file"
+                hidden
+                accept=".kli,.klm,application/json,text/plain"
+                data-i18n-aria="files.openTitle"
+                aria-label="Open a .kli program or a .klm world from this device"
+              />
+              <button
+                class="ghost-button"
+                id="save-program"
+                type="button"
+                data-i18n-title="files.saveProgramTitle"
+                title="Download the program as a .kli file"
+              >
+                <span class="key-cap" aria-hidden="true">↓</span
+                ><span data-i18n="files.saveProgram">save .kli</span>
+              </button>
+              <button
+                class="ghost-button"
+                id="save-world"
+                type="button"
+                data-i18n-title="files.saveWorldTitle"
+                title="Download the world as a .klm file"
+              >
+                <span class="key-cap" aria-hidden="true">↓</span
+                ><span data-i18n="files.saveWorld">save .klm</span>
+              </button>
+              <!-- What just happened to a file, for a few seconds. The palette
+                   has a chip of its own, but it is only on screen in edit
+                   mode and saving a program is not an edit-mode act. -->
+              <span class="file-note" id="file-note" role="status"></span>
+            </div>
+
+            <!-- The mode switch is markup because it is not a view option: it
+                 decides whether the canvas is a readout or an instrument. The
+                 chrome appends the view toggles after it. -->
+            <div class="toggles" id="toggles" role="group" aria-label="View">
+              <button
+                class="toggle"
+                id="mode-toggle"
+                type="button"
+                aria-pressed="false"
+                data-i18n="toggle.editMap"
+                data-i18n-title="toggle.editMapTitle"
+                title="Build the world by hand"
+              >
+                edit map
+              </button>
             </div>
           </div>
 
-          <!-- Everything that acts on the world, in one or two lines under it:
-               the transport always, the map tools only while the map is being
-               built. -->
-          <div class="console">
-            <div class="console-row">
-              <div class="transport" role="group" aria-label="Transport">
-                <button class="transport-button primary" id="run" type="button">
-                  <span class="glyph" id="run-glyph" aria-hidden="true">▶</span
-                  ><span id="run-label">run</span>
-                </button>
-                <button
-                  class="transport-button"
-                  id="step"
-                  type="button"
-                  data-i18n-title="transport.stepTitle"
-                  title="Execute one instruction"
-                >
-                  <span class="glyph" aria-hidden="true">▶❚</span
-                  ><span data-i18n="transport.step">step</span>
-                </button>
-                <button
-                  class="transport-button"
-                  id="reset"
-                  type="button"
-                  data-i18n-title="transport.resetTitle"
-                  title="Put the world back as it started"
-                >
-                  <span class="glyph" aria-hidden="true">↺</span
-                  ><span data-i18n="transport.reset">reset</span>
-                </button>
-              </div>
+          <!-- The map editor. Hidden until the mode toggle turns it on, because
+               every control in it acts on a world that is not running. -->
+          <section
+            class="palette"
+            id="palette"
+            data-i18n-aria="palette.group"
+            aria-label="Map editor"
+            hidden
+          >
+            <span class="box-title" data-i18n="panel.map">map</span>
+            <span class="box-note" id="palette-note"></span>
 
-              <div class="rate">
-                <span class="rate-label" data-i18n="speed.label">speed</span>
-                <!-- Filled by the chrome: one .rate-option per speed. -->
-                <div
-                  class="rate-options"
-                  id="rate-options"
-                  role="group"
-                  data-i18n-aria="speed.label"
-                  aria-label="Speed"
-                ></div>
-              </div>
-
-              <!-- Files. Dropping a .klm on the page still works and is still
-                   the fastest way in, but it is invisible until someone tries
-                   it and impossible on a phone, so the same two formats get a
-                   button apiece. One opener for both: the extension decides
-                   what a file is, exactly as it does for a drop, and a picker
-                   that offers one button is easier to use on a small screen
-                   than two that each refuse half the files. -->
-              <div
-                class="files"
-                id="files"
-                role="group"
-                data-i18n-aria="files.group"
-                aria-label="Files"
-              >
-                <span class="files-label" data-i18n="files.label">files</span>
-                <button
-                  class="ghost-button"
-                  id="open-file"
-                  type="button"
-                  data-i18n-title="files.openTitle"
-                  title="Open a .kli program or a .klm world from this device"
-                >
-                  <span class="key-cap" aria-hidden="true">↑</span
-                  ><span data-i18n="files.open">open</span>
-                </button>
-                <!-- The button in front of it is the control; this is the input
-                     it clicks. `accept` names both extensions and the two MIME
-                     types a browser is likely to guess for them, since a phone
-                     that recognises neither offers nothing at all. -->
-                <!-- No class of its own: it is `hidden`, the button in front of
-                     it is the control, and a class the stylesheet never mentions
-                     is a name that means nothing. -->
-                <input
-                  id="file-input"
-                  type="file"
-                  hidden
-                  accept=".kli,.klm,application/json,text/plain"
-                  data-i18n-aria="files.openTitle"
-                  aria-label="Open a .kli program or a .klm world from this device"
-                />
-                <button
-                  class="ghost-button"
-                  id="save-program"
-                  type="button"
-                  data-i18n-title="files.saveProgramTitle"
-                  title="Download the program as a .kli file"
-                >
-                  <span class="key-cap" aria-hidden="true">↓</span
-                  ><span data-i18n="files.saveProgram">save .kli</span>
-                </button>
-                <button
-                  class="ghost-button"
-                  id="save-world"
-                  type="button"
-                  data-i18n-title="files.saveWorldTitle"
-                  title="Download the world as a .klm file"
-                >
-                  <span class="key-cap" aria-hidden="true">↓</span
-                  ><span data-i18n="files.saveWorld">save .klm</span>
-                </button>
-                <!-- What just happened to a file, for a few seconds. -->
-                <span class="file-note" id="file-note" role="status"></span>
-              </div>
-
-              <!-- The mode switch is markup because it is not a view option: it
-                   decides whether the canvas is a readout or an instrument. The
-                   chrome appends the view toggles after it. -->
-              <div class="toggles" id="toggles" role="group" aria-label="View">
-                <button
-                  class="toggle"
-                  id="mode-toggle"
-                  type="button"
-                  aria-pressed="false"
-                  data-i18n="toggle.editMap"
-                  data-i18n-title="toggle.editMapTitle"
-                  title="Build the world by hand"
-                >
-                  edit map
-                </button>
-              </div>
-            </div>
-
-            <!-- The map editor: one line of the console rather than a panel of
-                 its own. What is left here is what the hand needs while it is
-                 painting -- which tool, how big the world is, how many beepers
-                 Karel starts with, and the two ways to start over. Everything
-                 that is really an operation on the file went with the file, to
-                 the map tab. Hidden until the mode toggle turns it on, because
-                 every control in it acts on a world that is not running. -->
-            <div
-              class="console-row map-row"
-              id="palette"
-              data-i18n-aria="palette.group"
-              aria-label="Map editor"
-              hidden
-            >
+            <div class="palette-row">
+              <span class="palette-label" data-i18n="palette.tool">tool</span>
               <div
                 class="tools"
                 id="tools"
@@ -470,126 +387,124 @@
                   ><span data-i18n="palette.toolKarel">karel</span>
                 </button>
               </div>
+              <span class="palette-hint" id="tool-hint"></span>
+            </div>
 
-              <!-- Label and field travel together: on a narrow screen this row
-                   wraps, and a "bag" left at the end of one line with its
-                   stepper at the start of the next names nothing. -->
-              <span class="map-field">
-                <span class="palette-label" data-i18n="palette.size">size</span>
-                <div class="stepper">
-                  <button
-                    class="stepper-button"
-                    id="width-down"
-                    type="button"
-                    data-target="world-width"
-                    data-step="-1"
-                    data-i18n-aria="palette.narrower"
-                    aria-label="Narrower"
-                  >
-                    -
-                  </button>
-                  <input
-                    class="number"
-                    id="world-width"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="1"
-                    inputmode="numeric"
-                    data-i18n-aria="palette.width"
-                    aria-label="World width"
-                  />
-                  <button
-                    class="stepper-button"
-                    id="width-up"
-                    type="button"
-                    data-target="world-width"
-                    data-step="1"
-                    data-i18n-aria="palette.wider"
-                    aria-label="Wider"
-                  >
-                    +
-                  </button>
-                </div>
+            <div class="palette-row">
+              <span class="palette-label" data-i18n="palette.size">size</span>
+              <div class="stepper">
+                <button
+                  class="stepper-button"
+                  id="width-down"
+                  type="button"
+                  data-target="world-width"
+                  data-step="-1"
+                  data-i18n-aria="palette.narrower"
+                  aria-label="Narrower"
+                >
+                  -
+                </button>
+                <input
+                  class="number"
+                  id="world-width"
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  inputmode="numeric"
+                  data-i18n-aria="palette.width"
+                  aria-label="World width"
+                />
+                <button
+                  class="stepper-button"
+                  id="width-up"
+                  type="button"
+                  data-target="world-width"
+                  data-step="1"
+                  data-i18n-aria="palette.wider"
+                  aria-label="Wider"
+                >
+                  +
+                </button>
+              </div>
 
-                <span class="palette-times">×</span>
+              <span class="palette-times">×</span>
 
-                <div class="stepper">
-                  <button
-                    class="stepper-button"
-                    id="height-down"
-                    type="button"
-                    data-target="world-height"
-                    data-step="-1"
-                    data-i18n-aria="palette.shorter"
-                    aria-label="Shorter"
-                  >
-                    -
-                  </button>
-                  <input
-                    class="number"
-                    id="world-height"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="1"
-                    inputmode="numeric"
-                    data-i18n-aria="palette.height"
-                    aria-label="World height"
-                  />
-                  <button
-                    class="stepper-button"
-                    id="height-up"
-                    type="button"
-                    data-target="world-height"
-                    data-step="1"
-                    data-i18n-aria="palette.taller"
-                    aria-label="Taller"
-                  >
-                    +
-                  </button>
-                </div>
-              </span>
+              <div class="stepper">
+                <button
+                  class="stepper-button"
+                  id="height-down"
+                  type="button"
+                  data-target="world-height"
+                  data-step="-1"
+                  data-i18n-aria="palette.shorter"
+                  aria-label="Shorter"
+                >
+                  -
+                </button>
+                <input
+                  class="number"
+                  id="world-height"
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  inputmode="numeric"
+                  data-i18n-aria="palette.height"
+                  aria-label="World height"
+                />
+                <button
+                  class="stepper-button"
+                  id="height-up"
+                  type="button"
+                  data-target="world-height"
+                  data-step="1"
+                  data-i18n-aria="palette.taller"
+                  aria-label="Taller"
+                >
+                  +
+                </button>
+              </div>
 
-              <span class="map-field">
-                <span class="palette-label" data-i18n="palette.bag">bag</span>
-                <div class="stepper">
-                  <button
-                    class="stepper-button"
-                    id="bag-down"
-                    type="button"
-                    data-target="karel-bag"
-                    data-step="-1"
-                    data-i18n-aria="palette.bagFewer"
-                    aria-label="One beeper fewer"
-                  >
-                    -
-                  </button>
-                  <input
-                    class="number"
-                    id="karel-bag"
-                    type="number"
-                    min="0"
-                    max="999"
-                    step="1"
-                    inputmode="numeric"
-                    data-i18n-aria="palette.bagField"
-                    aria-label="Beepers in Karel's bag"
-                  />
-                  <button
-                    class="stepper-button"
-                    id="bag-up"
-                    type="button"
-                    data-target="karel-bag"
-                    data-step="1"
-                    data-i18n-aria="palette.bagMore"
-                    aria-label="One beeper more"
-                  >
-                    +
-                  </button>
-                </div>
-              </span>
+              <span class="palette-label" data-i18n="palette.bag">bag</span>
+              <div class="stepper">
+                <button
+                  class="stepper-button"
+                  id="bag-down"
+                  type="button"
+                  data-target="karel-bag"
+                  data-step="-1"
+                  data-i18n-aria="palette.bagFewer"
+                  aria-label="One beeper fewer"
+                >
+                  -
+                </button>
+                <input
+                  class="number"
+                  id="karel-bag"
+                  type="number"
+                  min="0"
+                  max="999"
+                  step="1"
+                  inputmode="numeric"
+                  data-i18n-aria="palette.bagField"
+                  aria-label="Beepers in Karel's bag"
+                />
+                <button
+                  class="stepper-button"
+                  id="bag-up"
+                  type="button"
+                  data-target="karel-bag"
+                  data-step="1"
+                  data-i18n-aria="palette.bagMore"
+                  aria-label="One beeper more"
+                >
+                  +
+                </button>
+              </div>
+            </div>
 
+            <div class="palette-row">
               <button
                 class="palette-button"
                 id="clear-beepers"
@@ -606,18 +521,49 @@
               >
                 clear walls
               </button>
-
-              <!-- What just happened to the map, for a few seconds, and what
-                   the tool in hand does. The rules of the world -- walls on
-                   edges, a right click taking a beeper back -- are not
-                   guessable, and a hint that changes with the tool is cheaper
-                   than a legend nobody reads. -->
-              <span class="console-note" id="palette-note" role="status"></span>
-              <span class="palette-hint" id="tool-hint"></span>
+              <span class="palette-spacer"></span>
+              <button
+                class="palette-button"
+                id="format-map"
+                type="button"
+                data-i18n="palette.format"
+                data-i18n-title="palette.formatTitle"
+                title="Lay the file out again, the way the canvas writes it"
+              >
+                format
+              </button>
             </div>
-          </div>
 
-          <!-- Filled by the chrome: one .reading per figure, on one line. -->
+            <!-- The map as text: the same .klm the CLI grades, open for
+                 editing. Two boxes side by side, because a file that will not
+                 load has to say why somewhere, and the program's problems
+                 panel is the shape this page already uses for that. -->
+            <div class="map-source">
+              <div class="source-box">
+                <span class="box-title" data-i18n="panel.mapSource">map source</span>
+                <!-- The format, stated where the text is, so nobody has to
+                     guess which of the two files this one is. Not translated
+                     and not rewritten: ".klm" is the extension in every
+                     language. -->
+                <span class="box-note">.klm</span>
+                <!-- CodeMirror mounts here and is the only thing allowed to
+                     own it. -->
+                <div class="source-host" id="map-source-host"></div>
+              </div>
+
+              <div class="panel map-problems">
+                <span class="panel-title" data-i18n="panel.problems">problems</span>
+                <span class="panel-note" id="map-problems-note"></span>
+                <div class="panel-body">
+                  <!-- Filled by the chrome: one .problem per fault, exactly as
+                       the program's panel is filled. -->
+                  <div class="problem-list" id="map-problems"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Filled by the chrome: .panel blocks of readings. -->
           <aside
             class="readout"
             id="readout"

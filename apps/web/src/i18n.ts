@@ -60,10 +60,6 @@ const en = {
   "panel.problems": "problems",
   "panel.world": "world",
   "panel.map": "map",
-  // The two tabs over the code column are two files, and the tab strip says
-  // so to anything that cannot see the border they are cut into.
-  "panel.documents": "Files",
-  "panel.mapTitle": "The world as a .klm file",
   "panel.readout": "Readings",
 
   "problems.none": "none",
@@ -139,6 +135,9 @@ const en = {
   "palette.clearWalls": "clear walls",
   "palette.format": "format",
   "palette.formatTitle": "Lay the file out again, the way the canvas writes it",
+
+  // ── The map as text ─────────────────────────────────────────────────────
+  "panel.mapSource": "map source",
 
   // ── Files ───────────────────────────────────────────────────────────────
   "files.group": "Files",
@@ -322,7 +321,7 @@ const en = {
     "Turning right is the same idea three times over. It works; it just " +
     "reads badly. Chapter four gives that trio a name of its own.",
   "learn.turn.p3":
-    "The strip under the world shows the corner he is on and the way he " +
+    "The readout beside the world shows the corner he is on and the way he " +
     "is facing. When a program does the wrong thing, that pair usually says " +
     "why before you have finished re-reading the code.",
   "learn.turn.hint1":
@@ -581,8 +580,6 @@ const es: Catalogue = {
   "panel.problems": "problemas",
   "panel.world": "mundo",
   "panel.map": "mapa",
-  "panel.documents": "Ficheros",
-  "panel.mapTitle": "El mundo como fichero .klm",
   "panel.readout": "Lecturas",
 
   "problems.none": "ninguno",
@@ -656,6 +653,8 @@ const es: Catalogue = {
   "palette.clearWalls": "quitar muros",
   "palette.format": "formatear",
   "palette.formatTitle": "Vuelve a escribir el fichero como lo escribe el lienzo",
+
+  "panel.mapSource": "código del mapa",
 
   "files.group": "Ficheros",
   "files.label": "ficheros",
@@ -832,9 +831,9 @@ const es: Catalogue = {
     "Girar a la derecha es lo mismo tres veces. Funciona; solo que se lee " +
     "mal. El capítulo cuatro le pondrá nombre propio a ese trío.",
   "learn.turn.p3":
-    "La línea de lecturas que hay bajo el mundo dice en qué esquina está y " +
-    "hacia dónde mira. Cuando un programa hace algo raro, ese par suele " +
-    "explicar por qué antes de que termines de releer el código.",
+    "Las lecturas que hay junto al mundo dicen en qué esquina está y hacia " +
+    "dónde mira. Cuando un programa hace algo raro, ese par suele explicar " +
+    "por qué antes de que termines de releer el código.",
   "learn.turn.hint1":
     "Dos move lo dejan en (3, 1). Desde ahí (3, 3) le queda al norte, así " +
     "que tiene que mirar al norte antes de volver a avanzar.",
