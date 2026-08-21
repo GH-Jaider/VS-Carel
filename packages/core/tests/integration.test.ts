@@ -1,64 +1,53 @@
-import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-import {
-  Interpreter,
-  Parser,
-  RuntimeError,
-  World,
-  validateKarelMap,
-  type Diagnostic,
-  type KarelMap,
-} from "../src/index";
+/**
+ * End-to-end tests over the fixtures the project actually ships.
+ *
+ * Everything here goes through the whole pipeline — validate the .klm, parse
+ * the .kli, execute to the shutoff — so a regression anywhere in the core shows
+ * up as the shipped example behaving differently than it is documented to.
+ */
 
-// The fixtures live at the repo root so the extension, the web app and the
-// core tests all exercise the exact same files a student would open.
-const MAP_SOURCE = readFileSync(
-  new URL("../../../examples/simple-world.klm", import.meta.url),
-  "utf8"
-);
-const PROGRAM_SOURCE = readFileSync(
-  new URL("../../../examples/demo-program.kli", import.meta.url),
-  "utf8"
-);
+import { describe, expect, it } from "vitest";
+
+import { Interpreter, Parser, World, validateKarelMap } from "../src/index";
+import type { Diagnostic, KarelMap } from "../src/index";
+import {
+  DEMO_PROGRAM_SOURCE,
+  capture,
+  readSimpleWorldMap,
+  stepToEnd,
+  type Capture,
+} from "./helpers";
 
 interface RunOutcome {
   world: World;
-  /** Source line reported by onStep, one entry per visible instruction. */
-  trace: number[];
-  /** step() calls that returned true, i.e. instructions actually executed. */
-  steps: number;
-  error: RuntimeError | null;
-  completed: boolean;
+  /** step() calls that returned true, i.e. instructions with more program after them. */
+  drivenSteps: number;
+  /** Every callback the run fired: the onStep line trace, errors and completions. */
+  captured: Capture;
 }
 
 /** Build a fresh World from the fixture map and run the demo to exhaustion. */
 function runDemo(): RunOutcome {
-  const validation = validateKarelMap(JSON.parse(MAP_SOURCE));
+  const validation = validateKarelMap(readSimpleWorldMap());
   if (!validation.ok || !validation.map) {
     throw new Error(`fixture map is invalid: ${validation.errors.join(", ")}`);
   }
 
   const world = new World(validation.map);
   const interpreter = new Interpreter(world);
-  const diagnostics = interpreter.load(PROGRAM_SOURCE);
+  const diagnostics = interpreter.load(DEMO_PROGRAM_SOURCE);
   if (diagnostics.some((d) => d.severity === "error")) {
     throw new Error(`fixture program failed to parse: ${diagnostics[0].message}`);
   }
 
-  const outcome: RunOutcome = { world, trace: [], steps: 0, error: null, completed: false };
-  interpreter.onStep = (line) => outcome.trace.push(line);
-  interpreter.onError = (error) => (outcome.error = error);
-  interpreter.onComplete = () => (outcome.completed = true);
-
-  while (interpreter.step()) {
-    outcome.steps++;
-  }
-  return outcome;
+  const captured = capture(interpreter);
+  const drivenSteps = stepToEnd(interpreter);
+  return { world, drivenSteps, captured };
 }
 
 describe("the shipped fixtures", () => {
   it("accepts simple-world.klm as a valid map", () => {
-    const result = validateKarelMap(JSON.parse(MAP_SOURCE));
+    const result = validateKarelMap(readSimpleWorldMap());
 
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
@@ -71,7 +60,7 @@ describe("the shipped fixtures", () => {
   });
 
   it("parses demo-program.kli without a single error diagnostic", () => {
-    const { ast, diagnostics } = new Parser().parse(PROGRAM_SOURCE);
+    const { ast, diagnostics } = new Parser().parse(DEMO_PROGRAM_SOURCE);
 
     const errors = diagnostics.filter((d: Diagnostic) => d.severity === "error");
     expect(errors).toEqual([]);
@@ -83,121 +72,52 @@ describe("the shipped fixtures", () => {
 });
 
 describe("running demo-program.kli on simple-world.klm", () => {
-  it("leaves the world in a stable, fully described final state", () => {
-    const { world } = runDemo();
+  it("leaves Karel and the beepers exactly where the demo is meant to leave them", () => {
+    const final = runDemo().world.toJSON();
 
-    expect(world.toJSON()).toMatchInlineSnapshot(`
-      {
-        "beepers": [
-          {
-            "count": 2,
-            "x": 3,
-            "y": 3,
-          },
-          {
-            "count": 1,
-            "x": 5,
-            "y": 5,
-          },
-          {
-            "count": 3,
-            "x": 8,
-            "y": 2,
-          },
-          {
-            "count": 1,
-            "x": 2,
-            "y": 3,
-          },
-        ],
-        "dimensions": {
-          "height": 8,
-          "width": 10,
-        },
-        "karel": {
-          "beepers": 4,
-          "facing": "south",
-          "x": 2,
-          "y": 1,
-        },
-        "walls": [
-          {
-            "from": {
-              "x": 4,
-              "y": 3,
-            },
-            "to": {
-              "x": 4,
-              "y": 4,
-            },
-          },
-          {
-            "from": {
-              "x": 4,
-              "y": 4,
-            },
-            "to": {
-              "x": 4,
-              "y": 5,
-            },
-          },
-          {
-            "from": {
-              "x": 4,
-              "y": 5,
-            },
-            "to": {
-              "x": 5,
-              "y": 5,
-            },
-          },
-          {
-            "from": {
-              "x": 6,
-              "y": 1,
-            },
-            "to": {
-              "x": 6,
-              "y": 2,
-            },
-          },
-          {
-            "from": {
-              "x": 6,
-              "y": 2,
-            },
-            "to": {
-              "x": 7,
-              "y": 2,
-            },
-          },
-        ],
-      }
-    `);
+    // Only Karel and the beeper stacks can change: the language has no
+    // instruction that builds a wall or resizes the world, so pinning those
+    // here would only make an unrelated edit to the fixture rewrite this test.
+    expect(final.karel).toEqual({ x: 2, y: 1, facing: "south", beepers: 4 });
+    expect(final.beepers).toEqual([
+      { x: 3, y: 3, count: 2 },
+      { x: 5, y: 5, count: 1 },
+      { x: 8, y: 2, count: 3 },
+      // The ELSE branch dropped one here; the three stacks above are untouched.
+      { x: 2, y: 3, count: 1 },
+    ]);
+  });
+
+  it("cannot touch the walls or the dimensions of the world it runs in", () => {
+    const final = runDemo().world.toJSON();
+    const initial = validateKarelMap(readSimpleWorldMap()).map!;
+
+    expect(final.dimensions).toEqual(initial.dimensions);
+    expect(final.walls).toEqual(initial.walls);
   });
 
   it("reaches turnoff cleanly", () => {
-    const { error, completed } = runDemo();
+    const { captured } = runDemo();
 
     // The demo is the project's front-door example, so it has to finish: the
     // ITERATE walks Karel from y=3 back down to the bottom row and stops there.
     // If a change to the program or the world makes it hit a wall instead,
     // this is the test that says so.
-    expect(error).toBeNull();
-    expect(completed).toBe(true);
+    expect(captured.errors).toEqual([]);
+    expect(captured.completions).toBe(1);
   });
 
   it("executes a deterministic number of visible steps", () => {
-    const { steps, trace } = runDemo();
+    const { drivenSteps, captured } = runDemo();
 
     // The two counts differ by one on purpose: onStep fires for turnoff, but
     // the step() call that runs it returns false to say the program is over,
     // so the driving loop never counts it.
-    expect(steps).toBe(12);
-    expect(trace).toHaveLength(13);
+    expect(drivenSteps).toBe(12);
+    expect(captured.steps).toHaveLength(13);
     // Expanding a custom instruction is not a visible step, so `turnright` on
     // lines 18 and 28 shows up as the three turnleft lines of its body (4,5,6).
-    expect(trace).toEqual([16, 17, 4, 5, 6, 19, 26, 4, 5, 6, 31, 31, 33]);
+    expect(captured.steps).toEqual([16, 17, 4, 5, 6, 19, 26, 4, 5, 6, 31, 31, 33]);
   });
 
   it("is reproducible: a second run from the same map lands identically", () => {
@@ -205,32 +125,28 @@ describe("running demo-program.kli on simple-world.klm", () => {
     const second = runDemo();
 
     expect(second.world.toJSON()).toEqual(first.world.toJSON());
-    expect(second.trace).toEqual(first.trace);
+    expect(second.captured.steps).toEqual(first.captured.steps);
   });
 });
 
 describe("the .klm file is the initial state, never the running state", () => {
   it("does not mutate the parsed map object while executing", () => {
-    const parsed = JSON.parse(MAP_SOURCE) as KarelMap;
-    const pristine = JSON.parse(MAP_SOURCE) as KarelMap;
+    const parsed = readSimpleWorldMap() as KarelMap;
+    const pristine = readSimpleWorldMap() as KarelMap;
 
-    const validation = validateKarelMap(parsed);
-    const world = new World(validation.map!);
+    const world = new World(validateKarelMap(parsed).map!);
     const interpreter = new Interpreter(world);
-    interpreter.load(PROGRAM_SOURCE);
-    while (interpreter.step()) {
-      /* drive to the shutoff */
-    }
+    interpreter.load(DEMO_PROGRAM_SOURCE);
+    stepToEnd(interpreter);
 
     // Karel moved, dropped a beeper and emptied one bag slot in the World...
     expect(world.toJSON().karel).not.toEqual(parsed.karel);
-    // ...while the object read from disk is byte-for-byte what it was.
+    // ...while the object read from disk is exactly what it was.
     expect(parsed).toEqual(pristine);
-    expect(JSON.stringify(parsed)).toBe(JSON.stringify(pristine));
   });
 
   it("hands the World a defensive copy, not the caller's own objects", () => {
-    const parsed = JSON.parse(MAP_SOURCE) as KarelMap;
+    const parsed = readSimpleWorldMap() as KarelMap;
     const normalized = validateKarelMap(parsed).map!;
 
     // Sharing any node here would let a later World mutation leak back into

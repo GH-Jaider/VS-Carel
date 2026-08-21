@@ -1,11 +1,8 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { VALID_CONDITIONS } from "../src/index";
-// The Lexer is an internal of the parsing pipeline and is not re-exported by the
-// package barrel, so these tests reach into the module directly.
-import { Lexer } from "../src/parsing/lexer";
-import { Token, TokenType } from "../src/types/tokens";
+import { Lexer, TokenType, VALID_CONDITIONS } from "../src/index";
+import type { Token } from "../src/index";
+import { DEMO_PROGRAM_SOURCE } from "./helpers";
 
 function lex(source: string): Token[] {
   return new Lexer(source).tokenize();
@@ -253,11 +250,7 @@ describe("Lexer", () => {
 
   describe("the shipped example program", () => {
     it("tokenizes examples/demo-program.kli into a well-formed stream", () => {
-      const source = readFileSync(
-        new URL("../../../examples/demo-program.kli", import.meta.url),
-        "utf8",
-      );
-      const tokens = lex(source);
+      const tokens = lex(DEMO_PROGRAM_SOURCE);
 
       expect(tokens[0]).toMatchObject({
         type: TokenType.BeginningOfProgram,

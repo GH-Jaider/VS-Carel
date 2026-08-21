@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,29 +7,16 @@ import {
   VALID_CONDITIONS,
   World,
   validateKarelMap,
-  type KarelMap,
   type RuntimeErrorKind,
 } from "../src/index";
+// ErrorMessages is deliberately not part of the public barrel: hosts are meant
+// to branch on RuntimeErrorKind / Diagnostic, never on prose. The tests reach
+// into the module so they assert *which* message was chosen and how its
+// arguments were filled in, without freezing the English wording.
+import { ErrorMessages } from "../src/messages";
+import { makeMap, makeWorld, readSimpleWorldMap } from "./helpers";
 
-/** The .klm fixture shared with the other packages; also acts as a format regression. */
-const SIMPLE_WORLD: unknown = JSON.parse(
-  readFileSync(new URL("../../../examples/simple-world.klm", import.meta.url), "utf8")
-);
-
-/** A 5x5 world with Karel in the middle; every field can be overridden per test. */
-function makeMap(overrides: Partial<KarelMap> = {}): KarelMap {
-  return {
-    dimensions: { width: 5, height: 5 },
-    karel: { x: 3, y: 3, facing: "north", beepers: 0 },
-    beepers: [],
-    walls: [],
-    ...overrides,
-  };
-}
-
-function makeWorld(overrides: Partial<KarelMap> = {}): World {
-  return new World(makeMap(overrides));
-}
+const SIMPLE_WORLD = readSimpleWorldMap();
 
 /** Asserts the call fails with a typed RuntimeError and hands the error back for message checks. */
 function expectRuntimeError(fn: () => unknown, kind: RuntimeErrorKind): RuntimeError {
@@ -61,27 +47,27 @@ describe("validateKarelMap", () => {
   });
 
   it("rejects anything that is not a JSON object", () => {
-    expect(errorsOf(null)).toEqual(["The map must be a JSON object"]);
-    expect(errorsOf([])).toEqual(["The map must be a JSON object"]);
-    expect(errorsOf("10x8")).toEqual(["The map must be a JSON object"]);
+    expect(errorsOf(null)).toEqual([ErrorMessages.mapNotAnObject()]);
+    expect(errorsOf([])).toEqual([ErrorMessages.mapNotAnObject()]);
+    expect(errorsOf("10x8")).toEqual([ErrorMessages.mapNotAnObject()]);
   });
 
   it("rejects dimensions that are zero, negative, fractional or above the maximum", () => {
     expect(errorsOf(makeMap({ dimensions: { width: 0, height: 5 } }))).toContain(
-      '"dimensions.width" must be a whole number of at least 1'
+      ErrorMessages.invalidWidth()
     );
     expect(errorsOf(makeMap({ dimensions: { width: 5, height: -3 } }))).toContain(
-      '"dimensions.height" must be a whole number of at least 1'
+      ErrorMessages.invalidHeight()
     );
     expect(errorsOf(makeMap({ dimensions: { width: 2.5, height: 5 } }))).toContain(
-      '"dimensions.width" must be a whole number of at least 1'
+      ErrorMessages.invalidWidth()
     );
-    expect(
-      errorsOf(makeMap({ dimensions: { width: MAX_WORLD_SIZE + 1, height: 5 } }))
-    ).toContain(`"dimensions.width" cannot be larger than ${MAX_WORLD_SIZE}`);
-    expect(
-      errorsOf(makeMap({ dimensions: { width: 5, height: MAX_WORLD_SIZE + 1 } }))
-    ).toContain(`"dimensions.height" cannot be larger than ${MAX_WORLD_SIZE}`);
+    expect(errorsOf(makeMap({ dimensions: { width: MAX_WORLD_SIZE + 1, height: 5 } }))).toContain(
+      ErrorMessages.widthTooLarge(MAX_WORLD_SIZE)
+    );
+    expect(errorsOf(makeMap({ dimensions: { width: 5, height: MAX_WORLD_SIZE + 1 } }))).toContain(
+      ErrorMessages.heightTooLarge(MAX_WORLD_SIZE)
+    );
 
     // The maximum itself is still a legal world.
     expect(
@@ -91,16 +77,16 @@ describe("validateKarelMap", () => {
 
   it("rejects a Karel standing outside the world and names the offending corner", () => {
     expect(errorsOf(makeMap({ karel: { x: 6, y: 1, facing: "north", beepers: 0 } }))).toEqual([
-      "Karel is outside the world: (6, 1) in a 5x5 world",
+      ErrorMessages.karelOutOfBounds(6, 1, 5, 5),
     ]);
     expect(errorsOf(makeMap({ karel: { x: 1, y: 0, facing: "north", beepers: 0 } }))).toEqual([
-      "Karel is outside the world: (1, 0) in a 5x5 world",
+      ErrorMessages.karelOutOfBounds(1, 0, 5, 5),
     ]);
   });
 
   it("rejects an invalid facing but accepts the one-letter abbreviations", () => {
     expect(errorsOf(makeMap({ karel: { x: 1, y: 1, facing: "up", beepers: 0 } }))).toEqual([
-      '"karel.facing" has an invalid value: "up"',
+      ErrorMessages.unknownKarelFacing("up"),
     ]);
 
     // parseDirection also normalizes case and single letters, so validation must too.
@@ -110,30 +96,31 @@ describe("validateKarelMap", () => {
   });
 
   it("rejects walls between cells that are not adjacent", () => {
-    expect(
-      errorsOf(makeMap({ walls: [{ from: { x: 1, y: 1 }, to: { x: 2, y: 2 } }] }))
-    ).toEqual(["Wall #1: cells (1, 1) and (2, 2) are not adjacent"]);
-    expect(
-      errorsOf(makeMap({ walls: [{ from: { x: 1, y: 1 }, to: { x: 1, y: 3 } }] }))
-    ).toEqual(["Wall #1: cells (1, 1) and (1, 3) are not adjacent"]);
+    expect(errorsOf(makeMap({ walls: [{ from: { x: 1, y: 1 }, to: { x: 2, y: 2 } }] }))).toEqual([
+      ErrorMessages.wallNotAdjacent(1, 1, 1, 2, 2),
+    ]);
+    expect(errorsOf(makeMap({ walls: [{ from: { x: 1, y: 1 }, to: { x: 1, y: 3 } }] }))).toEqual([
+      ErrorMessages.wallNotAdjacent(1, 1, 1, 1, 3),
+    ]);
     // A cell is not adjacent to itself either.
-    expect(
-      errorsOf(makeMap({ walls: [{ from: { x: 2, y: 2 }, to: { x: 2, y: 2 } }] }))
-    ).toEqual(["Wall #1: cells (2, 2) and (2, 2) are not adjacent"]);
-    expect(
-      errorsOf(makeMap({ walls: [{ from: { x: 1, y: 1 }, to: { x: 1, y: 6 } }] }))
-    ).toEqual(["Wall #1 touches a cell outside the world"]);
+    expect(errorsOf(makeMap({ walls: [{ from: { x: 2, y: 2 }, to: { x: 2, y: 2 } }] }))).toEqual([
+      ErrorMessages.wallNotAdjacent(1, 2, 2, 2, 2),
+    ]);
+    // Out of bounds is checked before adjacency, so only one error comes back.
+    expect(errorsOf(makeMap({ walls: [{ from: { x: 1, y: 1 }, to: { x: 1, y: 6 } }] }))).toEqual([
+      ErrorMessages.wallOutOfBounds(1),
+    ]);
   });
 
   it("rejects beepers with a non-positive count or a corner outside the world", () => {
     expect(errorsOf(makeMap({ beepers: [{ x: 2, y: 2, count: 0 }] }))).toEqual([
-      "Beeper #1 must have a count of at least 1",
+      ErrorMessages.invalidBeeperCount(1),
     ]);
     expect(errorsOf(makeMap({ beepers: [{ x: 2, y: 2, count: -4 }] }))).toEqual([
-      "Beeper #1 must have a count of at least 1",
+      ErrorMessages.invalidBeeperCount(1),
     ]);
     expect(errorsOf(makeMap({ beepers: [{ x: 9, y: 2, count: 1 }] }))).toEqual([
-      "Beeper #1 is outside the world: (9, 2)",
+      ErrorMessages.beeperOutOfBounds(1, 9, 2),
     ]);
   });
 
@@ -141,15 +128,23 @@ describe("validateKarelMap", () => {
     const errors = errorsOf(
       makeMap({
         karel: { x: 99, y: 1, facing: "sideways", beepers: -1 },
-        beepers: [{ x: 2, y: 2, count: 1 }, { x: 2, y: 2, count: 0 }],
+        beepers: [
+          { x: 2, y: 2, count: 1 },
+          { x: 2, y: 2, count: 0 },
+        ],
         walls: [{ from: { x: 1, y: 1 }, to: { x: 3, y: 3 } }],
       })
     );
 
-    expect(errors).toHaveLength(5);
-    // Indices in the messages are 1-based and refer to the position in the source array.
-    expect(errors).toContain("Beeper #2 must have a count of at least 1");
-    expect(errors).toContain("Wall #1: cells (1, 1) and (3, 3) are not adjacent");
+    expect(errors).toEqual([
+      ErrorMessages.karelOutOfBounds(99, 1, 5, 5),
+      ErrorMessages.unknownKarelFacing("sideways"),
+      ErrorMessages.invalidKarelBeepers(),
+      // Indices are 1-based and refer to the position in the source array, so
+      // the healthy first beeper still shifts the broken one to #2.
+      ErrorMessages.invalidBeeperCount(2),
+      ErrorMessages.wallNotAdjacent(1, 1, 1, 3, 3),
+    ]);
   });
 });
 
@@ -210,7 +205,7 @@ describe("World geometry", () => {
     });
 
     const error = expectRuntimeError(() => world.move(), "blocked");
-    expect(error.message).toBe("Karel hit a wall: the front is blocked");
+    expect(error.message).toBe(ErrorMessages.moveBlocked());
     // An error shutoff must not move Karel.
     expect(world.karel.position).toEqual({ x: 2, y: 2 });
   });
@@ -220,7 +215,7 @@ describe("World geometry", () => {
 
     // Note this is a plain Error, not a RuntimeError: it is a caller bug, not a shutoff.
     expect(() => world.addWall({ x: 1, y: 1 }, { x: 3, y: 1 })).toThrow(
-      "Invalid wall: cells (1, 1) and (3, 1) are not adjacent"
+      ErrorMessages.invalidWall(1, 1, 3, 1)
     );
   });
 
@@ -259,7 +254,7 @@ describe("beepers", () => {
     const world = makeWorld({ karel: { x: 4, y: 2, facing: "north", beepers: 0 } });
 
     const error = expectRuntimeError(() => world.pickBeeper(), "no-beeper");
-    expect(error.message).toBe("There is no beeper to pick up at corner (4, 2)");
+    expect(error.message).toBe(ErrorMessages.noBeepersToPickUp(4, 2));
     expect(world.karel.beepersInBag).toBe(0);
   });
 
@@ -268,7 +263,7 @@ describe("beepers", () => {
 
     world.putBeeper();
     const error = expectRuntimeError(() => world.putBeeper(), "empty-bag");
-    expect(error.message).toBe("Karel's beeper bag is empty");
+    expect(error.message).toBe(ErrorMessages.noBeepersInBag());
     // The failed put must not add a phantom beeper to the corner.
     expect(world.getBeepers({ x: 3, y: 3 })).toBe(1);
   });
@@ -366,7 +361,9 @@ describe("evaluateCondition", () => {
     const world = makeWorld();
 
     const error = expectRuntimeError(() => world.evaluateCondition("front-is-lava"), "unknown-name");
-    expect(error.message).toBe("Unknown condition 'front-is-lava'");
+    expect(error.message).toBe(ErrorMessages.unknownCondition("front-is-lava"));
+    // The world has no notion of lines; stamping one is the interpreter's job.
+    expect(error.line).toBeUndefined();
   });
 });
 

@@ -1,31 +1,24 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { Parser } from "../src/index";
-import type { Diagnostic } from "../src/index";
-import { ErrorMessages } from "../src/messages";
 import type {
   BlockNode,
   DefineInstructionNode,
+  Diagnostic,
   IfNode,
   InstructionCallNode,
   IterateNode,
   WhileNode,
-} from "../src/types/ast";
+} from "../src/index";
+// ErrorMessages is deliberately not part of the public barrel: hosts branch on
+// Diagnostic.severity, never on prose. Asserting against it here checks *which*
+// message the parser chose without freezing the English wording.
+import { ErrorMessages } from "../src/messages";
+import { DEMO_PROGRAM_SOURCE, program } from "./helpers";
 
 const parse = (source: string) => new Parser().parse(source);
 
 const errorsOf = (diagnostics: Diagnostic[]) => diagnostics.filter((d) => d.severity === "error");
-
-/** Wraps statements in the boilerplate every Karel program needs. */
-const program = (body: string) =>
-  [
-    "BEGINNING-OF-PROGRAM",
-    "BEGINNING-OF-EXECUTION",
-    body,
-    "END-OF-EXECUTION",
-    "END-OF-PROGRAM",
-  ].join("\n");
 
 /** First execution statement, typed as whatever the test expects it to be. */
 const firstStatement = <T>(source: string): T => {
@@ -47,12 +40,7 @@ describe("Parser", () => {
     });
 
     it("parses the demo program shipped in examples/ without complaining", () => {
-      const source = readFileSync(
-        new URL("../../../examples/demo-program.kli", import.meta.url),
-        "utf8"
-      );
-
-      const { ast, diagnostics } = parse(source);
+      const { ast, diagnostics } = parse(DEMO_PROGRAM_SOURCE);
 
       expect(diagnostics).toEqual([]);
       expect(ast!.definitions.map((d) => d.name)).toEqual(["turnright", "move-to-wall"]);
@@ -340,6 +328,68 @@ describe("Parser", () => {
         ErrorMessages.missingProgramEnd(),
       ]);
       expect(ast!.execution.statements).toHaveLength(1);
+    });
+
+    it("drops a stray semicolon or a misplaced keyword and keeps the statements around it", () => {
+      const straySemicolon = parse(program("  move;\n  ;\n  turnoff;"));
+      expect(straySemicolon.diagnostics).toEqual([
+        expect.objectContaining({ message: ErrorMessages.unexpectedSemicolon(), line: 4 }),
+      ]);
+
+      const strayKeyword = parse(program("  move;\n  ELSE\n  turnoff;"));
+      expect(strayKeyword.diagnostics).toEqual([
+        expect.objectContaining({ message: ErrorMessages.unexpectedToken("ELSE"), line: 4 }),
+      ]);
+
+      // Neither noise token may take a neighbouring statement down with it.
+      for (const { ast } of [straySemicolon, strayKeyword]) {
+        expect(ast!.execution.statements).toEqual([
+          { type: "call", name: "move", line: 3 },
+          { type: "call", name: "turnoff", line: 5 },
+        ]);
+      }
+    });
+
+    it("recovers from a DEFINE-NEW-INSTRUCTION that never says what it defines", () => {
+      // This is the only path that calls synchronize(); the point of the test is
+      // that it makes progress and still hands back an AST instead of hanging or
+      // swallowing the rest of the file.
+      const { ast, diagnostics } = parse(
+        [
+          "BEGINNING-OF-PROGRAM",
+          "DEFINE-NEW-INSTRUCTION AS",
+          "BEGIN",
+          "  turnleft;",
+          "END",
+          "BEGINNING-OF-EXECUTION",
+          "  turnoff;",
+          "END-OF-EXECUTION",
+          "END-OF-PROGRAM",
+        ].join("\n")
+      );
+
+      expect(diagnostics[0]).toEqual(
+        expect.objectContaining({
+          message: ErrorMessages.expectedInstructionName(),
+          severity: "error",
+          line: 2,
+        })
+      );
+      expect(ast!.definitions).toEqual([]);
+      // The nameless body is re-read as an ordinary block, so turnoff survives.
+      expect(ast!.execution.statements.at(-1)).toEqual({ type: "call", name: "turnoff", line: 7 });
+    });
+
+    it("only warns about content trailing after END-OF-PROGRAM", () => {
+      const { diagnostics } = parse(program("  turnoff;") + "\nmove;");
+
+      expect(diagnostics).toEqual([
+        expect.objectContaining({
+          message: ErrorMessages.contentAfterProgramEnd(),
+          severity: "warning",
+          line: 6,
+        }),
+      ]);
     });
 
     it("returns no AST at all for an empty source", () => {

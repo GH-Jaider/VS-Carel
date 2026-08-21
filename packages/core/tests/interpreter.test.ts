@@ -2,43 +2,22 @@
  * Characterization tests for the execution machine (interpreter + execution frames).
  *
  * These pin down behaviour that already works: how each built-in mutates the
- * world, which RuntimeErrorKind travels up from an error shutoff, and how the
- * step / recursion / spin budgets end a runaway program.
+ * world, how control flow drives the explicit stack, which RuntimeErrorKind
+ * travels up from an error shutoff, and how the step / recursion / spin budgets
+ * end a runaway program.
  *
- * Everything is driven with step() rather than run(): step() is synchronous and
- * timer-free, while run() sleeps at least MIN_SPEED_MS (10ms) between steps.
+ * The end-to-end run of the shipped fixtures lives in integration.test.ts,
+ * which asserts the full trace and final world; nothing here reads examples/.
  */
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 
-import { Direction, Interpreter, RuntimeError, World, validateKarelMap } from "../src/index";
-import type { KarelMap } from "../src/index";
-
-/** A 5x5 world with Karel in the middle, so every direction is clear. */
-function makeWorld(overrides: Partial<KarelMap> = {}): World {
-  return new World({
-    dimensions: { width: 5, height: 5 },
-    karel: { x: 3, y: 3, facing: "north", beepers: 0 },
-    beepers: [],
-    walls: [],
-    ...overrides,
-  });
-}
-
-/** Wrap a body in the program/execution scaffolding the parser requires. */
-function program(body: string, definitions = ""): string {
-  return [
-    "BEGINNING-OF-PROGRAM",
-    definitions,
-    "BEGINNING-OF-EXECUTION",
-    body,
-    "END-OF-EXECUTION",
-    "END-OF-PROGRAM",
-  ]
-    .filter((part) => part !== "")
-    .join("\n");
-}
+import { Direction, Interpreter, RuntimeError, World } from "../src/index";
+// ErrorMessages is deliberately not public: hosts branch on RuntimeErrorKind,
+// never on prose. Asserting against it checks *which* message was raised and
+// how its arguments were filled in, without freezing the English wording.
+import { ErrorMessages } from "../src/messages";
+import { capture, makeWorld, program, stepToEnd, type Capture } from "./helpers";
 
 /**
  * 1-based line holding `marker`. Line assertions are written against a comment
@@ -49,30 +28,6 @@ function lineOf(source: string, marker: string): number {
   const index = source.split("\n").findIndex((line) => line.includes(marker));
   expect(index, `marker ${marker} not found in source`).toBeGreaterThanOrEqual(0);
   return index + 1;
-}
-
-interface Capture {
-  steps: number[];
-  errors: RuntimeError[];
-  completions: number;
-}
-
-/** Record every callback the interpreter fires, in order. */
-function capture(interpreter: Interpreter): Capture {
-  const captured: Capture = { steps: [], errors: [], completions: 0 };
-  interpreter.onStep = (line) => captured.steps.push(line);
-  interpreter.onError = (error) => captured.errors.push(error);
-  interpreter.onComplete = () => {
-    captured.completions += 1;
-  };
-  return captured;
-}
-
-function stepToEnd(interpreter: Interpreter): void {
-  while (interpreter.step()) {
-    // step() returns false on turnoff, on an error shutoff and when the
-    // statement list runs out, so this always terminates.
-  }
 }
 
 /** Load a program, assert it parsed cleanly, and hook up the callbacks. */
@@ -150,6 +105,94 @@ describe("built-in instructions", () => {
   });
 });
 
+describe("control flow", () => {
+  it("runs the THEN branch and skips the ELSE branch when the condition holds", () => {
+    const world = makeWorld({ beepers: [{ x: 3, y: 3, count: 1 }] });
+    const source = program(
+      "IF next-to-a-beeper THEN\nBEGIN\npickbeeper // taken\nEND\nELSE\nBEGIN\nmove\nEND\nturnoff"
+    );
+    const { interpreter, captured } = start(source, world);
+
+    stepToEnd(interpreter);
+
+    expect(world.karel.beepersInBag).toBe(1);
+    expect(world.karel.position).toEqual({ x: 3, y: 3 }); // the ELSE move never ran
+    expect(captured.steps).toEqual([lineOf(source, "// taken"), lineOf(source, "turnoff")]);
+  });
+
+  it("runs the ELSE branch and skips the THEN branch when the condition fails", () => {
+    const world = makeWorld({ karel: { x: 3, y: 3, facing: "north", beepers: 1 } });
+    const { interpreter, captured } = start(
+      program("IF next-to-a-beeper THEN\nBEGIN\npickbeeper\nEND\nELSE\nBEGIN\nputbeeper\nEND\nturnoff"),
+      world
+    );
+
+    stepToEnd(interpreter);
+
+    expect(world.getBeepers({ x: 3, y: 3 })).toBe(1);
+    expect(world.karel.beepersInBag).toBe(0);
+    expect(captured.steps).toHaveLength(2); // putbeeper, then turnoff
+  });
+
+  it("executes nothing at all for an IF with no ELSE whose condition fails", () => {
+    const world = makeWorld({ karel: { x: 3, y: 3, facing: "north", beepers: 0 } });
+    const { interpreter, captured } = start(
+      program("IF next-to-a-beeper THEN\nBEGIN\npickbeeper\nEND\nturnoff"),
+      world
+    );
+
+    stepToEnd(interpreter);
+
+    // Only turnoff runs: an empty ELSE must not leave a frame behind either.
+    expect(captured.steps).toHaveLength(1);
+    expect(captured.errors).toEqual([]);
+    expect(captured.completions).toBe(1);
+  });
+
+  it("leaves a WHILE loop as soon as its condition turns false", () => {
+    // Karel starts on the bottom row of a 5x5 world facing north, so the loop
+    // runs exactly four times and then the border stops it.
+    const world = makeWorld({ karel: { x: 1, y: 1, facing: "north", beepers: 0 } });
+    const source = program("WHILE front-is-clear DO\nBEGIN\nmove // one pass\nEND\nturnoff");
+    const { interpreter, captured } = start(source, world);
+
+    stepToEnd(interpreter);
+
+    expect(world.karel.position).toEqual({ x: 1, y: 5 });
+    expect(captured.steps).toEqual([
+      ...Array<number>(4).fill(lineOf(source, "// one pass")),
+      lineOf(source, "turnoff"),
+    ]);
+    expect(captured.errors).toEqual([]);
+    expect(captured.completions).toBe(1);
+  });
+
+  it("repeats an ITERATE body exactly the requested number of times", () => {
+    const world = makeWorld({ karel: { x: 1, y: 1, facing: "north", beepers: 0 } });
+    const { interpreter, captured } = start(
+      program("ITERATE 3 TIMES\nBEGIN\nmove\nEND\nturnoff"),
+      world
+    );
+
+    stepToEnd(interpreter);
+
+    expect(world.karel.position).toEqual({ x: 1, y: 4 });
+    expect(captured.steps).toHaveLength(4); // three moves plus turnoff
+  });
+
+  it("skips an ITERATE body entirely when the count is zero", () => {
+    const { world, interpreter, captured } = start(
+      program("ITERATE 0 TIMES\nBEGIN\nmove\nEND\nturnoff")
+    );
+
+    stepToEnd(interpreter);
+
+    expect(world.karel.position).toEqual({ x: 3, y: 3 });
+    expect(captured.steps).toHaveLength(1);
+    expect(captured.completions).toBe(1);
+  });
+});
+
 describe("error shutoffs", () => {
   it("reports a blocked move as kind 'blocked' on the offending line", () => {
     const source = program("turnleft;\nturnleft;\nturnleft;\nturnleft;\nmove; // boom\nturnoff");
@@ -161,6 +204,7 @@ describe("error shutoffs", () => {
     expect(captured.errors).toHaveLength(1);
     expect(captured.errors[0]).toBeInstanceOf(RuntimeError);
     expect(captured.errors[0].kind).toBe("blocked");
+    expect(captured.errors[0].message).toBe(ErrorMessages.moveBlocked());
     expect(captured.errors[0].line).toBe(lineOf(source, "// boom"));
     // The four turns happened; the blocked move left Karel where she was.
     expect(world.karel.position).toEqual({ x: 3, y: 3 });
@@ -175,7 +219,8 @@ describe("error shutoffs", () => {
 
     expect(captured.errors[0].kind).toBe("no-beeper");
     expect(captured.errors[0].line).toBe(lineOf(source, "// boom"));
-    expect(captured.errors[0].message).toContain("(3, 4)");
+    // The corner named in the message is where Karel stands after the move.
+    expect(captured.errors[0].message).toBe(ErrorMessages.noBeepersToPickUp(3, 4));
     expect(world.karel.beepersInBag).toBe(0);
   });
 
@@ -186,6 +231,7 @@ describe("error shutoffs", () => {
     stepToEnd(interpreter);
 
     expect(captured.errors[0].kind).toBe("empty-bag");
+    expect(captured.errors[0].message).toBe(ErrorMessages.noBeepersInBag());
     expect(captured.errors[0].line).toBe(lineOf(source, "// boom"));
     expect(world.getBeepers({ x: 3, y: 3 })).toBe(0);
   });
@@ -200,6 +246,33 @@ describe("error shutoffs", () => {
     expect(captured.steps).toEqual([]);
     expect(interpreter.isFinished).toBe(true);
   });
+
+  it("stamps the IF line on an unknown condition, which the world cannot do itself", () => {
+    // The parser flags the misspelling too, but a caller may run anyway, and
+    // then the shutoff has to point somewhere useful.
+    const source = program("IF front-is-lava THEN // boom\nmove;\nturnoff");
+    const interpreter = new Interpreter(makeWorld());
+    interpreter.load(source);
+    const captured = capture(interpreter);
+
+    stepToEnd(interpreter);
+
+    expect(captured.errors[0].kind).toBe("unknown-name");
+    expect(captured.errors[0].message).toBe(ErrorMessages.unknownCondition("front-is-lava"));
+    expect(captured.errors[0].line).toBe(lineOf(source, "// boom"));
+  });
+
+  it("stamps the WHILE line on an unknown condition, which the frame carries for it", () => {
+    const source = program("WHILE front-is-lava DO // boom\nmove;\nturnoff");
+    const interpreter = new Interpreter(makeWorld());
+    interpreter.load(source);
+    const captured = capture(interpreter);
+
+    stepToEnd(interpreter);
+
+    expect(captured.errors[0].kind).toBe("unknown-name");
+    expect(captured.errors[0].line).toBe(lineOf(source, "// boom"));
+  });
 });
 
 describe("execution limits", () => {
@@ -211,8 +284,37 @@ describe("execution limits", () => {
 
     expect(captured.steps).toHaveLength(50);
     expect(captured.errors[0].kind).toBe("limit");
-    expect(captured.errors[0].message).toContain("50");
-    expect(captured.errors[0].message).not.toContain("100000");
+    expect(captured.errors[0].message).toBe(ErrorMessages.maxIterationsReached(50));
+  });
+
+  it("falls back to the default budget when maxSteps could never stop a runaway", () => {
+    // 0, a negative, NaN and Infinity would each disable the guard if taken at
+    // face value, turning an infinite loop into a hang instead of an error.
+    for (const maxSteps of [0, -1, NaN, Infinity]) {
+      const { interpreter, captured } = start(program("WHILE front-is-clear DO turnleft;"), makeWorld(), {
+        maxSteps,
+      });
+
+      stepToEnd(interpreter);
+
+      expect(captured.errors[0].kind, `maxSteps: ${maxSteps}`).toBe("limit");
+      expect(captured.errors[0].message, `maxSteps: ${maxSteps}`).toBe(
+        ErrorMessages.maxIterationsReached(100_000)
+      );
+    }
+  });
+
+  it("floors a fractional maxSteps rather than letting it drift off by a fraction", () => {
+    const { interpreter, captured } = start(
+      program("WHILE front-is-clear DO turnleft;"),
+      makeWorld(),
+      { maxSteps: 2.5 }
+    );
+
+    stepToEnd(interpreter);
+
+    expect(captured.steps).toHaveLength(2);
+    expect(captured.errors[0].message).toBe(ErrorMessages.maxIterationsReached(2));
   });
 
   it("stops an instruction that calls itself forever with kind 'limit'", () => {
@@ -225,7 +327,7 @@ describe("execution limits", () => {
     stepToEnd(interpreter);
 
     expect(captured.errors[0].kind).toBe("limit");
-    expect(captured.errors[0].message).toContain("spin");
+    expect(captured.errors[0].message).toBe(ErrorMessages.recursionTooDeep("spin"));
     expect(captured.errors[0].line).toBe(lineOf(source, "// recurses"));
     // The stack blows up while expanding, so not one visible step ever ran.
     expect(captured.steps).toEqual([]);
@@ -240,6 +342,7 @@ describe("execution limits", () => {
     const elapsed = Date.now() - startedAt;
 
     expect(captured.errors[0].kind).toBe("limit");
+    expect(captured.errors[0].message).toBe(ErrorMessages.stuckWithoutProgress());
     // Thrown by the internal-spin budget, which has no instruction to blame.
     expect(captured.errors[0].line).toBeUndefined();
     expect(captured.steps).toEqual([]);
@@ -290,6 +393,58 @@ describe("stepping semantics", () => {
   });
 });
 
+describe("pausing and resuming", () => {
+  it("leaves the program suspended, not finished, when stop() interrupts run()", async () => {
+    const { world, interpreter, captured } = start(program("WHILE front-is-clear DO turnleft;"));
+    interpreter.setSpeed(0); // clamped up to MIN_SPEED_MS
+
+    const running = interpreter.run();
+    // run() executes synchronously up to its first delay, so exactly one step
+    // has happened by the time this line runs.
+    interpreter.stop();
+    await running;
+
+    expect(captured.steps).toHaveLength(1);
+    expect(captured.errors).toEqual([]);
+    expect(captured.completions).toBe(0);
+    // A stop is a pause: the step budget and the world both survive it.
+    expect(interpreter.isFinished).toBe(false);
+    expect(world.karel.facing).toBe(Direction.West);
+  });
+
+  it("carries on from where it stopped, rather than restarting the program", async () => {
+    const { world, interpreter, captured } = start(program("move;\nmove;\nmove;\nturnoff"));
+    interpreter.setSpeed(0);
+
+    const running = interpreter.run();
+    interpreter.stop();
+    await running;
+    expect(world.karel.position).toEqual({ x: 3, y: 4 });
+
+    // Resuming must not re-run the first move: ensureInitialized only builds
+    // the stack once, and step() clears the pending stop request.
+    stepToEnd(interpreter);
+
+    expect(world.karel.position).toEqual({ x: 3, y: 5 }); // the border stopped her
+    expect(captured.errors[0].kind).toBe("blocked");
+    expect(captured.steps).toHaveLength(2);
+  });
+
+  it("ignores a second run() while one is already looping", async () => {
+    const { interpreter, captured } = start(program("WHILE front-is-clear DO turnleft;"));
+    interpreter.setSpeed(0);
+
+    const first = interpreter.run();
+    // The re-entrancy guard is what keeps a double-click on the host's Run
+    // button from driving the same stack twice as fast.
+    const second = interpreter.run();
+    interpreter.stop();
+    await Promise.all([first, second]);
+
+    expect(captured.steps).toHaveLength(1);
+  });
+});
+
 describe("loading a program", () => {
   it("returns parser diagnostics and still executes the best-effort AST", () => {
     const source = program("move;\nbogus; // unknown\nturnoff");
@@ -297,8 +452,11 @@ describe("loading a program", () => {
 
     const diagnostics = interpreter.load(source);
 
-    expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("bogus"))).toBe(
-      true
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        message: ErrorMessages.unknownInstruction("bogus"),
+        severity: "error",
+      })
     );
 
     // load() never throws and never refuses: refusing to run is the caller's
@@ -315,12 +473,13 @@ describe("loading a program", () => {
     const interpreter = new Interpreter(makeWorld());
 
     // Nothing is running yet, so this one really does throw at the caller.
-    expect(() => interpreter.step()).toThrow(RuntimeError);
     try {
       interpreter.step();
       expect.unreachable("step() should have thrown");
     } catch (error) {
+      expect(error).toBeInstanceOf(RuntimeError);
       expect((error as RuntimeError).kind).toBe("internal");
+      expect((error as RuntimeError).message).toBe(ErrorMessages.programNotLoaded());
     }
   });
 
@@ -333,32 +492,5 @@ describe("loading a program", () => {
     // An empty source yields no AST at all, which is indistinguishable from
     // "never loaded" at run time.
     await expect(interpreter.run()).rejects.toThrow(RuntimeError);
-  });
-});
-
-describe("the shipped example program", () => {
-  it("runs against the shipped world and reaches turnoff", () => {
-    const raw: unknown = JSON.parse(
-      readFileSync(new URL("../../../examples/simple-world.klm", import.meta.url), "utf8")
-    );
-    const validation = validateKarelMap(raw);
-    expect(validation.ok).toBe(true);
-
-    const source = readFileSync(
-      new URL("../../../examples/demo-program.kli", import.meta.url),
-      "utf8"
-    );
-    const { world, interpreter, captured } = start(source, new World(validation.map!));
-
-    stepToEnd(interpreter);
-
-    // The demo takes the ELSE branch (no beeper at (2,3)), drops one there,
-    // then walks back down to the bottom row and turns off.
-    expect(world.getBeepers({ x: 2, y: 3 })).toBe(1);
-    expect(world.karel.beepersInBag).toBe(4);
-    expect(world.karel.position).toEqual({ x: 2, y: 1 });
-    expect(captured.steps).toHaveLength(13);
-    expect(captured.errors).toHaveLength(0);
-    expect(captured.completions).toBe(1);
   });
 });
