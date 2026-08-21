@@ -84,26 +84,26 @@ export function validateKarelMap(data: unknown): MapValidationResult {
   const errors: string[] = [];
 
   if (!isRecord(data)) {
-    return { ok: false, errors: ["The map must be a JSON object"] };
+    return { ok: false, errors: [ErrorMessages.mapNotAnObject()] };
   }
 
   // dimensions
   let width = 0;
   let height = 0;
   if (!isRecord(data.dimensions)) {
-    errors.push('Missing "dimensions" ({ "width": ..., "height": ... })');
+    errors.push(ErrorMessages.missingDimensions());
   } else {
     if (!isInt(data.dimensions.width) || data.dimensions.width < 1) {
-      errors.push('"dimensions.width" must be a whole number of at least 1');
+      errors.push(ErrorMessages.invalidWidth());
     } else if (data.dimensions.width > MAX_WORLD_SIZE) {
-      errors.push(`"dimensions.width" cannot be larger than ${MAX_WORLD_SIZE}`);
+      errors.push(ErrorMessages.widthTooLarge(MAX_WORLD_SIZE));
     } else {
       width = data.dimensions.width;
     }
     if (!isInt(data.dimensions.height) || data.dimensions.height < 1) {
-      errors.push('"dimensions.height" must be a whole number of at least 1');
+      errors.push(ErrorMessages.invalidHeight());
     } else if (data.dimensions.height > MAX_WORLD_SIZE) {
-      errors.push(`"dimensions.height" cannot be larger than ${MAX_WORLD_SIZE}`);
+      errors.push(ErrorMessages.heightTooLarge(MAX_WORLD_SIZE));
     } else {
       height = data.dimensions.height;
     }
@@ -115,27 +115,27 @@ export function validateKarelMap(data: unknown): MapValidationResult {
   // karel
   let karel: KarelMap["karel"] | null = null;
   if (!isRecord(data.karel)) {
-    errors.push('Missing "karel" ({ "x": ..., "y": ..., "facing": ..., "beepers": ... })');
+    errors.push(ErrorMessages.missingKarel());
   } else {
     const k = data.karel;
     if (!isInt(k.x) || !isInt(k.y)) {
-      errors.push('"karel.x" and "karel.y" must be whole numbers');
+      errors.push(ErrorMessages.invalidKarelPosition());
     } else if (width > 0 && height > 0 && !inBounds(k.x, k.y)) {
-      errors.push(`Karel is outside the world: (${k.x}, ${k.y}) in a ${width}x${height} world`);
+      errors.push(ErrorMessages.karelOutOfBounds(k.x, k.y, width, height));
     }
     let facing = "north";
     if (typeof k.facing !== "string") {
-      errors.push('"karel.facing" must be "north", "south", "east" or "west"');
+      errors.push(ErrorMessages.invalidKarelFacing());
     } else {
       try {
         facing = parseDirection(k.facing);
       } catch {
-        errors.push(`"karel.facing" has an invalid value: "${k.facing}"`);
+        errors.push(ErrorMessages.unknownKarelFacing(k.facing));
       }
     }
     const beepers = k.beepers === undefined ? 0 : k.beepers;
     if (!isInt(beepers) || beepers < 0) {
-      errors.push('"karel.beepers" must be a whole number of 0 or more');
+      errors.push(ErrorMessages.invalidKarelBeepers());
     }
     if (isInt(k.x) && isInt(k.y) && isInt(beepers)) {
       karel = { x: k.x, y: k.y, facing, beepers };
@@ -146,19 +146,19 @@ export function validateKarelMap(data: unknown): MapValidationResult {
   const beepers: BeeperStack[] = [];
   if (data.beepers !== undefined) {
     if (!Array.isArray(data.beepers)) {
-      errors.push('"beepers" must be an array');
+      errors.push(ErrorMessages.beepersNotAnArray());
     } else {
       data.beepers.forEach((entry, i) => {
         if (!isRecord(entry) || !isInt(entry.x) || !isInt(entry.y) || !isInt(entry.count)) {
-          errors.push(`Beeper #${i + 1} must look like { "x": 3, "y": 3, "count": 1 }`);
+          errors.push(ErrorMessages.invalidBeeperEntry(i + 1));
           return;
         }
         if (!inBounds(entry.x, entry.y)) {
-          errors.push(`Beeper #${i + 1} is outside the world: (${entry.x}, ${entry.y})`);
+          errors.push(ErrorMessages.beeperOutOfBounds(i + 1, entry.x, entry.y));
           return;
         }
         if (entry.count < 1) {
-          errors.push(`Beeper #${i + 1} must have a count of at least 1`);
+          errors.push(ErrorMessages.invalidBeeperCount(i + 1));
           return;
         }
         beepers.push({ x: entry.x, y: entry.y, count: entry.count });
@@ -170,7 +170,7 @@ export function validateKarelMap(data: unknown): MapValidationResult {
   const walls: Wall[] = [];
   if (data.walls !== undefined) {
     if (!Array.isArray(data.walls)) {
-      errors.push('"walls" must be an array');
+      errors.push(ErrorMessages.wallsNotAnArray());
     } else {
       data.walls.forEach((entry, i) => {
         if (
@@ -182,21 +182,17 @@ export function validateKarelMap(data: unknown): MapValidationResult {
           !isInt(entry.to.x) ||
           !isInt(entry.to.y)
         ) {
-          errors.push(
-            `Wall #${i + 1} must look like { "from": { "x": 4, "y": 3 }, "to": { "x": 4, "y": 4 } }`
-          );
+          errors.push(ErrorMessages.invalidWallEntry(i + 1));
           return;
         }
         const from = { x: entry.from.x, y: entry.from.y };
         const to = { x: entry.to.x, y: entry.to.y };
         if (!inBounds(from.x, from.y) || !inBounds(to.x, to.y)) {
-          errors.push(`Wall #${i + 1} touches a cell outside the world`);
+          errors.push(ErrorMessages.wallOutOfBounds(i + 1));
           return;
         }
         if (!areAdjacent(from, to)) {
-          errors.push(
-            `Wall #${i + 1}: cells (${from.x}, ${from.y}) and (${to.x}, ${to.y}) are not adjacent`
-          );
+          errors.push(ErrorMessages.wallNotAdjacent(i + 1, from.x, from.y, to.x, to.y));
           return;
         }
         walls.push({ from, to });

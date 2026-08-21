@@ -3,20 +3,6 @@
  */
 
 /**
- * Parser error with line information.
- */
-export class ParseError extends Error {
-  constructor(
-    message: string,
-    public line: number,
-    public column?: number
-  ) {
-    super(message);
-    this.name = "ParseError";
-  }
-}
-
-/**
  * What kind of runtime failure this is.
  *
  * The first four are error shutoffs — the student's program asked Karel to do

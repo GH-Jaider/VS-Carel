@@ -25,6 +25,9 @@ const MAX_STACK_DEPTH = 2_000;
 // visible action. A truly stuck loop (WHILE true DO BEGIN END) burns this
 // budget in a few milliseconds and still errors out promptly.
 const MAX_INTERNAL_SPINS = 1_000_000;
+// Unlike maxSteps, these two are not configurable: they guard the engine
+// itself (stack growth, non-terminating bookkeeping) rather than the
+// student's step budget, so raising them only trades an error for a hang.
 
 const MIN_SPEED_MS = 10;
 const MAX_SPEED_MS = 5_000;
@@ -53,11 +56,17 @@ export class Interpreter {
   /**
    * @param options.maxSteps Visible instructions allowed before the run is
    *   declared an infinite loop. Lower it for batch grading, raise it for a
-   *   program that legitimately does a lot of work.
+   *   program that legitimately does a lot of work. A value that is not a
+   *   positive finite number falls back to the default rather than disabling
+   *   the guard, which is what NaN, 0 or Infinity would silently do.
    */
   constructor(world: World, options?: { maxSteps?: number }) {
     this.world = world;
-    this.maxSteps = options?.maxSteps ?? DEFAULT_MAX_STEPS;
+    const requested = options?.maxSteps;
+    this.maxSteps =
+      typeof requested === "number" && Number.isFinite(requested) && requested > 0
+        ? Math.floor(requested)
+        : DEFAULT_MAX_STEPS;
   }
 
   get isStarted(): boolean {
@@ -215,7 +224,7 @@ export class Interpreter {
             return result !== "off";
           }
           case "if": {
-            if (this.world.evaluateCondition(statement.condition)) {
+            if (this.evaluateCondition(statement.condition, statement.line)) {
               this.stack.push({
                 type: "block",
                 statements: statement.thenBranch.statements,
@@ -235,6 +244,7 @@ export class Interpreter {
               type: "while",
               condition: statement.condition,
               body: statement.body,
+              line: statement.line,
             });
             continue;
           }
@@ -260,7 +270,7 @@ export class Interpreter {
             continue;
         }
       } else if (frame.type === "while") {
-        if (!this.world.evaluateCondition(frame.condition)) {
+        if (!this.evaluateCondition(frame.condition, frame.line)) {
           this.stack.pop();
           continue;
         }
@@ -279,6 +289,29 @@ export class Interpreter {
     }
 
     return false;
+  }
+
+  /**
+   * Evaluate a condition, stamping the source line onto any RuntimeError the
+   * world raises. The world has no notion of line numbers, so without this an
+   * unknown condition inside IF/WHILE would surface with line === undefined —
+   * unlike every failure reached through executeCall.
+   */
+  private evaluateCondition(condition: string, line: number): boolean {
+    try {
+      return this.world.evaluateCondition(condition);
+    } catch (e) {
+      if (e instanceof RuntimeError) {
+        if (e.line === undefined) {
+          e.line = line;
+        }
+        throw e;
+      }
+      if (e instanceof Error) {
+        throw new RuntimeError(e.message, line);
+      }
+      throw e;
+    }
   }
 
   /**

@@ -3,7 +3,13 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "noEmit": true
+    "noEmit": true,
+    // Empty on purpose: without it TypeScript auto-loads every @types package
+    // it can find (@types/node arrives with the test toolchain), which would
+    // silently hand src/ globals like process, Buffer or console that the
+    // browser build cannot provide. src/env.d.ts declares the one host
+    // primitive the core actually needs. tsconfig.test.json re-adds ["node"].
+    "types": []
   },
   "include": ["src"]
 }
