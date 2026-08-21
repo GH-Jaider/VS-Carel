@@ -49,6 +49,24 @@
           <div class="themes" id="themes" role="group" aria-label="Colour theme">
             <span class="themes-label">theme</span>
           </div>
+          <button
+            class="ghost-button"
+            id="share-link"
+            type="button"
+            title="Copy a link that opens this program and this world"
+          >
+            <span class="key-cap">↺</span>share
+          </button>
+          <!-- Shown only when the clipboard refuses: a link nobody can copy is
+               not a share, so there has to be something to select. -->
+          <input
+            class="share-url"
+            id="share-url"
+            type="text"
+            readonly
+            hidden
+            aria-label="Link to this program and world"
+          />
           <button class="ghost-button" id="about-button" type="button">
             <span class="key-cap">?</span>how it works
           </button>
@@ -117,9 +135,163 @@
               <div class="rate-options" id="rate-options"></div>
             </div>
 
-            <!-- Filled by the chrome: one .toggle per view option. -->
-            <div class="toggles" id="toggles"></div>
+            <!-- The mode switch is markup because it is not a view option: it
+                 decides whether the canvas is a readout or an instrument. The
+                 chrome appends the view toggles after it. -->
+            <div class="toggles" id="toggles">
+              <button
+                class="toggle"
+                id="mode-toggle"
+                type="button"
+                aria-pressed="false"
+                title="Build the world by hand"
+              >
+                edit map
+              </button>
+            </div>
           </div>
+
+          <!-- The map editor. Hidden until the mode toggle turns it on, because
+               every control in it acts on a world that is not running. -->
+          <section class="palette" id="palette" aria-label="Map editor" hidden>
+            <span class="box-title">map</span>
+            <span class="box-note" id="palette-note"></span>
+
+            <div class="palette-row">
+              <span class="palette-label">tool</span>
+              <div class="tools" id="tools" role="group" aria-label="Tool">
+                <button class="tool" id="tool-wall" type="button" data-tool="wall">
+                  <span class="glyph">┃</span>wall
+                </button>
+                <button class="tool" id="tool-beeper" type="button" data-tool="beeper">
+                  <span class="glyph">●</span>beeper
+                </button>
+                <button class="tool" id="tool-karel" type="button" data-tool="karel">
+                  <span class="glyph">▲</span>karel
+                </button>
+              </div>
+              <span class="palette-hint" id="tool-hint"></span>
+            </div>
+
+            <div class="palette-row">
+              <span class="palette-label">size</span>
+              <div class="stepper">
+                <button
+                  class="stepper-button"
+                  id="width-down"
+                  type="button"
+                  data-target="world-width"
+                  data-step="-1"
+                  aria-label="Narrower"
+                >
+                  -
+                </button>
+                <input
+                  class="number"
+                  id="world-width"
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  inputmode="numeric"
+                  aria-label="World width"
+                />
+                <button
+                  class="stepper-button"
+                  id="width-up"
+                  type="button"
+                  data-target="world-width"
+                  data-step="1"
+                  aria-label="Wider"
+                >
+                  +
+                </button>
+              </div>
+
+              <span class="palette-times">×</span>
+
+              <div class="stepper">
+                <button
+                  class="stepper-button"
+                  id="height-down"
+                  type="button"
+                  data-target="world-height"
+                  data-step="-1"
+                  aria-label="Shorter"
+                >
+                  -
+                </button>
+                <input
+                  class="number"
+                  id="world-height"
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  inputmode="numeric"
+                  aria-label="World height"
+                />
+                <button
+                  class="stepper-button"
+                  id="height-up"
+                  type="button"
+                  data-target="world-height"
+                  data-step="1"
+                  aria-label="Taller"
+                >
+                  +
+                </button>
+              </div>
+
+              <span class="palette-label">bag</span>
+              <div class="stepper">
+                <button
+                  class="stepper-button"
+                  id="bag-down"
+                  type="button"
+                  data-target="karel-bag"
+                  data-step="-1"
+                  aria-label="One beeper fewer"
+                >
+                  -
+                </button>
+                <input
+                  class="number"
+                  id="karel-bag"
+                  type="number"
+                  min="0"
+                  max="999"
+                  step="1"
+                  inputmode="numeric"
+                  aria-label="Beepers in Karel's bag"
+                />
+                <button
+                  class="stepper-button"
+                  id="bag-up"
+                  type="button"
+                  data-target="karel-bag"
+                  data-step="1"
+                  aria-label="One beeper more"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div class="palette-row">
+              <button class="palette-button" id="clear-beepers" type="button">clear beepers</button>
+              <button class="palette-button" id="clear-walls" type="button">clear walls</button>
+              <span class="palette-spacer"></span>
+              <button
+                class="palette-button"
+                id="export-world"
+                type="button"
+                title="Download this world as a .klm file"
+              >
+                export .klm
+              </button>
+            </div>
+          </section>
 
           <!-- Filled by the chrome: .panel blocks of readings. -->
           <aside class="readout" id="readout" aria-label="Readings"></aside>
@@ -131,6 +303,7 @@
         <span class="hint"><b data-mod>ctrl</b>+<b>.</b> step</span>
         <span class="hint"><b>esc</b> stop</span>
         <span class="hint"><b>r</b> reset</span>
+        <span class="hint"><b>e</b> edit map</span>
         <span class="hint"><b>1-4</b> world</span>
         <span class="hint"><b>?</b> help</span>
         <span class="statusbar-end" id="status" data-state="idle">idle</span>

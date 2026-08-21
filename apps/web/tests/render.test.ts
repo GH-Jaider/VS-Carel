@@ -69,30 +69,31 @@ describe("computeLayout", () => {
   it("reserves the axis margin on the left and below the grid", () => {
     expect(layout.canvasWidth).toBe(25 + WORLD.width * layout.cell + 8);
     expect(layout.canvasHeight).toBe(25 + WORLD.height * layout.cell + 8);
-    // The origin carries the margin plus whatever slack centring added, so
-    // assert the gap it leaves rather than an absolute coordinate.
-    const slackX = (CONTAINER.width - layout.canvasWidth) / 2;
-    expect(layout.originX).toBe(slackX + 25 + 4);
-    expect(layout.originY).toBe((CONTAINER.height - layout.canvasHeight) / 2 + 4);
+    expect(layout.originX).toBe(25 + 4);
+    expect(layout.originY).toBe(4);
   });
 
-  it("centres the world in the space it is given", () => {
-    const gapLeft = layout.originX - layout.axisMargin;
-    const gapRight = CONTAINER.width - (layout.originX + WORLD.width * layout.cell);
-    expect(gapLeft).toBeCloseTo(gapRight, 5);
-  });
-
-  it("keeps the origin on screen when the world is bigger than its box", () => {
-    // Anchored rather than centred, so the (1,1) corner stays reachable.
-    const cramped = computeLayout({ width: 100, height: 100 }, { width: 200, height: 200 });
-    expect(cramped.originX).toBeGreaterThanOrEqual(cramped.axisMargin);
-    expect(cramped.originY).toBeGreaterThanOrEqual(0);
+  it("draws everything it measures inside the bitmap it asks for", () => {
+    // The canvas element is sized to canvasWidth/Height, so any drawing that
+    // starts past the origin has to still end inside them. An earlier attempt
+    // to centre the world by offsetting the origin broke exactly this, and
+    // two of eight columns fell off the right edge unseen and unclickable.
+    for (const size of [
+      { width: 8, height: 8 },
+      { width: 20, height: 3 },
+      { width: 1, height: 1 },
+      { width: 100, height: 100 },
+    ]) {
+      const l = computeLayout(size, CONTAINER);
+      expect(l.originX + size.width * l.cell).toBeLessThanOrEqual(l.canvasWidth);
+      expect(l.originY + size.height * l.cell).toBeLessThanOrEqual(l.canvasHeight);
+    }
   });
 
   it("drops the margin when the axes are hidden", () => {
     const bare = computeLayout(WORLD, CONTAINER, false);
     expect(bare.axisMargin).toBe(0);
-    expect(bare.originX).toBe((CONTAINER.width - bare.canvasWidth) / 2 + 4);
+    expect(bare.originX).toBe(4);
   });
 });
 
@@ -152,8 +153,13 @@ describe("hitTestAt", () => {
     const boundaryX = cellCorner(layout, 4, 4).x;
     const centerY = cellCenter(layout, 4, 4).y;
     const expected = { kind: "edge", wall: { from: { x: 3, y: 4 }, to: { x: 4, y: 4 } } };
-    expect(hitTestAt(layout, boundaryX - layout.cell * 0.1, centerY)).toEqual(expected);
-    expect(hitTestAt(layout, boundaryX + layout.cell * 0.1, centerY)).toEqual(expected);
+    const left = hitTestAt(layout, boundaryX - layout.cell * 0.1, centerY);
+    const right = hitTestAt(layout, boundaryX + layout.cell * 0.1, centerY);
+    expect(left).toMatchObject(expected);
+    expect(right).toMatchObject(expected);
+    // Same boundary, different squares: which one a click means is the tool's
+    // business, not the hit test's.
+    expect([left, right].map((h) => (h.kind === "edge" ? h.x : null))).toEqual([3, 4]);
   });
 
   it("hits the horizontal boundary between two stacked cells", () => {
@@ -161,8 +167,11 @@ describe("hitTestAt", () => {
     const boundaryY = cellCorner(layout, 5, 5).y;
     const centerX = cellCenter(layout, 5, 5).x;
     const expected = { kind: "edge", wall: { from: { x: 5, y: 5 }, to: { x: 5, y: 6 } } };
-    expect(hitTestAt(layout, centerX, boundaryY - layout.cell * 0.1)).toEqual(expected);
-    expect(hitTestAt(layout, centerX, boundaryY + layout.cell * 0.1)).toEqual(expected);
+    const above = hitTestAt(layout, centerX, boundaryY - layout.cell * 0.1);
+    const below = hitTestAt(layout, centerX, boundaryY + layout.cell * 0.1);
+    expect(above).toMatchObject(expected);
+    expect(below).toMatchObject(expected);
+    expect([above, below].map((h) => (h.kind === "edge" ? h.y : null))).toEqual([6, 5]);
   });
 
   it("keeps the middle of a cell out of the edge zone", () => {
@@ -198,7 +207,7 @@ describe("hitTestAt", () => {
       corner.x + layout.cell * 0.02,
       corner.y + layout.cell * 0.2
     );
-    expect(nearVertical).toEqual({
+    expect(nearVertical).toMatchObject({
       kind: "edge",
       wall: { from: { x: 3, y: 4 }, to: { x: 4, y: 4 } },
     });
@@ -207,7 +216,7 @@ describe("hitTestAt", () => {
       corner.x + layout.cell * 0.2,
       corner.y + layout.cell * 0.02
     );
-    expect(nearHorizontal).toEqual({
+    expect(nearHorizontal).toMatchObject({
       kind: "edge",
       wall: { from: { x: 4, y: 4 }, to: { x: 4, y: 5 } },
     });
@@ -231,7 +240,10 @@ describe("wallSegment", () => {
       const segment = wallSegment(layout, wall);
       const midX = (segment.x1 + segment.x2) / 2;
       const midY = (segment.y1 + segment.y2) / 2;
-      expect(hitTestAt(layout, midX, midY)).toEqual({ kind: "edge", wall });
+      expect(hitTestAt(layout, midX, midY)).toMatchObject({
+        kind: "edge",
+        wall,
+      });
     }
   });
 
@@ -280,5 +292,21 @@ describe("the fixture world", () => {
         y: target.y,
       });
     }
+  });
+});
+
+describe("an edge hit also names the cell it happened in", () => {
+  it("lets a cell tool ignore the boundary the wall tool wants", () => {
+    // Just inside the left border of (4,4): the wall tool reads the boundary
+    // with (3,4), a beeper tool reads the square the pointer is actually over.
+    const corner = cellCorner(layout, 4, 4);
+    const hit = hitTestAt(layout, corner.x + layout.cell * 0.05, corner.y + layout.cell * 0.5);
+
+    expect(hit).toEqual({
+      kind: "edge",
+      wall: { from: { x: 3, y: 4 }, to: { x: 4, y: 4 } },
+      x: 4,
+      y: 4,
+    });
   });
 });

@@ -51,10 +51,16 @@ export interface RenderOptions {
  * What a click landed on. Corners and the edges between them are both
  * targets, so the map editor can place a beeper or toggle a wall from the
  * same gesture; `edge` wins when the point is close enough to a boundary.
+ *
+ * An edge hit carries the cell it happened inside as well, because which of
+ * the two readings is meant depends on the tool in hand: dropping a beeper
+ * near a corner should still drop it in that square, while the wall tool
+ * wants the boundary. The alternative — asking twice with different
+ * thresholds — would let the two answers disagree.
  */
 export type HitTarget =
   | { kind: "cell"; x: number; y: number }
-  | { kind: "edge"; wall: Wall }
+  | { kind: "edge"; wall: Wall; x: number; y: number }
   | { kind: "outside" };
 
 export interface WorldRenderer {

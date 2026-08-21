@@ -89,16 +89,17 @@ export function fitCellSize(world: Dimensions, available: Dimensions, showAxes =
 export function computeLayout(world: Dimensions, available: Dimensions, showAxes = true): Layout {
   const cell = fitCellSize(world, available, showAxes);
   const axisMargin = showAxes ? AXIS_MARGIN : 0;
+  // No centring here. The canvas element is sized to canvasWidth/Height, so
+  // there is no slack inside the bitmap to centre within — offsetting the
+  // origin only pushes the far columns past the right edge, where they are
+  // neither drawn nor clickable. Centring the element in its box is the
+  // stylesheet's job.
   const drawnWidth = axisMargin + world.width * cell + WALL_WIDTH * 2;
   const drawnHeight = axisMargin + world.height * cell + WALL_WIDTH * 2;
-  // Centre the slack, but never take the origin negative: a world too big for
-  // its box has to stay anchored so its (1,1) corner is still reachable.
-  const slackX = Math.max(0, (available.width - drawnWidth) / 2);
-  const slackY = Math.max(0, (available.height - drawnHeight) / 2);
   return {
     cell,
-    originX: slackX + axisMargin + WALL_WIDTH,
-    originY: slackY + WALL_WIDTH,
+    originX: axisMargin + WALL_WIDTH,
+    originY: WALL_WIDTH,
     canvasWidth: drawnWidth,
     canvasHeight: drawnHeight,
     axisMargin,
@@ -222,7 +223,7 @@ export function hitTestAt(layout: Layout, px: number, py: number): HitTarget {
         : vertical
       : (vertical ?? horizontal);
 
-  return nearest ? { kind: "edge", wall: nearest.wall } : { kind: "cell", x, y };
+  return nearest ? { kind: "edge", wall: nearest.wall, x, y } : { kind: "cell", x, y };
 }
 
 // ── Renderer ──────────────────────────────────────────────────────────────

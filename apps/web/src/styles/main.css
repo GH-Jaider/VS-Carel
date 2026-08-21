@@ -70,6 +70,9 @@
   --editor-sel: rgba(169, 139, 255, 0.28);
 
   --grain: rgba(150, 150, 190, 0.05);
+  /* The wash the drag-and-drop overlay lays over the page. Per theme, because
+     dimming a light palette means going lighter, not darker. */
+  --scrim: rgba(12, 12, 18, 0.86);
   --ok: var(--green);
   --warn: var(--amber);
 
@@ -138,6 +141,7 @@
   --editor-sel: rgba(167, 139, 250, 0.3);
 
   --grain: rgba(150, 170, 200, 0.045);
+  --scrim: rgba(8, 9, 11, 0.86);
 }
 
 /* -----------------------------------------------------------------------
@@ -179,6 +183,7 @@
   --editor-sel: rgba(211, 134, 155, 0.3);
 
   --grain: rgba(220, 190, 140, 0.05);
+  --scrim: rgba(27, 26, 23, 0.86);
 }
 
 /* -----------------------------------------------------------------------
@@ -222,6 +227,7 @@
   --editor-sel: rgba(103, 65, 165, 0.22);
 
   --grain: rgba(80, 70, 50, 0.05);
+  --scrim: rgba(242, 239, 231, 0.88);
 }
 
 *,
@@ -315,10 +321,32 @@ button {
 /* ---------------------------------------------------------------- shell -- */
 
 .frame {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100dvh;
   min-width: 0;
+}
+
+/* A file is being dragged over the page. Without this the only sign that the
+   page takes drops was that it worked, which is no sign at all. The overlay
+   never takes the pointer, or it would swallow the drop it is announcing. */
+.frame.dropping::after {
+  content: "drop a .klm world or a .kli program";
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: var(--scrim);
+  outline: 1px dashed var(--cyan);
+  outline-offset: -7px;
+  color: var(--cyan);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .masthead {
@@ -586,7 +614,11 @@ button {
 
 .stage {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  /* Only the viewport's track is declared: the console, the palette and the
+     readout make their own as implicit rows, so the hidden palette costs
+     neither a track nor the gap that would come with it. */
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
   gap: 10px;
   min-width: 0;
   min-height: 0;
@@ -970,12 +1002,20 @@ button.problem:hover {
   overflow: visible;
 }
 
+.viewport {
+  /* The canvas sizes itself to the world it draws, so the box centres the
+     element rather than the renderer centring the drawing inside its own
+     bitmap — which would push the far columns off the edge. `auto` margins
+     rather than centred content: a world larger than its box then stays
+     anchored, keeping its (1,1) corner reachable. */
+  display: flex;
+}
+
 .viewport canvas {
   /* The frame clips the drawing; the box titles sit outside it. */
   clip-path: inset(0);
   display: block;
-  width: 100%;
-  height: 100%;
+  margin: auto;
   touch-action: none;
 }
 
@@ -1126,6 +1166,220 @@ button.problem:hover {
 
 .toggle[aria-pressed="true"]::before {
   content: "[X]";
+  color: var(--green);
+}
+
+/* -------------------------------------------------------------- palette -- */
+/* The map editor's instrument panel. It is the same box as every other one --
+   one rule, a title chip cut into the top border -- because switching to edit
+   mode should feel like a panel lighting up on the machine already in front of
+   you, not like a different application.
+
+   Selection is inverse video throughout, and each group borrows the accent it
+   already owns elsewhere: pink for the tool in hand (Karel's own colour), cyan
+   for the one button that hands something to somebody else. */
+
+.palette {
+  position: relative;
+  display: grid;
+  gap: 9px;
+  padding: 13px 11px 11px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  min-width: 0;
+}
+
+/* `display: grid` above would otherwise beat the UA rule for [hidden]. */
+.palette[hidden] {
+  display: none;
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.palette-label {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.palette-times {
+  color: var(--text-faint);
+}
+
+.palette-spacer {
+  flex: 1;
+}
+
+/* What the tool in hand does, in one line. The rules of the world -- walls on
+   edges, a right click taking a beeper back -- are not guessable, and a hint
+   that changes with the tool is cheaper than a legend nobody reads. */
+.palette-hint {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* One segmented control, like the speed picker: adjacent tools share a rule so
+   the group reads as one switch with one position. */
+.tools {
+  display: flex;
+  border: 1px solid var(--line);
+}
+
+.tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: none;
+  border-right: 1px solid var(--line);
+  background: none;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+
+.tool:last-child {
+  border-right: none;
+}
+
+.tool .glyph {
+  font-size: 9px;
+  letter-spacing: -0.05em;
+}
+
+.tool:hover {
+  color: var(--text);
+}
+
+.tool[aria-pressed="true"] {
+  background: var(--pink);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+/* A number field a terminal would accept: no native spinner, its own pair of
+   keys either side, and tabular figures so a width of 8 and a width of 88 sit
+   on the same rhythm. */
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+}
+
+.stepper-button {
+  width: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1;
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+
+.stepper-button:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.number {
+  width: 46px;
+  padding: 3px 4px;
+  border: none;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  /* Both halves of killing the spinner: WebKit needs the pseudo-elements,
+     Firefox needs the appearance. */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.number::-webkit-outer-spin-button,
+.number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* One focus ring for the whole panel, in the accent the fields already use.
+   The default one is a rounded halo, which no other control here has. */
+.number:focus-visible,
+.tool:focus-visible,
+.stepper-button:focus-visible,
+.palette-button:focus-visible,
+.share-url:focus-visible {
+  outline: 1px solid var(--cyan);
+  outline-offset: -1px;
+}
+
+.palette-button {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.palette-button:hover {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.palette-button.primary {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.palette-button.primary:hover {
+  background: var(--cyan);
+  color: var(--bg);
+}
+
+/* The fallback for a clipboard that said no. */
+.share-url {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--amber);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+}
+
+.share-url[hidden] {
+  display: none;
+}
+
+/* A note that reports something went right. Everything else this chip says is
+   ordinary, so the colour is the whole message. */
+.palette .box-note[data-flash="true"] {
   color: var(--green);
 }
 
@@ -1478,6 +1732,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .statusbar-end[data-state="error"] {
   background: var(--red);
 }
+.statusbar-end[data-state="edit"] {
+  background: var(--amber);
+}
 
 /* ---------------------------------------------------------------- about -- */
 
@@ -1587,6 +1844,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .problems,
 .viewport,
 .console,
+.palette,
 .statusbar,
 .readout > * {
   animation: paint 0.22s steps(4, end) backwards;
@@ -1718,6 +1976,10 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   }
 
   .hint:nth-child(n + 4) {
+    display: none;
+  }
+
+  .palette-hint {
     display: none;
   }
 }
