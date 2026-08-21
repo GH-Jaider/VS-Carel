@@ -23,9 +23,10 @@
     "build": "tsup src/index.ts --format esm --dts --sourcemap --clean",
     "dev": "tsup src/index.ts --format esm --dts --sourcemap --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit"
   },
   "devDependencies": {
+    "@types/node": "~22.19.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11"

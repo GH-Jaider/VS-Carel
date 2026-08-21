@@ -1,0 +1,10 @@
+{
+  // The tests read fixtures off disk, so they legitimately run on Node. They
+  // get Node's types; src/ deliberately does not, which is what stops the core
+  // from growing a dependency on a runtime the browser build cannot provide.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src", "tests"]
+}
