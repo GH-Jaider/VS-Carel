@@ -317,6 +317,9 @@ class CanvasWorldRenderer implements WorldRenderer {
     if (cursor) {
       this.paintCursor(layout, palette, cursor);
     }
+    if (this.options.edge) {
+      this.paintEdgeCursor(layout, palette, this.options.edge);
+    }
     if (showAxes) {
       this.paintAxes(layout, palette);
     }
@@ -335,6 +338,25 @@ class CanvasWorldRenderer implements WorldRenderer {
     const corner = cellCorner(layout, cursor.x, cursor.y);
     this.ctx.fillStyle = palette.cursor;
     this.ctx.fillRect(corner.x, corner.y, layout.cell, layout.cell);
+  }
+
+  /**
+   * The wall a click would place, drawn where it would land and a little
+   * thicker than a real one, so it reads as an intention rather than as
+   * something already there.
+   */
+  private paintEdgeCursor(layout: Layout, palette: ThemeColors, wall: Wall): void {
+    const segment = wallSegment(layout, wall);
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.strokeStyle = palette.cursor;
+    ctx.lineWidth = WALL_WIDTH + 2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(segment.x1, segment.y1);
+    ctx.lineTo(segment.x2, segment.y2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   private paintAxes(layout: Layout, palette: ThemeColors): void {

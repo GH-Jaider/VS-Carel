@@ -45,6 +45,14 @@ export interface RenderOptions {
   showAxes?: boolean;
   /** Highlight one cell, for the map editor's cursor. */
   cursor?: { x: number; y: number } | null;
+  /**
+   * Preview the wall a click would toggle.
+   *
+   * The wall tool acts on the boundary between two cells, so highlighting the
+   * cell under the pointer previews the wrong thing entirely — you aim at a
+   * line and a square lights up. This draws the line instead.
+   */
+  edge?: Wall | null;
 }
 
 /**

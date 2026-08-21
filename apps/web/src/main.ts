@@ -174,6 +174,8 @@ class Application {
   private tool: Tool = "wall";
   /** The corner under the pointer, previewed while editing. */
   private cursor: { x: number; y: number } | null = null;
+  /** The boundary the wall tool would toggle, previewed instead of a cell. */
+  private edgeCursor: Wall | null = null;
   private stroke: Stroke | null = null;
   private noteTimer = 0;
   /** Built by buildToggles, and the only view toggle there is so far. */
@@ -611,6 +613,7 @@ class Application {
     canvas.addEventListener("pointerleave", () => {
       if (this.cursor) {
         this.cursor = null;
+        this.edgeCursor = null;
         this.render();
       }
     });
@@ -670,13 +673,26 @@ class Application {
     }
   }
 
-  /** Preview where the next gesture lands. Repaints only when it moves. */
+  /**
+   * Preview where the next gesture lands. Repaints only when it moves.
+   *
+   * Which preview depends on the tool: the wall tool acts on a boundary, so
+   * lighting up the square under the pointer would show the wrong thing and
+   * leave you guessing which of its four sides you were about to change.
+   */
   private moveCursor(hit: HitTarget): void {
-    const next = hit.kind === "outside" ? null : { x: hit.x, y: hit.y };
-    if (next?.x === this.cursor?.x && next?.y === this.cursor?.y) {
+    const wallTool = this.tool === "wall";
+    const cell = hit.kind === "outside" || wallTool ? null : { x: hit.x, y: hit.y };
+    const edge = wallTool && hit.kind === "edge" ? hit.wall : null;
+
+    const sameCell = cell?.x === this.cursor?.x && cell?.y === this.cursor?.y;
+    const sameEdge =
+      (edge ? edgeKey(edge) : null) === (this.edgeCursor ? edgeKey(this.edgeCursor) : null);
+    if (sameCell && sameEdge) {
       return;
     }
-    this.cursor = next;
+    this.cursor = cell;
+    this.edgeCursor = edge;
     this.render();
   }
 
@@ -803,6 +819,7 @@ class Application {
     this.renderer.draw(view.world, {
       showAxes: this.showAxes,
       cursor: editing ? this.cursor : null,
+      edge: editing ? this.edgeCursor : null,
     });
     this.dom.canvas.classList.toggle("editable", editing);
 

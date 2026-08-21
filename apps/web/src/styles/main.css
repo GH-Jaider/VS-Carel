@@ -1804,14 +1804,26 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
    place in a nine-section reference is always one glance away. */
 
 .about {
+  /* Positioned explicitly rather than trusting the UA's centring of a
+     top-layer dialog, which is where this collapsed to a sliver against the
+     right edge on at least one browser. inset + auto margins centre it the
+     same way everywhere. */
+  position: fixed;
+  inset: 0;
+  margin: auto;
   border: 1px solid var(--line-bright);
   border-radius: 0;
   background: var(--bg-panel);
   color: var(--text);
   padding: 0;
-  max-width: 820px;
-  width: calc(100% - 32px);
-  max-height: min(88dvh, 780px);
+  width: min(820px, calc(100% - 32px));
+  /* A definite height, not a maximum: the body below grows into it with
+     flex: 1, and a flex basis resolved against an indefinite height is free
+     to come out as nothing. The document is always taller than this anyway.
+     vh first, so a browser without dvh still gets a usable number. */
+  height: 780px;
+  height: min(88vh, 780px);
+  height: min(88dvh, 780px);
   overflow: hidden;
 }
 
