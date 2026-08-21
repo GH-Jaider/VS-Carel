@@ -6,7 +6,7 @@
  */
 
 import * as vscode from "vscode";
-import { Parser, Diagnostic as KarelDiagnostic } from "@/interpreter";
+import { Parser, Diagnostic as KarelDiagnostic } from "@karel/core";
 
 const DEBOUNCE_MS = 250;
 

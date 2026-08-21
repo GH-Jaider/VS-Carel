@@ -8,7 +8,7 @@
  */
 
 import * as vscode from "vscode";
-import type { ExecutionState } from "@/controller";
+import type { ExecutionState } from "./controller";
 
 export class StatusBar implements vscode.Disposable {
   private readonly stateItem: vscode.StatusBarItem;

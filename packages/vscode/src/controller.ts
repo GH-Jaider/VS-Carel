@@ -13,9 +13,9 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { Interpreter, RuntimeError, World, KarelMap, validateKarelMap } from "@/interpreter";
-import { WorldEditorProvider, SessionView } from "@/worldEditor";
-import { StatusBar } from "@/statusBar";
+import { Interpreter, RuntimeError, World, KarelMap, validateKarelMap } from "@karel/core";
+import { WorldEditorProvider, SessionView } from "./worldEditor";
+import { StatusBar } from "./statusBar";
 
 export type ExecutionState = "idle" | "running" | "stepping" | "error" | "done";
 

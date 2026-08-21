@@ -10,10 +10,10 @@
  */
 
 import * as vscode from "vscode";
-import { ExecutionController } from "@/controller";
-import { DiagnosticsProvider } from "@/diagnostics";
-import { KarelCodeLensProvider } from "@/codeLens";
-import { WorldEditorProvider } from "@/worldEditor";
+import { ExecutionController } from "./controller";
+import { DiagnosticsProvider } from "./diagnostics";
+import { KarelCodeLensProvider } from "./codeLens";
+import { WorldEditorProvider } from "./worldEditor";
 
 const PROGRAM_TEMPLATE = `BEGINNING-OF-PROGRAM
 	DEFINE-NEW-INSTRUCTION turnright AS

@@ -9,7 +9,7 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { ExecutionController } from "@/controller";
+import { ExecutionController } from "./controller";
 
 export class KarelCodeLensProvider implements vscode.CodeLensProvider {
   private readonly emitter = new vscode.EventEmitter<void>();

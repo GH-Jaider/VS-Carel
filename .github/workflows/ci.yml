@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main, monorepo]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads packageManager from the root package.json, so the pnpm version
+      # is pinned in one place only.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Topological order comes from the workspace:* dependencies, so the core
+      # is always built before the shells that bundle it.
+      - run: pnpm -r build
+      - run: pnpm -r test
+      - run: pnpm -r typecheck
+      - run: pnpm lint

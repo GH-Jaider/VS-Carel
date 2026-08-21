@@ -2,11 +2,27 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "watch",
+      // The trailing "..." selects vs-karel AND its dependencies, so @karel/core
+      // is rebuilt first. Launching with a stale core is the failure mode this
+      // avoids, and it costs a couple of seconds.
+      "label": "build",
+      "type": "shell",
+      "command": "pnpm --filter 'vs-karel...' build",
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": "$tsc"
+    },
+    {
+      // The fast loop: leave this running alongside `pnpm dev:core` and webpack
+      // picks up each rebuild of the core's dist/.
+      "label": "watch extension",
+      "type": "shell",
+      "command": "pnpm watch:ext",
+      "isBackground": true,
+      "presentation": { "reveal": "never" },
       "problemMatcher": {
         "owner": "webpack",
-        "fileLocation": ["relative", "${workspaceFolder}"],
+        "fileLocation": ["relative", "${workspaceFolder}/packages/vscode"],
         "pattern": {
           "regexp": "^ERROR in (.*)\\((\\d+),(\\d+)\\):",
           "file": 1,
@@ -17,16 +33,8 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": "Compiler starting",
-          "endsPattern": "compiled|Compiler finished",
+          "endsPattern": "compiled|Compiler finished"
         }
-      },
-      "isBackground": true,
-      "presentation": {
-        "reveal": "never"
-      },
-      "group": {
-        "kind": "build",
-        "isDefault": true
       }
     }
   ]

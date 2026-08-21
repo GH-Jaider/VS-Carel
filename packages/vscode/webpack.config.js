@@ -7,6 +7,7 @@ const path = require("path");
 const config = {
   target: "node",
   mode: "none",
+  context: __dirname,
   entry: "./src/extension.ts",
   output: {
     path: path.resolve(__dirname, "dist"),
@@ -18,9 +19,6 @@ const config = {
   },
   resolve: {
     extensions: [".ts", ".js"],
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
   },
   module: {
     rules: [

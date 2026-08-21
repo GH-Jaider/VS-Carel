@@ -16,7 +16,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { World, validateKarelMap } from "@/interpreter";
+import { World, validateKarelMap } from "@karel/core";
 
 export type WorldStatus = {
   state: "idle" | "running" | "stepping" | "error" | "done";
