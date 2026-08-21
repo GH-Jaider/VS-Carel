@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+  - apps/*
+
+# pnpm 10 no ejecuta lifecycle scripts de dependencias sin allowlist.
+onlyBuiltDependencies:
+  - esbuild

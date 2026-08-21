@@ -4,6 +4,7 @@ node_modules/
 # Build outputs
 dist/
 out/
+dist-artifacts/
 
 # VS Code test
 .vscode-test/
@@ -30,6 +31,7 @@ pnpm-debug.log*
 .env.local
 Agents.md
 CONTRIBUTING.md
+
 # Coverage
 coverage/
 .nyc_output/
