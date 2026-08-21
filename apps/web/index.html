@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Karel · a robot on a grid</title>
+    <meta
+      name="description"
+      content="Karel the Robot in the browser. Write a program, watch it walk the grid, pick up the beepers, build your own world."
+    />
+    <meta name="theme-color" content="#0c0c12" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400;1,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <script>
+      // Runs before first paint so a stored theme never flashes the default
+      // palette on the way in. Deliberately tiny and dependency-free.
+      try {
+        var t = localStorage.getItem("karel.theme");
+        // Checked against the known set: a theme that has since been renamed
+        // would otherwise leave the page on an attribute nothing styles and
+        // no swatch matches.
+        if (["charm", "onyx", "ember", "paper"].indexOf(t) >= 0) {
+          document.documentElement.dataset.theme = t;
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="frame">
+      <header class="masthead">
+        <div class="identity">
+          <span class="wordmark">KAREL</span>
+          <span class="subtitle">a robot on a grid</span>
+        </div>
+
+        <!-- Filled by the chrome: one .channel button per bundled world. -->
+        <nav class="channels" id="worlds" aria-label="Worlds"></nav>
+
+        <div class="masthead-end">
+          <!-- Filled by the chrome: one .theme-swatch per palette. -->
+          <div class="themes" id="themes" role="group" aria-label="Colour theme">
+            <span class="themes-label">theme</span>
+          </div>
+          <button class="ghost-button" id="about-button" type="button">
+            <span class="key-cap">?</span>how it works
+          </button>
+        </div>
+      </header>
+
+      <main class="bench">
+        <section class="workshop">
+          <div class="editor">
+            <span class="box-title">program</span>
+            <span class="box-note" id="program-note"></span>
+            <!-- CodeMirror mounts here and is the only thing allowed to own it. -->
+            <div class="editor-host" id="editor-host"></div>
+          </div>
+
+          <div class="panel problems">
+            <span class="panel-title">problems</span>
+            <span class="panel-note" id="problems-note"></span>
+            <div class="panel-body">
+              <!-- Filled by the chrome: one .problem per diagnostic. Kept as a
+                   separate node from the panel so a rebuild cannot wipe the
+                   title chip cut into the border. -->
+              <div class="problem-list" id="problems"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="stage">
+          <div class="viewport" id="viewport">
+            <span class="box-title">world</span>
+            <span class="box-note" id="world-note"></span>
+            <canvas id="world-canvas"></canvas>
+          </div>
+
+          <div class="console">
+            <div class="transport">
+              <button
+                class="transport-button primary"
+                id="run"
+                type="button"
+                aria-label="Run or stop"
+              >
+                <span class="glyph" id="run-glyph">▶</span><span id="run-label">run</span>
+              </button>
+              <button
+                class="transport-button"
+                id="step"
+                type="button"
+                title="Execute one instruction"
+              >
+                <span class="glyph">▶❚</span><span>step</span>
+              </button>
+              <button
+                class="transport-button"
+                id="reset"
+                type="button"
+                title="Put the world back as it started"
+              >
+                <span class="glyph">↺</span><span>reset</span>
+              </button>
+            </div>
+
+            <div class="rate">
+              <span class="rate-label">speed</span>
+              <!-- Filled by the chrome: one .rate-option per speed. -->
+              <div class="rate-options" id="rate-options"></div>
+            </div>
+
+            <!-- Filled by the chrome: one .toggle per view option. -->
+            <div class="toggles" id="toggles"></div>
+          </div>
+
+          <!-- Filled by the chrome: .panel blocks of readings. -->
+          <aside class="readout" id="readout" aria-label="Readings"></aside>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span class="hint"><b data-mod>ctrl</b>+<b>enter</b> run</span>
+        <span class="hint"><b data-mod>ctrl</b>+<b>.</b> step</span>
+        <span class="hint"><b>esc</b> stop</span>
+        <span class="hint"><b>r</b> reset</span>
+        <span class="hint"><b>1-4</b> world</span>
+        <span class="hint"><b>?</b> help</span>
+        <span class="statusbar-end" id="status" data-state="idle">idle</span>
+      </footer>
+    </div>
+
+    <dialog class="about" id="about">
+      <article class="about-body">
+        <header>
+          <h2>how it works</h2>
+          <button class="ghost-button" id="about-close" type="button">esc</button>
+        </header>
+        <div id="about-content"></div>
+      </article>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

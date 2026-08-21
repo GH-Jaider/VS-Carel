@@ -1,0 +1,1723 @@
+/* =========================================================================
+   Karel — a terminal user interface that happens to run in a browser
+   -------------------------------------------------------------------------
+   The whole visual language is borrowed from TUIs: Charm's tooling, sampler,
+   the shape of a well-made curses app. That means a few firm commitments.
+
+     · One monospace face for everything, the program text included. A terminal
+       has no second font, and the even rhythm is most of what makes the look.
+     · Every box is drawn with a one-pixel rule and its title cut into the top
+       border, the way a box-drawing character set renders `┌─ TITLE ─────┐`.
+     · Square corners, flat fills, no shadows and no gradients. A cell either
+       has a colour or it does not.
+     · Selection is inverse video — the terminal idiom — never a soft glow.
+     · Saturated accents against near-black, used sparingly enough that each
+       one still means something.
+   ========================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------
+     charm — hot pink and purple on near-black. The default.
+
+     Themes live here rather than in TypeScript so there is exactly one place
+     a colour is written down. The canvas reads these same custom properties
+     back through getComputedStyle when the theme changes, which is why every
+     value below has to stay a plain hex literal.
+     --------------------------------------------------------------------- */
+  --bg: #0c0c12;
+  --bg-panel: #111119;
+  --bg-raised: #1a1a24;
+
+  --line: #2b2b39;
+  --line-bright: #45455a;
+
+  --text: #e6e6f0;
+  --text-dim: #9494ab;
+  --text-faint: #61617a;
+
+  --pink: #ff5fa2;
+  --purple: #a98bff;
+  --cyan: #4fe3d2;
+  --lime: #cdfa54;
+  --amber: #ffc861;
+  --green: #45dd8b;
+  --red: #ff6b6b;
+  --blue: #6fa8ff;
+
+  /* -------------------------------------------------------------------
+     The world, as the canvas draws it.
+
+     One custom property per field of `ThemeColors` in src/contracts.ts:
+     the renderer reads exactly these names off the root element, so the
+     set has to be complete and identically named in all four themes.
+
+     `--canvas-bg` must equal `--bg`, or the title chips that straddle the
+     viewport border show up as patches against it.
+     ------------------------------------------------------------------- */
+  --canvas-bg: #0c0c12;
+  --grid: #24243a;
+  --canvas-label: #8686a4;
+  --karel: #ff5fa2;
+  --beeper: #4fe3d2;
+  --beeper-label: #08080e;
+  --wall: #b9b9d6;
+  --cursor: #ffc861;
+
+  /* Editor washes. Flat translucent fills rather than derived colours, so a
+     theme can tune how loud its own current line is. */
+  --editor-active: rgba(255, 255, 255, 0.035);
+  --editor-exec: rgba(255, 95, 162, 0.16);
+  --editor-sel: rgba(169, 139, 255, 0.28);
+
+  --grain: rgba(150, 150, 190, 0.05);
+  --ok: var(--green);
+  --warn: var(--amber);
+
+  --mono:
+    "JetBrains Mono", ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* The program column: wide enough for a Karel procedure at 12.5px without
+     wrapping, narrow enough that the world keeps the bigger half. */
+  --editor-rail: 500px;
+  --leading: 1.55;
+
+  /* Swatch previews. Fixed values on purpose: each one has to show its own
+     theme no matter which theme is active. */
+  --sw-charm-bg: #0c0c12;
+  --sw-charm-a: #ff5fa2;
+  --sw-charm-b: #4fe3d2;
+  --sw-onyx-bg: #08090b;
+  --sw-onyx-a: #5cc8ff;
+  --sw-onyx-b: #34d399;
+  --sw-ember-bg: #1b1a17;
+  --sw-ember-a: #fb4934;
+  --sw-ember-b: #8ec07c;
+  --sw-paper-bg: #f2efe7;
+  --sw-paper-a: #c2255c;
+  --sw-paper-b: #0b7285;
+}
+
+/* -----------------------------------------------------------------------
+   onyx — the deep one. Near-pure black rather than a tinted charcoal, with
+   the contrast pushed up and the accents kept cool and few. Where charm is
+   loud, this one gets out of the way: the brightest thing on screen should
+   be the world.
+   ----------------------------------------------------------------------- */
+[data-theme="onyx"] {
+  --bg: #08090b;
+  --bg-panel: #0e1014;
+  --bg-raised: #171a20;
+
+  --line: #23272f;
+  --line-bright: #3c434e;
+
+  --text: #f1f3f6;
+  --text-dim: #99a1ad;
+  --text-faint: #626a77;
+
+  --pink: #5cc8ff;
+  --purple: #a78bfa;
+  --cyan: #2dd4bf;
+  --lime: #a3e635;
+  --amber: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --blue: #60a5fa;
+
+  --canvas-bg: #08090b;
+  --grid: #1e222a;
+  --canvas-label: #838c99;
+  --karel: #5cc8ff;
+  --beeper: #34d399;
+  --beeper-label: #04050a;
+  --wall: #aeb7c4;
+  --cursor: #fbbf24;
+
+  --editor-active: rgba(255, 255, 255, 0.035);
+  --editor-exec: rgba(92, 200, 255, 0.16);
+  --editor-sel: rgba(167, 139, 250, 0.3);
+
+  --grain: rgba(150, 170, 200, 0.045);
+}
+
+/* -----------------------------------------------------------------------
+   ember — the warm retro one, in the lineage of gruvbox: orange and olive
+   over a brown-black, the colour of a terminal that has been on all night.
+   ----------------------------------------------------------------------- */
+[data-theme="ember"] {
+  --bg: #1b1a17;
+  --bg-panel: #232120;
+  --bg-raised: #322e2b;
+
+  --line: #423b36;
+  --line-bright: #665c54;
+
+  --text: #ebdbb2;
+  --text-dim: #b3a288;
+  --text-faint: #857b6c;
+
+  --pink: #fe8019;
+  --purple: #d3869b;
+  --cyan: #8ec07c;
+  --lime: #b8bb26;
+  --amber: #fabd2f;
+  --green: #b8bb26;
+  --red: #fb4934;
+  --blue: #83a598;
+
+  --canvas-bg: #1b1a17;
+  --grid: #35302b;
+  --canvas-label: #9b8f7c;
+  --karel: #fb4934;
+  --beeper: #8ec07c;
+  --beeper-label: #1b1a17;
+  --wall: #d5c4a1;
+  --cursor: #fabd2f;
+
+  --editor-active: rgba(251, 241, 199, 0.04);
+  --editor-exec: rgba(251, 73, 52, 0.18);
+  --editor-sel: rgba(211, 134, 155, 0.3);
+
+  --grain: rgba(220, 190, 140, 0.05);
+}
+
+/* -----------------------------------------------------------------------
+   paper — the light one. Not an inversion: a light background needs darker,
+   more saturated accents to hold the same weight, and the grid has to be
+   drawn in ink rather than in light. The walls in particular go to near-black
+   here, because a pale rule on paper reads as a fold, not as a barrier.
+   ----------------------------------------------------------------------- */
+[data-theme="paper"] {
+  --bg: #f2efe7;
+  --bg-panel: #f9f7f1;
+  --bg-raised: #e7e2d6;
+
+  --line: #cec7b7;
+  --line-bright: #a79e8b;
+
+  --text: #23211c;
+  --text-dim: #5b564b;
+  --text-faint: #8a8375;
+
+  --pink: #c2255c;
+  --purple: #6741a5;
+  --cyan: #0b7285;
+  --lime: #5c7a10;
+  --amber: #9c6a06;
+  --green: #216e39;
+  --red: #b02525;
+  --blue: #1864ab;
+
+  --canvas-bg: #f2efe7;
+  --grid: #d7d0c0;
+  --canvas-label: #6d6553;
+  --karel: #c2255c;
+  --beeper: #0b7285;
+  --beeper-label: #f4f2ec;
+  --wall: #3a352c;
+  --cursor: #9c6a06;
+
+  --editor-active: rgba(35, 33, 28, 0.045);
+  --editor-exec: rgba(194, 37, 92, 0.14);
+  --editor-sel: rgba(103, 65, 165, 0.22);
+
+  --grain: rgba(80, 70, 50, 0.05);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: var(--leading);
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* A very faint dot lattice, standing in for the cell grid of a terminal. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: radial-gradient(circle at 1px 1px, var(--grain) 1px, transparent 0);
+  background-size: 4px 4px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+::selection {
+  background: var(--pink);
+  color: var(--bg);
+}
+
+/* ------------------------------------------------------------- the box -- */
+/* One rule, and a title chip that paints over it. The chip carries the page
+   background so the border appears to break around the label, which is
+   exactly what a box-drawing title looks like in a terminal. */
+
+.box-title,
+.panel-title {
+  position: absolute;
+  top: 0;
+  left: 9px;
+  transform: translateY(-50%);
+  padding: 0 6px;
+  background: var(--bg);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pink);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.box-note,
+.panel-note {
+  position: absolute;
+  top: 0;
+  right: 9px;
+  max-width: 52%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: translateY(-50%);
+  padding: 0 6px;
+  background: var(--bg);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ---------------------------------------------------------------- shell -- */
+
+.frame {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100dvh;
+  min-width: 0;
+}
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  padding: 0 14px;
+  height: 42px;
+  border-bottom: 1px solid var(--line);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  min-width: 0;
+}
+
+/* Inverse video, the way a TUI names itself in its own title bar. */
+.wordmark {
+  background: var(--pink);
+  color: var(--bg);
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.subtitle {
+  font-size: 10.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 940px) {
+  .subtitle {
+    display: none;
+  }
+}
+
+.channels {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.channels::-webkit-scrollbar {
+  display: none;
+}
+
+.channel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  transition:
+    color 0.1s,
+    background 0.1s,
+    border-color 0.1s;
+}
+
+.channel:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.channel .index {
+  font-size: 10px;
+  color: var(--text-faint);
+  transition: color 0.1s;
+}
+
+.channel .index::before {
+  content: "[";
+}
+.channel .index::after {
+  content: "]";
+}
+
+.channel[aria-selected="true"] {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.channel[aria-selected="true"] .index {
+  color: var(--bg);
+  opacity: 0.62;
+}
+
+.masthead-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.themes {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.themes-label {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 1180px) {
+  .themes-label {
+    display: none;
+  }
+}
+
+/* Each swatch previews its own theme rather than describing it: two bands of
+   the palette it would switch to, over that theme's own background. */
+.theme-swatch {
+  width: 20px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: none;
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 0.1s,
+    transform 0.1s;
+}
+
+.theme-swatch::before,
+.theme-swatch::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 6px;
+}
+
+.theme-swatch::before {
+  right: 50%;
+}
+
+.theme-swatch::after {
+  left: 50%;
+}
+
+.theme-swatch:hover {
+  border-color: var(--line-bright);
+}
+
+.theme-swatch[aria-pressed="true"] {
+  border-color: var(--text);
+  transform: scale(1.12);
+}
+
+/* Each swatch is painted in its own theme's colours whichever theme is
+   currently active -- so it previews rather than merely labels. */
+.theme-swatch[data-theme="charm"] {
+  background: var(--sw-charm-bg);
+}
+.theme-swatch[data-theme="charm"]::before {
+  background: var(--sw-charm-a);
+}
+.theme-swatch[data-theme="charm"]::after {
+  background: var(--sw-charm-b);
+}
+
+.theme-swatch[data-theme="onyx"] {
+  background: var(--sw-onyx-bg);
+}
+.theme-swatch[data-theme="onyx"]::before {
+  background: var(--sw-onyx-a);
+}
+.theme-swatch[data-theme="onyx"]::after {
+  background: var(--sw-onyx-b);
+}
+
+.theme-swatch[data-theme="ember"] {
+  background: var(--sw-ember-bg);
+}
+.theme-swatch[data-theme="ember"]::before {
+  background: var(--sw-ember-a);
+}
+.theme-swatch[data-theme="ember"]::after {
+  background: var(--sw-ember-b);
+}
+
+.theme-swatch[data-theme="paper"] {
+  background: var(--sw-paper-bg);
+}
+.theme-swatch[data-theme="paper"]::before {
+  background: var(--sw-paper-a);
+}
+.theme-swatch[data-theme="paper"]::after {
+  background: var(--sw-paper-b);
+}
+
+.ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.ghost-button:hover {
+  color: var(--bg);
+  background: var(--text-dim);
+  border-color: var(--text-dim);
+}
+
+.key-cap {
+  padding: 0 4px;
+  background: var(--line);
+  color: var(--text);
+  font-size: 10px;
+}
+
+.ghost-button:hover .key-cap {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------- bench -- */
+/* Two columns: the program on the left, the world and its readings on the
+   right. Both start nine pixels down -- enough room for a title chip, which
+   straddles the top border and would otherwise be clipped. */
+
+.bench {
+  display: grid;
+  grid-template-columns: minmax(320px, var(--editor-rail)) minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+}
+
+.workshop {
+  display: grid;
+  /* The editor takes whatever the problems panel does not. */
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding: 9px 0 10px 14px;
+}
+
+.stage {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  padding: 9px 14px 10px 12px;
+}
+
+/* -------------------------------------------------------------- program -- */
+/* CodeMirror injects its own DOM, so the box is a plain framed shell and
+   everything below re-dresses `.cm-*` in the system's own tokens. Nothing
+   here sets a colour that is not already a theme token. */
+
+.editor {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.editor-host {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  /* The frame clips the scroller; the box titles sit outside it. */
+  overflow: hidden;
+}
+
+.cm-editor {
+  height: 100%;
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+/* The box already has a rule around it; a focus ring inside it would double. */
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-editor .cm-scroller {
+  font-family: var(--mono);
+  line-height: var(--leading);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--line-bright);
+}
+
+.cm-editor .cm-content {
+  /* Trailing room so the last line can still be scrolled clear of the edge. */
+  padding: 9px 0 44px;
+  caret-color: var(--karel);
+}
+
+.cm-editor .cm-line {
+  padding: 0 12px 0 8px;
+}
+
+/* The gutter carries the page ground rather than the panel's, so it reads as
+   a margin rule cut into the box instead of a second panel. */
+.cm-editor .cm-gutters {
+  border-right: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.cm-editor .cm-lineNumbers .cm-gutterElement {
+  min-width: 30px;
+  padding: 0 8px 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-editor .cm-activeLine {
+  background: var(--editor-active);
+}
+
+.cm-editor .cm-activeLineGutter {
+  background: var(--editor-active);
+  color: var(--text-dim);
+}
+
+/* Selection is inverse-ish rather than a tint of the accent, matching the
+   rest of the instrument. `!important` because CodeMirror ships its own
+   rule at the same specificity from a stylesheet it injects itself. */
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor .cm-content ::selection {
+  background: var(--editor-sel) !important;
+}
+
+.cm-editor .cm-cursor,
+.cm-editor .cm-dropCursor {
+  border-left: 2px solid var(--karel);
+}
+
+.cm-editor .cm-matchingBracket,
+.cm-editor.cm-focused .cm-matchingBracket {
+  background: none;
+  outline: 1px solid var(--line-bright);
+  color: var(--text);
+}
+
+.cm-editor .cm-nonmatchingBracket {
+  outline: 1px solid var(--red);
+}
+
+.cm-editor .cm-placeholder {
+  color: var(--text-faint);
+}
+
+/* The line the interpreter is standing on. A filled row with a one-pixel
+   rule around it -- an outline, not a shadow, and no fade on the way in.
+   Painted in Karel's own colour so the eye pairs the line with the robot. */
+.cm-editor .cm-line.cm-activeKarelLine {
+  background: var(--editor-exec);
+  outline: 1px solid var(--karel);
+  outline-offset: -1px;
+}
+
+/* Stepping through a program moves this line every few hundred milliseconds,
+   so the cursor's own wash underneath it would only add noise. */
+.cm-editor .cm-line.cm-activeKarelLine.cm-activeLine {
+  background: var(--editor-exec);
+}
+
+/* Diagnostics. CodeMirror's default is a wavy SVG underline; a dotted rule
+   is the same information drawn the way everything else here is drawn. */
+.cm-editor .cm-lintRange {
+  background-image: none;
+  padding-bottom: 1px;
+}
+
+.cm-editor .cm-lintRange-error {
+  border-bottom: 1px dotted var(--red);
+}
+
+.cm-editor .cm-lintRange-warning {
+  border-bottom: 1px dotted var(--warn);
+}
+
+.cm-editor .cm-lintRange-info,
+.cm-editor .cm-lintRange-hint {
+  border-bottom: 1px dotted var(--line-bright);
+}
+
+/* CodeMirror draws its gutter markers as `content:` images on the element
+   itself, which is why they have to be switched off before a glyph can take
+   their place. Everything else on this page draws its icons as text. */
+.cm-editor .cm-lint-marker {
+  width: 11px;
+  height: 11px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.cm-editor .cm-lint-marker-error,
+.cm-editor .cm-lint-marker-warning,
+.cm-editor .cm-lint-marker-info {
+  content: none;
+}
+
+.cm-editor .cm-lint-marker-error::after {
+  content: "×";
+  color: var(--red);
+}
+
+.cm-editor .cm-lint-marker-warning::after {
+  content: "!";
+  color: var(--warn);
+}
+
+.cm-editor .cm-lint-marker-info::after {
+  content: "·";
+  color: var(--text-faint);
+}
+
+.cm-editor .cm-tooltip {
+  border: 1px solid var(--line-bright);
+  border-radius: 0;
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: 11.5px;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-lint {
+  padding: 0;
+}
+
+.cm-editor .cm-tooltip-lint .cm-diagnostic {
+  border-left: 2px solid var(--line-bright);
+  padding: 4px 9px;
+  font-family: var(--mono);
+}
+
+.cm-editor .cm-tooltip-lint .cm-diagnostic-error {
+  border-left-color: var(--red);
+}
+
+.cm-editor .cm-tooltip-lint .cm-diagnostic-warning {
+  border-left-color: var(--warn);
+}
+
+.cm-editor .cm-panels {
+  border-color: var(--line);
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+/* Syntax classes. The highlighter maps each token kind onto one of these
+   class names rather than building a HighlightStyle out of hex literals, so
+   the program text is coloured from the same palette as everything else.
+
+   The scheme has three registers: the language's own frame (program, define,
+   control, block), Karel's vocabulary (builtin verbs against instructions you
+   defined yourself), and the plain matter in between. */
+
+.cm-karel-program {
+  color: var(--pink);
+  font-weight: 700;
+}
+
+.cm-karel-define {
+  color: var(--purple);
+  font-weight: 700;
+}
+
+.cm-karel-control {
+  color: var(--blue);
+}
+
+/* BEGIN and END are pure scaffolding: dim enough that the nesting reads as
+   texture instead of competing with the instructions inside it. */
+.cm-karel-block {
+  color: var(--text-dim);
+}
+
+.cm-karel-condition {
+  color: var(--cyan);
+}
+
+/* The five verbs Karel is born knowing. */
+.cm-karel-builtin {
+  color: var(--green);
+}
+
+/* An instruction the program taught itself, at its definition and at every
+   call: a different colour from the built-ins is the whole point. */
+.cm-karel-defined {
+  color: var(--amber);
+}
+
+.cm-karel-name {
+  color: var(--text);
+}
+
+.cm-karel-number {
+  color: var(--lime);
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-karel-punctuation {
+  color: var(--text-faint);
+}
+
+.cm-karel-comment {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* ------------------------------------------------------------- problems -- */
+
+.problems {
+  /* Roughly four rows before it starts scrolling: enough to see the shape of
+     the failure without the editor losing half its height to it. */
+  max-height: 148px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.problems .panel-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+}
+
+.problems .panel-body::-webkit-scrollbar {
+  width: 8px;
+}
+.problems .panel-body::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
+.problem-list {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.problem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  text-align: left;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+button.problem:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+/* The location, as a compiler prints it: line:column, columns aligned. */
+.problem-at {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.problem-text {
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.problem.error .problem-at {
+  color: var(--red);
+}
+
+.problem.warning .problem-at {
+  color: var(--warn);
+}
+
+/* What a clean parse looks like. Stated, rather than left blank, so the panel
+   still says something when there is nothing wrong. */
+.problems-empty {
+  margin: 0;
+  padding: 1px 4px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.problems-empty::before {
+  content: "· ";
+  color: var(--green);
+}
+
+/* --------------------------------------------------------------- canvas -- */
+
+.viewport {
+  position: relative;
+  min-height: 0;
+  border: 1px solid var(--line);
+  /* Matches the canvas fill exactly, so the title chip straddling the top
+     border has the same ground above and below it. */
+  background: var(--bg);
+  overflow: visible;
+}
+
+.viewport canvas {
+  /* The frame clips the drawing; the box titles sit outside it. */
+  clip-path: inset(0);
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* A crosshair only while the world is editable; otherwise the world is a
+   readout and pretending it is clickable is a lie. */
+.viewport canvas.editable {
+  cursor: crosshair;
+}
+
+/* -------------------------------------------------------------- console -- */
+
+.console {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.transport {
+  display: flex;
+  gap: 4px;
+}
+
+.transport-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.transport-button .glyph {
+  font-size: 9px;
+  letter-spacing: -0.05em;
+}
+
+.transport-button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.transport-button:disabled {
+  color: var(--text-faint);
+  border-color: var(--line);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Fixed width because this button swaps between "run" and "pause": letting it
+   resize would shove step, stop and reset sideways on every state change. */
+.transport-button.primary {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  min-width: 96px;
+}
+
+.transport-button.primary:hover:not(:disabled) {
+  background: var(--cyan);
+  color: var(--bg);
+}
+
+.rate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rate-label {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.rate-options {
+  display: flex;
+  border: 1px solid var(--line);
+}
+
+.rate-option {
+  padding: 3px 8px;
+  border: none;
+  border-right: 1px solid var(--line);
+  background: none;
+  color: var(--text-faint);
+  font-size: 11px;
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+.rate-option:last-child {
+  border-right: none;
+}
+.rate-option:hover {
+  color: var(--text);
+}
+.rate-option[aria-pressed="true"] {
+  background: var(--amber);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.toggles {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* Checkbox as a terminal would draw it: a bracketed cell that fills in. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  transition:
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.toggle::before {
+  content: "[ ]";
+  color: var(--line-bright);
+  letter-spacing: -0.06em;
+}
+
+.toggle:hover {
+  color: var(--text-dim);
+  border-color: var(--line);
+}
+
+.toggle[aria-pressed="true"] {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.toggle[aria-pressed="true"]::before {
+  content: "[X]";
+  color: var(--green);
+}
+
+/* -------------------------------------------------------------- readout -- */
+/* Karel's readings are few and short -- position, facing, bag, steps -- so
+   they sit in a row under the world they describe rather than in a side rail.
+   Auto-fit lets a fifth panel wrap onto a second line without any help. */
+
+.readout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 14px 12px;
+  min-width: 0;
+  /* Room for the title chips, which straddle each panel's top border. */
+  margin-top: 4px;
+}
+
+.panel {
+  position: relative;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  min-width: 0;
+}
+
+.panel-body {
+  padding: 12px 11px 10px;
+}
+
+/* Rows of measurements, leader-dotted so the eye tracks across the gap the
+   way it does down a printed table of figures. */
+.metrics {
+  display: grid;
+  gap: 2px;
+}
+
+.metric {
+  display: grid;
+  grid-template-columns: auto minmax(10px, 1fr) auto;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.metric::after {
+  content: "";
+  grid-column: 2;
+  border-bottom: 1px dotted var(--line);
+  transform: translateY(-3px);
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-label em {
+  font-style: normal;
+  color: var(--text);
+}
+
+.metric-value {
+  grid-column: 3;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.metric-value .unit {
+  color: var(--text-faint);
+  font-size: 10px;
+  margin-left: 3px;
+}
+
+.metric-value.good {
+  color: var(--ok);
+}
+.metric-value.warn {
+  color: var(--warn);
+}
+.metric-value.bad {
+  color: var(--red);
+}
+.metric-value.muted {
+  color: var(--text-faint);
+}
+
+/* A changed value inverts for a moment: the terminal way of drawing attention,
+   and far more legible at this size than a fade. */
+@keyframes value-touched {
+  0%,
+  55% {
+    background: var(--amber);
+    color: var(--bg);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.metric-value.touched {
+  animation: value-touched 0.45s steps(2, end);
+}
+
+/* The compass, for `facing`. A glyph as text, sized to the row it sits in. */
+.metric-value .compass {
+  color: var(--karel);
+  margin-right: 5px;
+}
+
+/* ------------------------------------------------------------- controls -- */
+
+.control {
+  display: grid;
+  gap: 3px;
+  padding: 6px 0;
+}
+
+.control + .control {
+  border-top: 1px dotted var(--line);
+  padding-top: 8px;
+}
+
+.control-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.control-name {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.control-name em {
+  font-style: normal;
+  color: var(--cyan);
+}
+
+.control-value {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--amber);
+}
+
+.control-value .unit {
+  color: var(--text-faint);
+  font-size: 10px;
+  margin-left: 3px;
+}
+
+/* A slider drawn as a rail with a block riding it. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  background: none;
+  cursor: ew-resize;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--line-bright);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 1px;
+  background: var(--line-bright);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 9px;
+  height: 13px;
+  margin-top: -6px;
+  border: none;
+  border-radius: 0;
+  background: var(--amber);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 9px;
+  height: 13px;
+  border: none;
+  border-radius: 0;
+  background: var(--amber);
+}
+
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  background: var(--lime);
+}
+
+.control-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  color: var(--text-faint);
+  margin-top: -2px;
+}
+
+/* ----------------------------------------------------------------- list -- */
+/* Rows of things to pick from: saved worlds, the map editor's brushes. */
+
+.list {
+  display: grid;
+  gap: 1px;
+}
+
+.list-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 6px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  text-align: left;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.list-row:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+/* The selected row inverts, which is how a terminal list shows its cursor. */
+.list-row[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 500;
+}
+
+.list-swatch {
+  width: 8px;
+  height: 8px;
+  flex: none;
+}
+
+.list-name {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.list-detail {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preset-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.preset-row .list-action {
+  flex: 1 1 auto;
+  min-width: 58px;
+}
+
+.list-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px dotted var(--line);
+}
+
+.list-action {
+  flex: 1;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.list-action:hover:not(:disabled) {
+  color: var(--bg);
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.list-action:disabled {
+  color: var(--text-faint);
+  border-color: var(--line);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------ statusbar -- */
+/* Every well-made TUI ends in a line of key hints. */
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  height: 24px;
+  padding: 0 14px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-panel);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.hint b {
+  color: var(--text-dim);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+/* The state chip. One colour per `SessionState`, so the strip at the bottom
+   right answers "what is it doing" without being read. */
+.statusbar-end {
+  margin-left: auto;
+  padding: 0 7px;
+  background: var(--line-bright);
+  color: var(--bg);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.statusbar-end[data-state="running"] {
+  background: var(--green);
+}
+.statusbar-end[data-state="stepping"] {
+  background: var(--cyan);
+}
+.statusbar-end[data-state="done"] {
+  background: var(--purple);
+}
+.statusbar-end[data-state="error"] {
+  background: var(--red);
+}
+
+/* ---------------------------------------------------------------- about -- */
+
+.about {
+  border: 1px solid var(--line-bright);
+  border-radius: 0;
+  background: var(--bg-panel);
+  color: var(--text);
+  padding: 0;
+  max-width: 660px;
+  width: calc(100% - 32px);
+}
+
+.about::backdrop {
+  background: rgba(8, 8, 13, 0.8);
+}
+
+.about-body {
+  padding: 16px 20px 20px;
+}
+
+.about-body header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.about-body h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pink);
+}
+
+.about-body h3 {
+  margin: 16px 0 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+
+.about-body h3::before {
+  content: "▌ ";
+}
+
+.about-body p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+
+.about-body em {
+  font-style: normal;
+  color: var(--cyan);
+}
+
+.about-body strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.about-body code {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--amber);
+}
+
+.about-body ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text-dim);
+}
+
+.about-body li::before {
+  content: "· ";
+  color: var(--pink);
+}
+
+/* ------------------------------------------------------------ page load -- */
+/* A brisk wipe rather than a drift: panels arrive the way a screen paints. */
+
+@keyframes paint {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.masthead,
+.editor,
+.problems,
+.viewport,
+.console,
+.statusbar,
+.readout > * {
+  animation: paint 0.22s steps(4, end) backwards;
+}
+
+.masthead {
+  animation-delay: 0.02s;
+}
+.editor {
+  animation-delay: 0.06s;
+}
+.viewport {
+  animation-delay: 0.06s;
+}
+.problems {
+  animation-delay: 0.12s;
+}
+.console {
+  animation-delay: 0.14s;
+}
+.statusbar {
+  animation-delay: 0.18s;
+}
+.readout > *:nth-child(1) {
+  animation-delay: 0.16s;
+}
+.readout > *:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.readout > *:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.readout > *:nth-child(4) {
+  animation-delay: 0.28s;
+}
+.readout > *:nth-child(5) {
+  animation-delay: 0.32s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ----------------------------------------------------------- responsive -- */
+
+@media (max-width: 1120px) {
+  /* Below this the program and the world cannot both be read at once, so the
+     page stops being a fixed-height instrument and starts scrolling. */
+  body {
+    overflow: auto;
+  }
+
+  .frame {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .bench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workshop {
+    padding: 9px 12px 0;
+  }
+
+  .editor {
+    /* No parent height to fill any more; enough rows to work in. */
+    min-height: 320px;
+  }
+
+  .stage {
+    padding: 18px 12px 0;
+  }
+
+  .viewport {
+    aspect-ratio: 5 / 4;
+  }
+
+  .readout {
+    padding-bottom: 14px;
+  }
+
+  .statusbar {
+    position: sticky;
+    bottom: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .masthead {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 12px;
+  }
+
+  .channels {
+    order: 3;
+    flex: 1 0 100%;
+    /* A fading edge, so a half-visible tab reads as "there is more". */
+    -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+    mask-image: linear-gradient(90deg, #000 88%, transparent);
+  }
+
+  .masthead-end {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .toggles {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .transport-button span:not(.glyph),
+  .rate-label {
+    display: none;
+  }
+
+  .transport-button.primary {
+    min-width: 0;
+  }
+
+  .hint:nth-child(n + 4) {
+    display: none;
+  }
+}
