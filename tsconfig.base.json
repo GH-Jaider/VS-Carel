@@ -3,10 +3,16 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    // Every package ships through a single-file transpiler (esbuild via tsup,
+    // ts-loader via webpack), so only syntax those tools can handle per file
+    // is legal here.
+    "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
+    // ts-loader reads this to feed webpack's devtool accurate maps.
     "sourceMap": true
   }
 }

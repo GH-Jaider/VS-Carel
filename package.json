@@ -9,15 +9,16 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "eslint .",
-    "format": "prettier --write \"**/*.{ts,json,md,yaml}\"",
-    "format:check": "prettier --check \"**/*.{ts,json,md,yaml}\"",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "dev:core": "pnpm --filter @karel/core dev",
-    "dev:web": "pnpm --filter @karel/web dev",
-    "watch:ext": "pnpm --filter vs-karel watch"
+    "watch:ext": "pnpm --filter vs-karel watch",
+    "prepare": "pnpm --filter @karel/core build"
   },
   "devDependencies": {
     "eslint": "^9.39.1",
+    "globals": "^16.5.0",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1"

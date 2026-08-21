@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, monorepo]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -16,16 +16,26 @@ jobs:
       # is pinned in one place only.
       - uses: pnpm/action-setup@v6
 
+      # Same idea for Node: the supported range lives in engines.node and
+      # setup-node resolves it, so CI cannot drift from what we claim to run on.
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: package.json
           cache: pnpm
 
+      # The root `prepare` script builds the core here, which is what makes the
+      # steps below work on a clone with no dist/ checked in.
       - run: pnpm install --frozen-lockfile
+
+      # Cheapest checks first: neither needs a build, so a misformatted or
+      # lint-broken PR fails in seconds instead of after the whole pipeline.
+      - run: pnpm format:check
+      - run: pnpm lint
 
       # Topological order comes from the workspace:* dependencies, so the core
       # is always built before the shells that bundle it.
-      - run: pnpm -r build
-      - run: pnpm -r test
-      - run: pnpm -r typecheck
-      - run: pnpm lint
+      - run: pnpm build
+
+      # Both consume the core's emitted types, hence after the build.
+      - run: pnpm typecheck
+      - run: pnpm test

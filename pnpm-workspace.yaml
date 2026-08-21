@@ -2,6 +2,16 @@ packages:
   - packages/*
   - apps/*
 
-# pnpm 10 no ejecuta lifecycle scripts de dependencias sin allowlist.
+# pnpm 10 does not run dependency lifecycle scripts without an allowlist.
+# esbuild's postinstall places the platform binary that tsup and vitest exec.
 onlyBuiltDependencies:
   - esbuild
+
+# Transitive native deps of @vscode/vsce that no workflow here needs:
+# vsce-sign downloads a signing binary used only by `vsce publish --signature`,
+# and keytar is the OS keychain binding behind `vsce login`. We package with a
+# PAT from the environment, so both stay unbuilt — listed explicitly so install
+# is silent instead of nagging.
+ignoredBuiltDependencies:
+  - "@vscode/vsce-sign"
+  - keytar
