@@ -28,14 +28,15 @@ END-OF-PROGRAM
 
 ## What's here
 
-| Package                              | What it is                                                                                                                                                          | Status  |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| [`packages/core`](packages/core)     | `@karel/core` — lexer, parser, interpreter and world model. No dependencies, no platform assumptions: it runs in a browser, in Node, or anywhere else with a timer. | Working |
-| [`packages/vscode`](packages/vscode) | **VS Karel** — write, run and step through Karel programs inside VS Code, with the world drawn beside the code.                                                     | Working |
+| Package                              | What it is                                                                                                                                                                  | Status  |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [`packages/core`](packages/core)     | `@karel/core` — lexer, parser, interpreter and world model. No dependencies, no platform assumptions: it runs in a browser, in Node, or anywhere else with a timer.         | Working |
+| [`packages/cli`](packages/cli)       | **karel** — run a program against a world from the command line and check the result, so a class's submissions can be graded in a loop or in CI. One file, no dependencies. | Working |
+| [`packages/vscode`](packages/vscode) | **VS Karel** — write, run and step through Karel programs inside VS Code, with the world drawn beside the code.                                                             | Working |
 
 The interpreter is deliberately separate from the editor that happens to host it, so the same
-language, the same error messages and the same world semantics can back a command-line grader,
-a browser playground or a terminal UI. Those are next; the split came first.
+language, the same error messages and the same world semantics back every one of them. A
+browser playground and a terminal UI are next.
 
 ## Working on it
 
