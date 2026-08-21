@@ -22,5 +22,5 @@
   "walkthrough.step.title": "Step through it",
   "walkthrough.step.description": "Press F10 to execute one instruction at a time. The current line is highlighted while the world updates in sync — perfect for understanding loops.\n[Step](command:vs-karel.step)",
   "walkthrough.worlds.title": "Edit worlds",
-  "walkthrough.worlds.description": "Worlds are simple JSON files with autocomplete and validation. Change the beepers or add walls, save, and the visualizer updates.\n[New World](command:vs-karel.newWorld)"
+  "walkthrough.worlds.description": "Opening a .klm shows the drawn world. Its JSON has autocomplete and validation: change the beepers or add walls and the drawing updates as you type.\n[New World](command:vs-karel.newWorld)"
 }

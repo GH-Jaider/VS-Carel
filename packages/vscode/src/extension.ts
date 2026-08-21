@@ -169,12 +169,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("vs-karel.openVisualizer", (uri?: vscode.Uri) =>
       controller.openVisualizer(uri)
     ),
-    vscode.commands.registerCommand("vs-karel.openWorldSource", async (uri?: vscode.Uri) => {
-      const target = uri ?? vscode.window.activeTextEditor?.document.uri;
-      if (target?.fsPath.endsWith(".klm")) {
-        await vscode.commands.executeCommand("vscode.openWith", target, "default");
-      }
-    }),
+    vscode.commands.registerCommand("vs-karel.openWorldSource", (uri?: vscode.Uri) =>
+      controller.openWorldSource(uri)
+    ),
     vscode.commands.registerCommand("vs-karel.newProgram", () => newProgram()),
     vscode.commands.registerCommand("vs-karel.newWorld", () => newWorld()),
     vscode.commands.registerCommand("vs-karel.toggleErrorHighlighting", async () => {

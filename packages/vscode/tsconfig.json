@@ -3,7 +3,12 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "rootDir": "src"
+    "rootDir": "src",
+    // Webpack/ts-loader is what actually builds the extension, and it cannot
+    // inherit "noEmit" (ts-loader then fails with "TypeScript emitted no
+    // output"). So point a plain `tsc -p .` at a throwaway directory instead
+    // of letting it scatter .js files next to the sources.
+    "outDir": "out"
   },
   "include": ["src"]
 }

@@ -86,6 +86,10 @@ export class ExecutionController implements vscode.Disposable {
       this.runningLineDecoration,
       this.errorLineDecoration,
       vscode.window.onDidChangeActiveTextEditor(() => this.refreshContextUi()),
+      // Focusing a world editor never changes the active TEXT editor, so the
+      // status bar would keep the previous file's answer without this.
+      vscode.window.tabGroups.onDidChangeTabs(() => this.refreshVisibility()),
+      vscode.window.tabGroups.onDidChangeTabGroups(() => this.refreshVisibility()),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("vs-karel.executionSpeed")) {
           const speed = this.configuredSpeed();
@@ -400,6 +404,39 @@ export class ExecutionController implements vscode.Disposable {
     void vscode.window.showInformationMessage(
       "Open a Karel program (.kli) or world (.klm) first."
     );
+  }
+
+  /**
+   * Open the JSON behind a world. Resolution mirrors openVisualizer, but it
+   * must start from the tab: the world editor is a custom editor, so when it
+   * has focus activeTextEditor is undefined and the Command Palette passes no
+   * uri — which used to leave this command silently doing nothing.
+   */
+  async openWorldSource(resourceUri?: vscode.Uri): Promise<void> {
+    const active = this.activeKarelTabUri();
+    let target: vscode.Uri | null =
+      resourceUri?.fsPath.endsWith(".klm") === true
+        ? resourceUri
+        : active?.fsPath.endsWith(".klm") === true
+          ? active
+          : null;
+
+    if (!target && active?.fsPath.endsWith(".kli") === true) {
+      target = await this.peekWorldUri(active);
+    }
+    if (!target) {
+      target = this.worldUri;
+    }
+    if (!target) {
+      void vscode.window.showInformationMessage(
+        "Open a Karel world (.klm) — or a program that has one — to edit its JSON."
+      );
+      return;
+    }
+
+    // "default" is the built-in text editor, which is what shows the JSON:
+    // .klm files open in the world editor by default.
+    await vscode.commands.executeCommand("vscode.openWith", target, "default");
   }
 
   /**
@@ -718,7 +755,7 @@ export class ExecutionController implements vscode.Disposable {
     if (this.worldUri) {
       this.worldEditors?.postStatus(this.worldUri, { state, message, line });
     }
-    void this.refreshVisibility();
+    this.refreshVisibility();
   }
 
   private highlightLine(
@@ -748,7 +785,7 @@ export class ExecutionController implements vscode.Disposable {
    * Show/hide status bar items and refresh the world item label.
    */
   private async refreshContextUi(): Promise<void> {
-    await this.refreshVisibility();
+    this.refreshVisibility();
 
     const active = vscode.window.activeTextEditor;
     if (active?.document.languageId === "karel-instructions") {
@@ -759,14 +796,30 @@ export class ExecutionController implements vscode.Disposable {
     }
   }
 
-  private async refreshVisibility(): Promise<void> {
-    const active = vscode.window.activeTextEditor;
-    const karelEditor =
-      active !== undefined &&
-      (active.document.languageId === "karel-instructions" ||
-        active.document.fileName.endsWith(".klm"));
-    const sessionAlive = this.state !== "idle" || this.world !== null;
-    this.statusBar.setVisible(karelEditor || sessionAlive);
+  private refreshVisibility(): void {
+    // Visible where it is useful: on a Karel file, or wherever the user goes
+    // while a program is actually executing. Anchoring this to "a world has
+    // been built" instead would leave the items up for the rest of the
+    // session, in every unrelated file.
+    const executing = this.state === "running" || this.state === "stepping";
+    this.statusBar.setVisible(this.activeKarelTabUri() !== null || executing);
+  }
+
+  /**
+   * The .kli/.klm the user is looking at, or null. Reads the active tab rather
+   * than activeTextEditor because a world opens in a custom editor, and VS Code
+   * only reports text editors through activeTextEditor.
+   */
+  private activeKarelTabUri(): vscode.Uri | null {
+    const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+    const uri =
+      input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom
+        ? input.uri
+        : null;
+    if (!uri) {
+      return null;
+    }
+    return uri.fsPath.endsWith(".kli") || uri.fsPath.endsWith(".klm") ? uri : null;
   }
 
   private worldLabel(): string | null {

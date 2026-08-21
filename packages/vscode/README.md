@@ -19,11 +19,11 @@ The **Get Started with Karel** walkthrough (Help → Welcome) covers the same st
 | Stop | `Shift+F5` |
 | Reset world | `Ctrl+Shift+F5` (`Cmd+Shift+F5` on Mac) |
 | See the world | Just open the `.klm` file — it opens as the drawn world, not JSON |
-| Edit a world | Click the `{}` button in the world's title bar to edit the JSON (schema-validated); save and the drawing updates |
+| Edit a world | Click the `{}` button in the world's title bar to edit the JSON (schema-validated); the drawing updates as you type |
 | Change the world a program uses | Click **World: … (change)** above the program, or the globe in the status bar |
 | Change speed | Click the speed in the status bar (applies live) |
 
-A program runs in the world with the same name (`maze.kli` → `maze.klm`). If there is no match, VS Karel asks once and remembers your choice.
+A program runs in the world with the same name (`maze.kli` → `maze.klm`), or in the only world of the folder if there is one. Otherwise VS Karel asks once and remembers your choice.
 
 If Karel hits a wall, or picks a beeper that isn't there, execution stops with an **error shutoff**: the offending line turns red and the message explains what happened.
 
@@ -39,7 +39,7 @@ BEGINNING-OF-PROGRAM
     END
 
     BEGINNING-OF-EXECUTION
-        move;              // comments are allowed anywhere
+        move;              // comments run to the end of the line
         turnright;
         ITERATE 3 TIMES
         BEGIN
@@ -79,7 +79,7 @@ The JSON has schema-backed **autocomplete and validation**:
 
 ## Commands
 
-All under the **Karel** category in the Command Palette: Run, Step, Stop, Reset World, Open World, Edit World as JSON, Select World for Program, Set Execution Speed, New Karel Program, New Karel World, Toggle Error Highlighting.
+All under the **Karel** category in the Command Palette: Run Karel Program, Step Through Program, Stop Execution, Reset World, Open World, Edit World as JSON, Select World for Program, Set Execution Speed, New Karel Program, New Karel World, Toggle Error Highlighting.
 
 ## Settings
 
@@ -91,12 +91,17 @@ All under the **Karel** category in the Command Palette: Run, Step, Stop, Reset 
 ## Development
 
 ```bash
-git clone https://github.com/GH-Jaider/VS-Karel.git
-cd VS-Karel
+git clone https://github.com/GH-Jaider/karel.git
+cd karel
 pnpm install
 ```
 
-Press `F5` to launch the Extension Development Host. The interpreter (`src/interpreter/`) is pure TypeScript with no VS Code dependency; `src/controller.ts` owns all execution state; everything else is a thin projection of it.
+Press `F5` to launch the Extension Development Host. Its build task builds the interpreter and bundles the extension first, so there is nothing to run by hand.
+
+This is a pnpm workspace with two packages:
+
+- **`packages/core`** (`@karel/core`) — the interpreter: lexer, parser and execution engine, pure TypeScript with no VS Code dependency and covered by unit tests (`pnpm test`).
+- **`packages/vscode`** (this extension) — `src/controller.ts` owns all execution state; the status bar, CodeLens, decorations and world editor are thin projections of it.
 
 ## License
 
