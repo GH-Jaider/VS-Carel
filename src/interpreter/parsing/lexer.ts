@@ -7,85 +7,65 @@ import { VALID_CONDITIONS } from "@/interpreter/parsing/constants";
 
 /**
  * Tokenizer for Karel instructions.
+ *
+ * Scans line by line, tracking real column positions. `//` comments are
+ * allowed anywhere in a line (Karel has no string literals, so everything
+ * after `//` is comment). Semicolons are standalone tokens, so `move;`,
+ * `move ;` and `move;;` all tokenize cleanly.
  */
 export class Lexer {
-  private source: string;
-  private lines: string[];
-  private currentLine: number = 0;
-  private currentColumn: number = 0;
   private tokens: Token[] = [];
 
-  constructor(source: string) {
-    this.source = source;
-    this.lines = source.split("\n");
-  }
+  constructor(private readonly source: string) {}
 
   tokenize(): Token[] {
-    for (this.currentLine = 0; this.currentLine < this.lines.length; this.currentLine++) {
-      this.tokenizeLine(this.lines[this.currentLine]);
+    this.tokens = [];
+    const lines = this.source.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      this.tokenizeLine(lines[i], i + 1); // 1-based line numbers
     }
 
     this.tokens.push({
       type: TokenType.EOF,
       value: "",
-      line: this.currentLine,
+      line: Math.max(1, lines.length),
       column: 0,
-      indent: 0,
     });
 
     return this.tokens;
   }
 
-  private tokenizeLine(line: string): void {
-    // Count leading tabs for indentation
-    let indent = 0;
+  private tokenizeLine(text: string, line: number): void {
+    const commentStart = text.indexOf("//");
+    const code = commentStart >= 0 ? text.slice(0, commentStart) : text;
+
     let i = 0;
-    while (i < line.length && line[i] === "\t") {
-      indent++;
-      i++;
-    }
+    while (i < code.length) {
+      const ch = code[i];
 
-    // Skip empty lines
-    const content = line.slice(i).trim();
-    if (content === "" || content.startsWith("//")) {
-      return;
-    }
-
-    this.currentColumn = i;
-
-    // Tokenize the line content
-    const words = content.split(/\s+/);
-
-    for (let wordIdx = 0; wordIdx < words.length; wordIdx++) {
-      let word = words[wordIdx];
-
-      // Handle semicolon at end of word
-      const hasSemicolon = word.endsWith(";");
-      if (hasSemicolon) {
-        word = word.slice(0, -1);
+      if (ch === " " || ch === "\t" || ch === "\r") {
+        i++;
+        continue;
       }
 
-      if (word) {
-        this.addToken(word, indent);
+      if (ch === ";") {
+        this.tokens.push({ type: TokenType.Semicolon, value: ";", line, column: i });
+        i++;
+        continue;
       }
 
-      if (hasSemicolon) {
-        this.tokens.push({
-          type: TokenType.Semicolon,
-          value: ";",
-          line: this.currentLine + 1,
-          column: this.currentColumn,
-          indent,
-        });
+      const start = i;
+      while (i < code.length && !/[\s;]/.test(code[i])) {
+        i++;
       }
+      this.addWord(code.slice(start, i), line, start);
     }
   }
 
-  private addToken(word: string, indent: number): void {
+  private addWord(word: string, line: number, column: number): void {
     const upperWord = word.toUpperCase();
     let type: TokenType;
 
-    // Check keywords and built-ins
     switch (upperWord) {
       case "BEGINNING-OF-PROGRAM":
         type = TokenType.BeginningOfProgram;
@@ -132,42 +112,16 @@ export class Lexer {
       case "AS":
         type = TokenType.As;
         break;
-      case "MOVE":
-        type = TokenType.Move;
-        break;
-      case "TURNLEFT":
-        type = TokenType.TurnLeft;
-        break;
-      case "PICKBEEPER":
-        type = TokenType.PickBeeper;
-        break;
-      case "PUTBEEPER":
-        type = TokenType.PutBeeper;
-        break;
-      case "TURNOFF":
-        type = TokenType.TurnOff;
-        break;
       default:
-        // Check if it's a number
         if (/^\d+$/.test(word)) {
           type = TokenType.Number;
-        }
-        // Check if it's a known condition
-        else if (VALID_CONDITIONS.has(word.toLowerCase())) {
+        } else if (VALID_CONDITIONS.has(word.toLowerCase())) {
           type = TokenType.Condition;
-        }
-        // Otherwise it's an identifier (custom instruction name)
-        else {
+        } else {
           type = TokenType.Identifier;
         }
     }
 
-    this.tokens.push({
-      type,
-      value: word,
-      line: this.currentLine + 1, // 1-based line numbers
-      column: this.currentColumn,
-      indent,
-    });
+    this.tokens.push({ type, value: word, line, column });
   }
 }

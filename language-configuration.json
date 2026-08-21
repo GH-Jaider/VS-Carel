@@ -7,17 +7,15 @@
     ["BEGINNING-OF-PROGRAM", "END-OF-PROGRAM"],
     ["BEGINNING-OF-EXECUTION", "END-OF-EXECUTION"]
   ],
-  "autoClosingPairs": [{ "open": "BEGIN", "close": "\nEND" }],
-  "surroundingPairs": [],
   "folding": {
     "markers": {
-      "start": "^\\s*(BEGIN|BEGINNING-OF-PROGRAM|BEGINNING-OF-EXECUTION|IF|WHILE|ITERATE|DEFINE-NEW-INSTRUCTION)",
-      "end": "^\\s*(END|END-OF-PROGRAM|END-OF-EXECUTION)"
+      "start": "^\\s*(BEGIN|BEGINNING-OF-PROGRAM|BEGINNING-OF-EXECUTION|IF|WHILE|ITERATE|DEFINE-NEW-INSTRUCTION)\\b",
+      "end": "^\\s*(END|END-OF-PROGRAM|END-OF-EXECUTION)\\b"
     }
   },
   "indentationRules": {
-    "increaseIndentPattern": "^\\s*(BEGIN|BEGINNING-OF-PROGRAM|BEGINNING-OF-EXECUTION|IF|WHILE|ITERATE|DEFINE-NEW-INSTRUCTION).*$",
-    "decreaseIndentPattern": "^\\s*(END|END-OF-PROGRAM|END-OF-EXECUTION|ELSE).*$"
+    "increaseIndentPattern": "^\\s*(BEGIN|BEGINNING-OF-PROGRAM|BEGINNING-OF-EXECUTION)\\s*$",
+    "decreaseIndentPattern": "^\\s*(END|END-OF-PROGRAM|END-OF-EXECUTION)\\b.*$"
   },
   "wordPattern": "[a-zA-Z][a-zA-Z0-9-]*"
 }

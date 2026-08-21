@@ -1,10 +1,11 @@
-export { Karel, Direction } from "./karel";
+export { Karel, Direction, parseDirection } from "./karel";
 export type { Position } from "./karel";
 
-export { World } from "./world";
-export type { KarelMap } from "./world";
+export { World, validateKarelMap, MAX_WORLD_SIZE } from "./world";
+export type { KarelMap, MapValidationResult, Wall, BeeperStack, Dimensions } from "./world";
 
 export { Interpreter } from "./execution/interpreter";
 export { Parser } from "./parsing/parser";
 export { ParseError, RuntimeError } from "./types/errors";
 export type { Diagnostic } from "./types/errors";
+export { BUILT_IN_INSTRUCTIONS, VALID_CONDITIONS } from "./parsing/constants";

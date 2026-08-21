@@ -24,11 +24,11 @@
       "patterns": [
         {
           "name": "keyword.control.program.karel",
-          "match": "\\b(BEGINNING-OF-PROGRAM|END-OF-PROGRAM|BEGINNING-OF-EXECUTION|END-OF-EXECUTION)\\b"
+          "match": "(?i)(?<![\\w-])(BEGINNING-OF-PROGRAM|END-OF-PROGRAM|BEGINNING-OF-EXECUTION|END-OF-EXECUTION)(?![\\w-])"
         },
         {
           "name": "keyword.control.block.karel",
-          "match": "\\b(BEGIN|END)\\b"
+          "match": "(?i)(?<![\\w-])(BEGIN|END)(?![\\w-])"
         }
       ]
     },
@@ -36,11 +36,11 @@
       "patterns": [
         {
           "name": "keyword.control.conditional.karel",
-          "match": "\\b(IF|THEN|ELSE)\\b"
+          "match": "(?i)(?<![\\w-])(IF|THEN|ELSE)(?![\\w-])"
         },
         {
           "name": "keyword.control.loop.karel",
-          "match": "\\b(WHILE|DO|ITERATE|TIMES)\\b"
+          "match": "(?i)(?<![\\w-])(WHILE|DO|ITERATE|TIMES)(?![\\w-])"
         }
       ]
     },
@@ -48,7 +48,7 @@
       "patterns": [
         {
           "name": "support.function.condition.karel",
-          "match": "\\b(front-is-clear|front-is-blocked|left-is-clear|left-is-blocked|right-is-clear|right-is-blocked|next-to-a-beeper|not-next-to-a-beeper|facing-north|not-facing-north|facing-south|not-facing-south|facing-east|not-facing-east|facing-west|not-facing-west|beeper-in-bag)\\b"
+          "match": "(?i)(?<![\\w-])(front-is-clear|front-is-blocked|left-is-clear|left-is-blocked|right-is-clear|right-is-blocked|next-to-a-beeper|not-next-to-a-beeper|facing-north|not-facing-north|facing-south|not-facing-south|facing-east|not-facing-east|facing-west|not-facing-west|beeper-in-bag|no-beeper-in-bag)(?![\\w-])"
         }
       ]
     },
@@ -56,7 +56,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.karel",
-          "match": "\\b(move|turnleft|pickbeeper|putbeeper|turnoff)\\b"
+          "match": "(?i)(?<![\\w-])(move|turnleft|pickbeeper|putbeeper|turnoff)(?![\\w-])"
         }
       ]
     },
@@ -71,7 +71,7 @@
     "custom-instruction-def": {
       "patterns": [
         {
-          "match": "\\b(DEFINE-NEW-INSTRUCTION)\\s+([a-zA-Z][a-zA-Z0-9-]*)\\s+(AS)\\b",
+          "match": "(?i)(?<![\\w-])(DEFINE-NEW-INSTRUCTION)\\s+([a-zA-Z][a-zA-Z0-9-]*)\\s+(AS)(?![\\w-])",
           "captures": {
             "1": { "name": "keyword.other.define.karel" },
             "2": { "name": "entity.name.function.karel" },
@@ -84,7 +84,7 @@
       "patterns": [
         {
           "name": "entity.name.function.call.karel",
-          "match": "\\b[a-zA-Z][a-zA-Z0-9-]*\\b(?=\\s*;)"
+          "match": "(?<![\\w-])[a-zA-Z][a-zA-Z0-9-]*(?![\\w-])(?=\\s*(;|$))"
         }
       ]
     }

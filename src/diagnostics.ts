@@ -1,39 +1,37 @@
 /**
  * Diagnostics Provider for Karel instruction files.
  *
- * Provides error highlighting that can be toggled on/off.
+ * Reparses on change (debounced) and publishes all parser diagnostics.
+ * Highlighting can be toggled off for classroom use.
  */
 
 import * as vscode from "vscode";
 import { Parser, Diagnostic as KarelDiagnostic } from "@/interpreter";
 
-export class DiagnosticsProvider {
-  private diagnosticCollection: vscode.DiagnosticCollection;
-  private disposables: vscode.Disposable[] = [];
+const DEBOUNCE_MS = 250;
+
+export class DiagnosticsProvider implements vscode.Disposable {
+  private readonly collection: vscode.DiagnosticCollection;
+  private readonly disposables: vscode.Disposable[] = [];
+  private readonly timers = new Map<string, NodeJS.Timeout>();
 
   constructor() {
-    this.diagnosticCollection = vscode.languages.createDiagnosticCollection("karel");
+    this.collection = vscode.languages.createDiagnosticCollection("karel");
 
-    // Listen for document changes
     this.disposables.push(
       vscode.workspace.onDidChangeTextDocument((e) => {
         if (e.document.languageId === "karel-instructions") {
-          this.updateDiagnostics(e.document);
+          this.scheduleUpdate(e.document);
         }
-      })
-    );
-
-    // Listen for document open
-    this.disposables.push(
+      }),
       vscode.workspace.onDidOpenTextDocument((doc) => {
         if (doc.languageId === "karel-instructions") {
           this.updateDiagnostics(doc);
         }
-      })
-    );
-
-    // Listen for configuration changes
-    this.disposables.push(
+      }),
+      vscode.workspace.onDidCloseTextDocument((doc) => {
+        this.collection.delete(doc.uri);
+      }),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("vs-karel.enableErrorHighlighting")) {
           this.refreshAllDocuments();
@@ -41,7 +39,6 @@ export class DiagnosticsProvider {
       })
     );
 
-    // Process already open documents
     vscode.workspace.textDocuments.forEach((doc) => {
       if (doc.languageId === "karel-instructions") {
         this.updateDiagnostics(doc);
@@ -49,46 +46,52 @@ export class DiagnosticsProvider {
     });
   }
 
-  /**
-   * Check if error highlighting is enabled.
-   */
   private isEnabled(): boolean {
     return vscode.workspace.getConfiguration("vs-karel").get("enableErrorHighlighting", true);
   }
 
-  /**
-   * Update diagnostics for a document.
-   */
+  private scheduleUpdate(document: vscode.TextDocument): void {
+    const key = document.uri.toString();
+    const existing = this.timers.get(key);
+    if (existing) {
+      clearTimeout(existing);
+    }
+    this.timers.set(
+      key,
+      setTimeout(() => {
+        this.timers.delete(key);
+        this.updateDiagnostics(document);
+      }, DEBOUNCE_MS)
+    );
+  }
+
   updateDiagnostics(document: vscode.TextDocument): void {
+    if (document.isClosed) {
+      return;
+    }
     if (!this.isEnabled()) {
-      this.diagnosticCollection.set(document.uri, []);
+      this.collection.set(document.uri, []);
       return;
     }
 
     const parser = new Parser();
     const { diagnostics } = parser.parse(document.getText());
-
-    const vsDiagnostics = diagnostics.map((d) => this.toVSCodeDiagnostic(d, document));
-
-    this.diagnosticCollection.set(document.uri, vsDiagnostics);
+    this.collection.set(
+      document.uri,
+      diagnostics.map((d) => this.toVSCodeDiagnostic(d, document))
+    );
   }
 
-  /**
-   * Convert Karel diagnostic to VS Code diagnostic.
-   */
   private toVSCodeDiagnostic(
     diagnostic: KarelDiagnostic,
     document: vscode.TextDocument
   ): vscode.Diagnostic {
-    const line = Math.max(0, diagnostic.line - 1);
-    const lineText = document.lineAt(line).text;
-    const startCol = diagnostic.column;
-    const endCol = diagnostic.endColumn ?? lineText.length;
+    const line = Math.min(Math.max(0, diagnostic.line - 1), document.lineCount - 1);
+    const lineLength = document.lineAt(line).text.length;
+    const startCol = Math.min(diagnostic.column, lineLength);
+    const endCol = Math.min(diagnostic.endColumn ?? lineLength, Math.max(lineLength, startCol + 1));
 
-    const range = new vscode.Range(
-      new vscode.Position(line, startCol),
-      new vscode.Position(line, endCol)
-    );
+    const range = new vscode.Range(line, startCol, line, Math.max(endCol, startCol + 1));
 
     const severity =
       diagnostic.severity === "error"
@@ -99,16 +102,11 @@ export class DiagnosticsProvider {
 
     const vsDiag = new vscode.Diagnostic(range, diagnostic.message, severity);
     vsDiag.source = "Karel";
-
     return vsDiag;
   }
 
-  /**
-   * Refresh diagnostics for all open Karel documents.
-   */
   refreshAllDocuments(): void {
-    this.diagnosticCollection.clear();
-
+    this.collection.clear();
     if (this.isEnabled()) {
       vscode.workspace.textDocuments.forEach((doc) => {
         if (doc.languageId === "karel-instructions") {
@@ -118,9 +116,6 @@ export class DiagnosticsProvider {
     }
   }
 
-  /**
-   * Toggle error highlighting on/off.
-   */
   async toggle(): Promise<boolean> {
     const config = vscode.workspace.getConfiguration("vs-karel");
     const current = config.get("enableErrorHighlighting", true);
@@ -128,11 +123,12 @@ export class DiagnosticsProvider {
     return !current;
   }
 
-  /**
-   * Dispose of resources.
-   */
   dispose(): void {
-    this.diagnosticCollection.dispose();
+    for (const timer of this.timers.values()) {
+      clearTimeout(timer);
+    }
+    this.timers.clear();
+    this.collection.dispose();
     this.disposables.forEach((d) => d.dispose());
   }
 }

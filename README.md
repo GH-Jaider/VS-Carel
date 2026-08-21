@@ -1,39 +1,33 @@
-# VS-Karel
+# VS Karel
 
-A Visual Studio Code extension for Karel the Robot, an educational programming language for teaching fundamental programming concepts.
+Learn programming with **Karel the Robot** in VS Code: write Karel programs, run them, and watch the robot move through its world — with live error checking, step-by-step execution, and worlds you can edit as validated JSON.
 
-## Features
+## Getting started
 
-- Syntax highlighting for instruction (`.kli`) and map (`.klm`) files
-- Real-time error detection with inline diagnostics
-- Interactive canvas-based world visualizer
-- Step-by-step execution with line highlighting
-- Configurable execution speed
+1. Install the extension and open a folder.
+2. Run **Karel: New Karel Program** (`Ctrl+Shift+P`). It creates `myprogram.kli` and its world `myprogram.klm`, already paired.
+3. Press **F5**. The world opens beside your code and Karel moves.
 
-## Usage
+The **Get Started with Karel** walkthrough (Help → Welcome) covers the same steps interactively.
 
-### Keyboard Shortcuts
+## Everyday flow
 
-| Shortcut         | Action                    |
-| ---------------- | ------------------------- |
-| `Ctrl+Shift+R`   | Run program               |
-| `Ctrl+Shift+S`   | Step through program      |
-| `Ctrl+Shift+K E` | Toggle error highlighting |
+| Action | How |
+| --- | --- |
+| Run program | `F5`, the ▶ button, or the **▶ Run** link above `BEGINNING-OF-PROGRAM` |
+| Step one instruction | `F10` (current line highlights, world updates in sync) |
+| Stop | `Shift+F5` |
+| Reset world | `Ctrl+Shift+F5` (`Cmd+Shift+F5` on Mac) |
+| See the world | Just open the `.klm` file — it opens as the drawn world, not JSON |
+| Edit a world | Click the `{}` button in the world's title bar to edit the JSON (schema-validated); save and the drawing updates |
+| Change the world a program uses | Click **World: … (change)** above the program, or the globe in the status bar |
+| Change speed | Click the speed in the status bar (applies live) |
 
-### Commands
+A program runs in the world with the same name (`maze.kli` → `maze.klm`). If there is no match, VS Karel asks once and remembers your choice.
 
-All commands are available via `Ctrl+Shift+P` under the "Karel" category:
+If Karel hits a wall, or picks a beeper that isn't there, execution stops with an **error shutoff**: the offending line turns red and the message explains what happened.
 
-- Run Karel Program
-- Step Through Program
-- Stop Execution
-- Reset World
-- Open World Visualizer
-- Convert ASCII Map to KLM
-
-## File Formats
-
-### Instructions (`.kli`)
+## The Karel language (`.kli`)
 
 ```
 BEGINNING-OF-PROGRAM
@@ -45,24 +39,30 @@ BEGINNING-OF-PROGRAM
     END
 
     BEGINNING-OF-EXECUTION
-        move;
-        turnleft;
+        move;              // comments are allowed anywhere
+        turnright;
         ITERATE 3 TIMES
         BEGIN
             move
-        END
+        END;
         turnoff
     END-OF-EXECUTION
 END-OF-PROGRAM
 ```
 
-**Built-in instructions:** `move`, `turnleft`, `pickbeeper`, `putbeeper`, `turnoff`
+- **Built-in instructions:** `move`, `turnleft`, `pickbeeper`, `putbeeper`, `turnoff`
+- **Control structures:** `IF <condition> THEN`, `ELSE`, `WHILE <condition> DO`, `ITERATE <n> TIMES`, `DEFINE-NEW-INSTRUCTION <name> AS`
+- The body of `THEN`/`ELSE`/`DO`/`TIMES`/`AS` is a `BEGIN … END` block or a single instruction, as in the classic Karel book. `END;` is fine. Keywords are case-insensitive.
+- Defined instructions may call each other in any order, including recursively.
+- **The 18 conditions:** `front-is-clear`, `front-is-blocked`, `left-is-clear`, `left-is-blocked`, `right-is-clear`, `right-is-blocked`, `next-to-a-beeper`, `not-next-to-a-beeper`, `facing-north`, `not-facing-north`, `facing-south`, `not-facing-south`, `facing-east`, `not-facing-east`, `facing-west`, `not-facing-west`, `beeper-in-bag`, `no-beeper-in-bag`
 
-**Control structures:** `IF/THEN/ELSE`, `WHILE/DO`, `ITERATE/TIMES`, `DEFINE-NEW-INSTRUCTION`
+Errors are underlined as you type (all of them, not just the first), and snippets are available for every construct (`program`, `define`, `if`, `ifelse`, `while`, `iterate`).
 
-**Conditions:** `front-is-clear`, `front-is-blocked`, `left-is-clear`, `left-is-blocked`, `right-is-clear`, `right-is-blocked`, `next-to-a-beeper`, `not-next-to-a-beeper`, `facing-north`, `facing-south`, `facing-east`, `facing-west`, `not-facing-north`, `not-facing-south`, `not-facing-east`, `not-facing-west`, `beeper-in-bag`
+## Worlds (`.klm`)
 
-### World Maps (`.klm`)
+**Opening a `.klm` file shows the world itself** — the grid, walls, beepers and Karel — as its editor. Running a program animates it right there; there is no separate visualizer window. To see or edit the underlying JSON, click the `{}` button in the editor title (or right-click the file → *Open With → Text Editor*).
+
+The JSON has schema-backed **autocomplete and validation**:
 
 ```json
 {
@@ -73,17 +73,20 @@ END-OF-PROGRAM
 }
 ```
 
-- Coordinates are 1-based with (1,1) at the bottom-left
-- Direction values: `north`, `south`, `east`, `west`
-- Walls are defined as blocked connections between adjacent cells
+- Coordinates are 1-based with **(1,1) at the bottom-left**; `facing` is `north` / `south` / `east` / `west`.
+- Walls block the edge between two **adjacent** cells, in both directions. The world border is always walled.
+- The `.klm` file is the **initial state**: running never modifies it (the file never becomes dirty). Edit the JSON and the drawing updates live.
 
-## Configuration
+## Commands
 
-| Setting                            | Default | Description                         |
-| ---------------------------------- | ------- | ----------------------------------- |
-| `vs-karel.enableErrorHighlighting` | `true`  | Enable inline error highlighting    |
-| `vs-karel.executionSpeed`          | `500`   | Delay between steps in ms (50-2000) |
-| `vs-karel.autoOpenVisualizer`      | `true`  | Auto-open visualizer on run         |
+All under the **Karel** category in the Command Palette: Run, Step, Stop, Reset World, Open World, Edit World as JSON, Select World for Program, Set Execution Speed, New Karel Program, New Karel World, Toggle Error Highlighting.
+
+## Settings
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `vs-karel.enableErrorHighlighting` | `true` | Live error underlines in `.kli` files (turn off for classroom exercises) |
+| `vs-karel.executionSpeed` | `500` | Delay between steps in ms (50–2000) |
 
 ## Development
 
@@ -93,7 +96,7 @@ cd VS-Karel
 pnpm install
 ```
 
-Press `F5` to launch the Extension Development Host.
+Press `F5` to launch the Extension Development Host. The interpreter (`src/interpreter/`) is pure TypeScript with no VS Code dependency; `src/controller.ts` owns all execution state; everything else is a thin projection of it.
 
 ## License
 

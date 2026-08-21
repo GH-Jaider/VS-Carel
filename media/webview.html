@@ -11,37 +11,22 @@
     <link rel="stylesheet" href="{{styleUri}}" />
   </head>
   <body>
-    <div class="toolbar">
-      <button id="runBtn" title="Run (Ctrl+Shift+R)">▶ Run</button>
-      <button id="stepBtn" title="Step (Ctrl+Shift+S)">⏭ Step</button>
-      <button id="stopBtn" title="Stop" disabled>⏹ Stop</button>
-      <button id="resetBtn" title="Reset">↺ Reset</button>
-      <button id="changeProgramBtn" title="Change Program">📄 Change Program</button>
-      <span id="status" class="status">Ready</span>
-      <div class="speed-control">
-        <label for="speed">Speed:</label>
-        <input type="range" id="speed" min="50" max="1000" value="500" step="50" />
-        <span id="speedValue">500ms</span>
-      </div>
-    </div>
+    <div id="errorBanner" class="error-banner hidden"></div>
 
     <div class="canvas-container">
-      <canvas id="worldCanvas" width="600" height="400"></canvas>
+      <canvas id="worldCanvas"></canvas>
+      <div id="emptyState" class="empty-state">
+        <p>This world could not be drawn yet.</p>
+        <p>Fix the file (click <code>{}</code> above to edit the JSON), or press <kbd>F5</kbd> in a <code>.kli</code> program.</p>
+      </div>
     </div>
 
-    <div class="info-panel">
-      <div class="row">
-        <span class="label">Position:</span>
-        <span id="position">(1, 1)</span>
-      </div>
-      <div class="row">
-        <span class="label">Facing:</span>
-        <span id="facing">North</span>
-      </div>
-      <div class="row">
-        <span class="label">Beepers in Bag:</span>
-        <span id="beepers">0</span>
-      </div>
+    <div class="status-line">
+      <span id="statusText" class="status-state">Ready</span>
+      <span class="sep">·</span>
+      <span>Karel <span id="position">–</span> <span id="facing"></span></span>
+      <span class="sep">·</span>
+      <span>Bag: <span id="beepers">–</span></span>
     </div>
 
     <script src="{{scriptUri}}"></script>

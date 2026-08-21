@@ -15,7 +15,7 @@ BEGINNING-OF-PROGRAM
 	BEGINNING-OF-EXECUTION
 		move;
 		move;
-		turnleft;
+		turnright;
 		move;
 		IF next-to-a-beeper THEN
 		BEGIN

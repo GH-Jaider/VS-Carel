@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Karel World (.klm)",
+  "description": "A world for Karel the Robot: dimensions, Karel's start state, beepers and walls. Coordinates are 1-based with (1,1) at the bottom-left.",
+  "type": "object",
+  "required": ["dimensions", "karel"],
+  "additionalProperties": false,
+  "properties": {
+    "dimensions": {
+      "description": "Size of the world in cells.",
+      "type": "object",
+      "required": ["width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "karel": {
+      "description": "Karel's starting position, direction and beeper bag.",
+      "type": "object",
+      "required": ["x", "y", "facing"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer", "minimum": 1 },
+        "y": { "type": "integer", "minimum": 1 },
+        "facing": {
+          "type": "string",
+          "enum": ["north", "south", "east", "west"],
+          "description": "Direction Karel faces at the start."
+        },
+        "beepers": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Beepers in Karel's bag at the start."
+        }
+      }
+    },
+    "beepers": {
+      "description": "Beepers placed in the world.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["x", "y", "count"],
+        "additionalProperties": false,
+        "properties": {
+          "x": { "type": "integer", "minimum": 1 },
+          "y": { "type": "integer", "minimum": 1 },
+          "count": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "walls": {
+      "description": "Walls between adjacent cells. A wall blocks movement in both directions.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "object",
+            "required": ["x", "y"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "type": "integer", "minimum": 1 },
+              "y": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "to": {
+            "type": "object",
+            "required": ["x", "y"],
+            "additionalProperties": false,
+            "properties": {
+              "x": { "type": "integer", "minimum": 1 },
+              "y": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

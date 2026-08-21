@@ -2,9 +2,6 @@
  * Token types and definitions for the Karel lexer.
  */
 
-/**
- * Token types for the parser.
- */
 export enum TokenType {
   // Program structure
   BeginningOfProgram = "BEGINNING-OF-PROGRAM",
@@ -23,13 +20,6 @@ export enum TokenType {
   Iterate = "ITERATE",
   Times = "TIMES",
 
-  // Instructions
-  Move = "move",
-  TurnLeft = "turnleft",
-  PickBeeper = "pickbeeper",
-  PutBeeper = "putbeeper",
-  TurnOff = "turnoff",
-
   // Definitions
   DefineNewInstruction = "DEFINE-NEW-INSTRUCTION",
   As = "AS",
@@ -39,17 +29,16 @@ export enum TokenType {
   Number = "NUMBER",
   Identifier = "IDENTIFIER",
   Semicolon = "SEMICOLON",
-  NewLine = "NEWLINE",
   EOF = "EOF",
 }
 
 /**
  * Represents a parsed token.
+ * `line` is 1-based; `column` is the 0-based character index within the line.
  */
 export interface Token {
   type: TokenType;
   value: string;
   line: number;
   column: number;
-  indent: number; // Number of leading tabs
 }

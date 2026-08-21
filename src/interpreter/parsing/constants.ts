@@ -3,7 +3,7 @@
  */
 
 /**
- * Valid condition names.
+ * Valid condition names (the 18 classic conditions: each test and its negation).
  */
 export const VALID_CONDITIONS = new Set([
   "front-is-clear",
@@ -23,6 +23,7 @@ export const VALID_CONDITIONS = new Set([
   "facing-west",
   "not-facing-west",
   "beeper-in-bag",
+  "no-beeper-in-bag",
 ]);
 
 /**

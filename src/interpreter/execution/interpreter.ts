@@ -1,31 +1,48 @@
 /**
  * Interpreter for executing Karel programs.
+ *
+ * Both run() (animated, with a delay between steps) and step() (one visible
+ * step per call) drive the same explicit execution stack. A "visible step"
+ * is one executed instruction call; control-flow bookkeeping (entering
+ * blocks, evaluating conditions, expanding custom instructions) happens
+ * silently within the same step.
+ *
+ * onStep fires AFTER the instruction has executed, so the world the UI
+ * renders is always in sync with the highlighted line.
  */
 
 import { World } from "@/interpreter/world";
 import { ProgramNode, BlockNode, InstructionCallNode } from "@/interpreter/types/ast";
 import { RuntimeError, Diagnostic } from "@/interpreter/types/errors";
-import { ErrorMessages } from "@/i18n/messages";
+import { ErrorMessages } from "@/interpreter/messages";
 import { Parser } from "@/interpreter/parsing/parser";
 import { ExecutionFrame } from "@/interpreter/execution/executionFrame";
 
-/**
- * Interpreter for executing Karel programs.
- */
-export class Interpreter {
-  private world: World;
-  private ast: ProgramNode | null = null;
-  private customInstructions: Map<string, BlockNode> = new Map();
-  private running: boolean = false;
-  private currentLine: number = 0;
-  private executionSpeed: number = 500;
-  private maxIterations: number = 100000;
-  private iterationCount: number = 0;
+const MAX_VISIBLE_STEPS = 100_000;
+const MAX_STACK_DEPTH = 2_000;
+// Bookkeeping budget within one visible step. Must be generous: a legal
+// `ITERATE 5000 TIMES <empty-ish body>` spins ~5x its count without any
+// visible action. A truly stuck loop (WHILE true DO BEGIN END) burns this
+// budget in a few milliseconds and still errors out promptly.
+const MAX_INTERNAL_SPINS = 1_000_000;
 
-  // Step execution state
-  private executionStack: ExecutionFrame[] = [];
-  private stepInitialized: boolean = false;
-  private stepCompleted: boolean = false;
+const MIN_SPEED_MS = 10;
+const MAX_SPEED_MS = 5_000;
+
+type CallResult = "action" | "expanded" | "off";
+
+export class Interpreter {
+  private readonly world: World;
+  private ast: ProgramNode | null = null;
+  private customInstructions = new Map<string, BlockNode>();
+
+  private stack: ExecutionFrame[] = [];
+  private started = false;
+  private finished = false;
+  private stopRequested = false;
+  private runLoopActive = false;
+  private visibleSteps = 0;
+  private executionSpeed = 500;
 
   // Callbacks for UI updates
   public onStep?: (line: number) => void;
@@ -36,29 +53,23 @@ export class Interpreter {
     this.world = world;
   }
 
-  /**
-   * Check if step execution is initialized.
-   */
-  isStepInitialized(): boolean {
-    return this.stepInitialized;
+  get isStarted(): boolean {
+    return this.started;
+  }
+
+  get isFinished(): boolean {
+    return this.finished;
   }
 
   /**
-   * Check if step execution is completed.
-   */
-  isStepCompleted(): boolean {
-    return this.stepCompleted;
-  }
-
-  /**
-   * Load and parse a program.
+   * Load and parse a program. Returns the parser diagnostics; callers should
+   * refuse to execute when any diagnostic has severity "error".
    */
   load(source: string): Diagnostic[] {
     const parser = new Parser();
     const { ast, diagnostics } = parser.parse(source);
     this.ast = ast;
 
-    // Build custom instructions map
     this.customInstructions.clear();
     if (ast) {
       for (const def of ast.definitions) {
@@ -70,327 +81,245 @@ export class Interpreter {
   }
 
   /**
-   * Run the entire program.
-   * Uses the same stack-based execution as step() for consistency.
+   * Run the program with an animation delay between visible steps.
+   * Resolves when the program completes, errors, or is stopped.
    */
   async run(): Promise<void> {
-    if (!this.ast) {
-      throw new RuntimeError(ErrorMessages.programNotLoaded());
+    if (this.runLoopActive) {
+      return;
     }
-
-    // Initialize step mode if not already
-    if (!this.stepInitialized) {
-      this.initializeStepMode();
-    }
-
-    // Run all steps with delay
+    this.ensureInitialized();
+    this.stopRequested = false;
+    this.runLoopActive = true;
     try {
-      while (this.running && !this.stepCompleted) {
-        const hasMore = this.executeOneStep();
+      while (!this.finished && !this.stopRequested) {
+        const hasMore = this.advanceOneStep();
         if (!hasMore) {
-          this.stepCompleted = true;
-          this.onComplete?.();
           break;
         }
-        // Wait for animation between steps
         await this.delay();
       }
-    } catch (e) {
-      this.stepCompleted = true;
-      if (e instanceof RuntimeError) {
-        this.onError?.(e);
-      } else {
-        throw e;
-      }
     } finally {
-      if (!this.running) {
-        // Was stopped, don't mark as completed
-      }
+      this.runLoopActive = false;
     }
   }
 
   /**
-   * Execute a single step.
-   * Returns true if there are more steps to execute, false if done.
+   * Execute a single visible step. Returns true if there is more to execute.
    */
   step(): boolean {
+    if (this.finished) {
+      return false;
+    }
+    this.ensureInitialized();
+    this.stopRequested = false;
+    return this.advanceOneStep();
+  }
+
+  /**
+   * Request that a running loop stops after the current step.
+   */
+  stop(): void {
+    this.stopRequested = true;
+  }
+
+  /**
+   * Set execution speed in milliseconds between steps. Applies live.
+   */
+  setSpeed(ms: number): void {
+    this.executionSpeed = Math.max(MIN_SPEED_MS, Math.min(MAX_SPEED_MS, ms));
+  }
+
+  private ensureInitialized(): void {
     if (!this.ast) {
       throw new RuntimeError(ErrorMessages.programNotLoaded());
     }
-
-    // Initialize step execution if not already
-    if (!this.stepInitialized) {
-      this.executionStack = [
-        {
-          type: "block",
-          statements: this.ast.execution.statements,
-          index: 0,
-        },
+    if (!this.started) {
+      this.stack = [
+        { type: "block", statements: this.ast.execution.statements, index: 0 },
       ];
-      this.stepInitialized = true;
-      this.stepCompleted = false;
-      this.running = true;
-      this.iterationCount = 0;
+      this.started = true;
+      this.finished = false;
+      this.visibleSteps = 0;
     }
+  }
 
-    // If completed, nothing more to do
-    if (this.stepCompleted) {
-      return false;
-    }
-
-    // Resume if was stopped
-    if (!this.running) {
-      this.running = true;
-    }
-
+  /**
+   * Execute one step, translating the outcome into callbacks.
+   */
+  private advanceOneStep(): boolean {
     try {
       const hasMore = this.executeOneStep();
       if (!hasMore) {
-        this.stepCompleted = true;
+        this.finished = true;
         this.onComplete?.();
-        return false;
       }
-      return true;
+      return hasMore;
     } catch (e) {
-      this.stepCompleted = true;
+      this.finished = true;
       if (e instanceof RuntimeError) {
         this.onError?.(e);
-      } else {
-        throw e;
-      }
-      return false;
-    }
-  }
-
-  /**
-   * Initialize step mode without executing.
-   */
-  initializeStepMode(): void {
-    if (!this.ast) {
-      throw new RuntimeError(ErrorMessages.programNotLoaded());
-    }
-    this.executionStack = [
-      {
-        type: "block",
-        statements: this.ast.execution.statements,
-        index: 0,
-      },
-    ];
-    this.stepInitialized = true;
-    this.stepCompleted = false;
-    this.running = true;
-    this.iterationCount = 0;
-  }
-
-  /**
-   * Execute one atomic step (one instruction).
-   */
-  private executeOneStep(): boolean {
-    while (this.executionStack.length > 0) {
-      const frame = this.executionStack[this.executionStack.length - 1];
-
-      this.iterationCount++;
-      if (this.iterationCount > this.maxIterations) {
-        throw new RuntimeError(ErrorMessages.maxIterationsReached(this.maxIterations));
-      }
-
-      if (frame.type === "block" && frame.statements) {
-        if (frame.index >= frame.statements.length) {
-          // Done with this block
-          this.executionStack.pop();
-          continue;
-        }
-
-        const statement = frame.statements[frame.index];
-        frame.index++;
-
-        // Handle the statement
-        if (statement.type === "call") {
-          // Execute the call and return (one step done)
-          this.executeCallSync(statement as InstructionCallNode);
-          if (!this.running) {
-            // turnoff was called
-            return false;
-          }
-          return true;
-        } else if (statement.type === "if") {
-          const ifNode = statement;
-          if (ifNode.type !== "if") {
-            return true;
-          }
-          const condition = this.world.evaluateCondition(ifNode.condition);
-          if (condition) {
-            this.executionStack.push({
-              type: "block",
-              statements: ifNode.thenBranch.statements,
-              index: 0,
-            });
-          } else if (ifNode.elseBranch) {
-            this.executionStack.push({
-              type: "block",
-              statements: ifNode.elseBranch.statements,
-              index: 0,
-            });
-          }
-          continue;
-        } else if (statement.type === "while") {
-          const whileNode = statement;
-          if (whileNode.type !== "while") {
-            return true;
-          }
-          // Push while frame (we'll check condition in the while frame handler)
-          this.executionStack.push({
-            type: "while",
-            condition: whileNode.condition,
-            body: whileNode.body,
-            index: 0,
-          });
-          continue;
-        } else if (statement.type === "iterate") {
-          const iterateNode = statement;
-          if (iterateNode.type !== "iterate") {
-            return true;
-          }
-          if (iterateNode.count > 0) {
-            this.executionStack.push({
-              type: "iterate",
-              count: iterateNode.count,
-              current: 0,
-              body: iterateNode.body,
-              index: 0,
-            });
-          }
-          continue;
-        } else if (statement.type === "block") {
-          this.executionStack.push({
-            type: "block",
-            statements: (statement as BlockNode).statements,
-            index: 0,
-          });
-          continue;
-        }
-      } else if (frame.type === "while") {
-        // Check while condition
-        if (!this.world.evaluateCondition(frame.condition!)) {
-          this.executionStack.pop();
-          continue;
-        }
-        // Push body as a new block frame, then re-check while
-        const bodyFrame: ExecutionFrame = {
-          type: "block",
-          statements: frame.body!.statements,
-          index: 0,
-        };
-        // Replace while frame with a fresh one for next iteration
-        this.executionStack.pop();
-        this.executionStack.push({
-          type: "while",
-          condition: frame.condition,
-          body: frame.body,
-          index: 0,
-        });
-        this.executionStack.push(bodyFrame);
-        continue;
-      } else if (frame.type === "iterate") {
-        if (frame.current! >= frame.count!) {
-          this.executionStack.pop();
-          continue;
-        }
-        // Push body, increment counter
-        frame.current!++;
-        this.executionStack.push({
-          type: "block",
-          statements: frame.body!.statements,
-          index: 0,
-        });
-        continue;
-      }
-    }
-
-    // Stack empty - execution complete
-    return false;
-  }
-
-  /**
-   * Execute a call synchronously (for step mode).
-   */
-  private executeCallSync(node: InstructionCallNode): void {
-    const name = node.name.toLowerCase();
-    this.currentLine = node.line;
-    this.onStep?.(node.line);
-
-    try {
-      switch (name) {
-        case "move":
-          this.world.move();
-          break;
-        case "turnleft":
-          this.world.turnLeft();
-          break;
-        case "pickbeeper":
-          this.world.pickBeeper();
-          break;
-        case "putbeeper":
-          this.world.putBeeper();
-          break;
-        case "turnoff":
-          this.running = false;
-          break;
-        default:
-          // Custom instruction - push its body onto the stack
-          const body = this.customInstructions.get(name);
-          if (body) {
-            // We need to execute the custom instruction's body
-            // But we already incremented index, so we push the body
-            // However, for custom instructions we want to step through them
-            this.executionStack.push({
-              type: "block",
-              statements: body.statements,
-              index: 0,
-            });
-            // Don't count this as a "step" - continue to first actual instruction
-            return;
-          } else {
-            throw new RuntimeError(
-              ErrorMessages.unknownInstruction(node.name, node.line),
-              node.line
-            );
-          }
-      }
-    } catch (e) {
-      if (e instanceof Error && !(e instanceof RuntimeError)) {
-        throw new RuntimeError(e.message, node.line);
+        return false;
       }
       throw e;
     }
   }
 
   /**
-   * Stop execution.
+   * Advance until exactly one instruction call has executed.
+   * Returns true if there is more program to run afterwards.
    */
-  stop(): void {
-    this.running = false;
+  private executeOneStep(): boolean {
+    let spins = 0;
+
+    while (this.stack.length > 0) {
+      if (++spins > MAX_INTERNAL_SPINS) {
+        throw new RuntimeError(ErrorMessages.stuckWithoutProgress());
+      }
+
+      const frame = this.stack[this.stack.length - 1];
+
+      if (frame.type === "block") {
+        if (frame.index >= frame.statements.length) {
+          this.stack.pop();
+          continue;
+        }
+
+        const statement = frame.statements[frame.index++];
+
+        switch (statement.type) {
+          case "call": {
+            const call = statement as InstructionCallNode;
+            const result = this.executeCall(call);
+            if (result === "expanded") {
+              // A custom instruction was expanded; keep going until a real
+              // instruction executes so expansion doesn't consume a step.
+              continue;
+            }
+            this.visibleSteps++;
+            if (this.visibleSteps > MAX_VISIBLE_STEPS) {
+              throw new RuntimeError(
+                ErrorMessages.maxIterationsReached(MAX_VISIBLE_STEPS),
+                call.line
+              );
+            }
+            this.onStep?.(call.line);
+            return result !== "off";
+          }
+          case "if": {
+            if (this.world.evaluateCondition(statement.condition)) {
+              this.stack.push({
+                type: "block",
+                statements: statement.thenBranch.statements,
+                index: 0,
+              });
+            } else if (statement.elseBranch) {
+              this.stack.push({
+                type: "block",
+                statements: statement.elseBranch.statements,
+                index: 0,
+              });
+            }
+            continue;
+          }
+          case "while": {
+            this.stack.push({
+              type: "while",
+              condition: statement.condition,
+              body: statement.body,
+            });
+            continue;
+          }
+          case "iterate": {
+            if (statement.count > 0) {
+              this.stack.push({
+                type: "iterate",
+                remaining: statement.count,
+                body: statement.body,
+              });
+            }
+            continue;
+          }
+          case "block": {
+            this.stack.push({
+              type: "block",
+              statements: (statement as BlockNode).statements,
+              index: 0,
+            });
+            continue;
+          }
+          default:
+            continue;
+        }
+      } else if (frame.type === "while") {
+        if (!this.world.evaluateCondition(frame.condition)) {
+          this.stack.pop();
+          continue;
+        }
+        this.stack.push({ type: "block", statements: frame.body.statements, index: 0 });
+        continue;
+      } else {
+        // iterate
+        if (frame.remaining <= 0) {
+          this.stack.pop();
+          continue;
+        }
+        frame.remaining--;
+        this.stack.push({ type: "block", statements: frame.body.statements, index: 0 });
+        continue;
+      }
+    }
+
+    return false;
   }
 
   /**
-   * Reset the world to initial state.
+   * Execute a single instruction call against the world.
+   * Errors are wrapped in RuntimeError carrying the source line.
    */
-  reset(): void {
-    this.world.reset();
-    this.running = false;
-    this.currentLine = 0;
-    this.iterationCount = 0;
-    // Reset step execution state
-    this.executionStack = [];
-    this.stepInitialized = false;
-    this.stepCompleted = false;
-  }
+  private executeCall(node: InstructionCallNode): CallResult {
+    const name = node.name.toLowerCase();
 
-  /**
-   * Set execution speed in milliseconds.
-   */
-  setSpeed(ms: number): void {
-    this.executionSpeed = Math.max(50, Math.min(2000, ms));
+    try {
+      switch (name) {
+        case "move":
+          this.world.move();
+          return "action";
+        case "turnleft":
+          this.world.turnLeft();
+          return "action";
+        case "pickbeeper":
+          this.world.pickBeeper();
+          return "action";
+        case "putbeeper":
+          this.world.putBeeper();
+          return "action";
+        case "turnoff":
+          return "off";
+        default: {
+          const body = this.customInstructions.get(name);
+          if (!body) {
+            throw new RuntimeError(ErrorMessages.unknownInstruction(node.name), node.line);
+          }
+          if (this.stack.length >= MAX_STACK_DEPTH) {
+            throw new RuntimeError(ErrorMessages.recursionTooDeep(node.name), node.line);
+          }
+          this.stack.push({ type: "block", statements: body.statements, index: 0 });
+          return "expanded";
+        }
+      }
+    } catch (e) {
+      if (e instanceof RuntimeError) {
+        if (e.line === undefined) {
+          e.line = node.line;
+        }
+        throw e;
+      }
+      if (e instanceof Error) {
+        throw new RuntimeError(e.message, node.line);
+      }
+      throw e;
+    }
   }
 
   private delay(): Promise<void> {

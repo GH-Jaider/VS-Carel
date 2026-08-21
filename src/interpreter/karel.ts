@@ -27,16 +27,6 @@ export const DirectionVectors: Record<Direction, Position> = {
 };
 
 /**
- * Human-readable direction names.
- */
-export const DirectionNames: Record<Direction, string> = {
-  [Direction.North]: "north",
-  [Direction.West]: "west",
-  [Direction.South]: "south",
-  [Direction.East]: "east",
-};
-
-/**
  * Direction mapping for 90° counter-clockwise rotation (left turn).
  */
 const LeftTurnMap: Record<Direction, Direction> = {
@@ -208,27 +198,6 @@ export class Karel {
     }
     this._beepersInBag--;
     return true;
-  }
-
-  /**
-   * Set position directly (for initialization or reset).
-   */
-  setPosition(position: Position): void {
-    this._position = { ...position };
-  }
-
-  /**
-   * Set direction directly (for initialization or reset).
-   */
-  setFacing(direction: Direction): void {
-    this._facing = direction;
-  }
-
-  /**
-   * Set beepers in bag directly (for initialization or reset).
-   */
-  setBeepersInBag(count: number): void {
-    this._beepersInBag = Math.max(0, count);
   }
 
   /**

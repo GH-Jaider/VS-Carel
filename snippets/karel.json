@@ -1,0 +1,55 @@
+{
+  "Karel program": {
+    "prefix": ["program", "beginning-of-program"],
+    "body": [
+      "BEGINNING-OF-PROGRAM",
+      "\tBEGINNING-OF-EXECUTION",
+      "\t\t${1:move;}",
+      "\t\tturnoff",
+      "\tEND-OF-EXECUTION",
+      "END-OF-PROGRAM"
+    ],
+    "description": "Skeleton of a Karel program"
+  },
+  "Define new instruction": {
+    "prefix": ["define", "define-new-instruction"],
+    "body": [
+      "DEFINE-NEW-INSTRUCTION ${1:turnright} AS",
+      "BEGIN",
+      "\t${2:turnleft;}",
+      "\t${3:turnleft;}",
+      "\t${0:turnleft}",
+      "END"
+    ],
+    "description": "Define a new instruction"
+  },
+  "If": {
+    "prefix": "if",
+    "body": ["IF ${1|front-is-clear,front-is-blocked,left-is-clear,left-is-blocked,right-is-clear,right-is-blocked,next-to-a-beeper,not-next-to-a-beeper,facing-north,not-facing-north,facing-south,not-facing-south,facing-east,not-facing-east,facing-west,not-facing-west,beeper-in-bag,no-beeper-in-bag|} THEN", "BEGIN", "\t$0", "END"],
+    "description": "IF condition THEN block"
+  },
+  "If / Else": {
+    "prefix": "ifelse",
+    "body": [
+      "IF ${1|front-is-clear,front-is-blocked,left-is-clear,left-is-blocked,right-is-clear,right-is-blocked,next-to-a-beeper,not-next-to-a-beeper,facing-north,not-facing-north,facing-south,not-facing-south,facing-east,not-facing-east,facing-west,not-facing-west,beeper-in-bag,no-beeper-in-bag|} THEN",
+      "BEGIN",
+      "\t$2",
+      "END",
+      "ELSE",
+      "BEGIN",
+      "\t$0",
+      "END"
+    ],
+    "description": "IF condition THEN ... ELSE ... blocks"
+  },
+  "While": {
+    "prefix": "while",
+    "body": ["WHILE ${1|front-is-clear,front-is-blocked,left-is-clear,left-is-blocked,right-is-clear,right-is-blocked,next-to-a-beeper,not-next-to-a-beeper,facing-north,not-facing-north,facing-south,not-facing-south,facing-east,not-facing-east,facing-west,not-facing-west,beeper-in-bag,no-beeper-in-bag|} DO", "BEGIN", "\t$0", "END"],
+    "description": "WHILE condition DO block"
+  },
+  "Iterate": {
+    "prefix": "iterate",
+    "body": ["ITERATE ${1:3} TIMES", "BEGIN", "\t$0", "END"],
+    "description": "Repeat a block a fixed number of times"
+  }
+}

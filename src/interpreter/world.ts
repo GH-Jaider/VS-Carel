@@ -2,13 +2,17 @@
  * Karel World - Graph-based representation of Karel's environment.
  *
  * The world is represented as an implicit graph where:
- * - Each cell (x, y) is a node
+ * - Each cell (x, y) is a node (1-based, (1,1) at the bottom-left)
  * - Walls are defined as blocked connections between adjacent cells
  * - Two cells are connected if there's no wall between them
+ *
+ * A World instance is a running snapshot: it is built from a KarelMap and
+ * mutated by execution, but it never writes back to the map. The .klm file
+ * is always the initial state; resetting means building a fresh World.
  */
 
-import { Karel, Position, Direction, DirectionVectors } from "@/interpreter/karel";
-import { ErrorMessages } from "@/i18n/messages";
+import { Karel, Position, Direction, parseDirection } from "@/interpreter/karel";
+import { ErrorMessages } from "@/interpreter/messages";
 
 /**
  * Represents a wall between two adjacent cells.
@@ -51,12 +55,170 @@ export interface KarelMap {
   walls: Wall[];
 }
 
+export const MAX_WORLD_SIZE = 100;
+
+/**
+ * Result of validating raw .klm data.
+ */
+export interface MapValidationResult {
+  ok: boolean;
+  errors: string[];
+  map?: KarelMap;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isInt(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value);
+}
+
+/**
+ * Canonical validation for .klm map data. Every load path (files, previews,
+ * execution) should go through this before constructing a World.
+ * Returns friendly errors and, on success, a normalized KarelMap.
+ */
+export function validateKarelMap(data: unknown): MapValidationResult {
+  const errors: string[] = [];
+
+  if (!isRecord(data)) {
+    return { ok: false, errors: ["The map must be a JSON object"] };
+  }
+
+  // dimensions
+  let width = 0;
+  let height = 0;
+  if (!isRecord(data.dimensions)) {
+    errors.push('Missing "dimensions" ({ "width": ..., "height": ... })');
+  } else {
+    if (!isInt(data.dimensions.width) || data.dimensions.width < 1) {
+      errors.push('"dimensions.width" must be a whole number of at least 1');
+    } else if (data.dimensions.width > MAX_WORLD_SIZE) {
+      errors.push(`"dimensions.width" cannot be larger than ${MAX_WORLD_SIZE}`);
+    } else {
+      width = data.dimensions.width;
+    }
+    if (!isInt(data.dimensions.height) || data.dimensions.height < 1) {
+      errors.push('"dimensions.height" must be a whole number of at least 1');
+    } else if (data.dimensions.height > MAX_WORLD_SIZE) {
+      errors.push(`"dimensions.height" cannot be larger than ${MAX_WORLD_SIZE}`);
+    } else {
+      height = data.dimensions.height;
+    }
+  }
+
+  const inBounds = (x: number, y: number): boolean =>
+    width > 0 && height > 0 && x >= 1 && x <= width && y >= 1 && y <= height;
+
+  // karel
+  let karel: KarelMap["karel"] | null = null;
+  if (!isRecord(data.karel)) {
+    errors.push('Missing "karel" ({ "x": ..., "y": ..., "facing": ..., "beepers": ... })');
+  } else {
+    const k = data.karel;
+    if (!isInt(k.x) || !isInt(k.y)) {
+      errors.push('"karel.x" and "karel.y" must be whole numbers');
+    } else if (width > 0 && height > 0 && !inBounds(k.x, k.y)) {
+      errors.push(`Karel is outside the world: (${k.x}, ${k.y}) in a ${width}x${height} world`);
+    }
+    let facing = "north";
+    if (typeof k.facing !== "string") {
+      errors.push('"karel.facing" must be "north", "south", "east" or "west"');
+    } else {
+      try {
+        facing = parseDirection(k.facing);
+      } catch {
+        errors.push(`"karel.facing" has an invalid value: "${k.facing}"`);
+      }
+    }
+    const beepers = k.beepers === undefined ? 0 : k.beepers;
+    if (!isInt(beepers) || beepers < 0) {
+      errors.push('"karel.beepers" must be a whole number of 0 or more');
+    }
+    if (isInt(k.x) && isInt(k.y) && isInt(beepers)) {
+      karel = { x: k.x, y: k.y, facing, beepers };
+    }
+  }
+
+  // beepers
+  const beepers: BeeperStack[] = [];
+  if (data.beepers !== undefined) {
+    if (!Array.isArray(data.beepers)) {
+      errors.push('"beepers" must be an array');
+    } else {
+      data.beepers.forEach((entry, i) => {
+        if (!isRecord(entry) || !isInt(entry.x) || !isInt(entry.y) || !isInt(entry.count)) {
+          errors.push(`Beeper #${i + 1} must look like { "x": 3, "y": 3, "count": 1 }`);
+          return;
+        }
+        if (!inBounds(entry.x, entry.y)) {
+          errors.push(`Beeper #${i + 1} is outside the world: (${entry.x}, ${entry.y})`);
+          return;
+        }
+        if (entry.count < 1) {
+          errors.push(`Beeper #${i + 1} must have a count of at least 1`);
+          return;
+        }
+        beepers.push({ x: entry.x, y: entry.y, count: entry.count });
+      });
+    }
+  }
+
+  // walls
+  const walls: Wall[] = [];
+  if (data.walls !== undefined) {
+    if (!Array.isArray(data.walls)) {
+      errors.push('"walls" must be an array');
+    } else {
+      data.walls.forEach((entry, i) => {
+        if (
+          !isRecord(entry) ||
+          !isRecord(entry.from) ||
+          !isRecord(entry.to) ||
+          !isInt(entry.from.x) ||
+          !isInt(entry.from.y) ||
+          !isInt(entry.to.x) ||
+          !isInt(entry.to.y)
+        ) {
+          errors.push(
+            `Wall #${i + 1} must look like { "from": { "x": 4, "y": 3 }, "to": { "x": 4, "y": 4 } }`
+          );
+          return;
+        }
+        const from = { x: entry.from.x, y: entry.from.y };
+        const to = { x: entry.to.x, y: entry.to.y };
+        if (!inBounds(from.x, from.y) || !inBounds(to.x, to.y)) {
+          errors.push(`Wall #${i + 1} touches a cell outside the world`);
+          return;
+        }
+        if (!areAdjacent(from, to)) {
+          errors.push(
+            `Wall #${i + 1}: cells (${from.x}, ${from.y}) and (${to.x}, ${to.y}) are not adjacent`
+          );
+          return;
+        }
+        walls.push({ from, to });
+      });
+    }
+  }
+
+  if (errors.length > 0 || karel === null) {
+    return { ok: false, errors };
+  }
+
+  return {
+    ok: true,
+    errors: [],
+    map: { dimensions: { width, height }, karel, beepers, walls },
+  };
+}
+
 /**
  * Generates a unique key for a wall between two positions.
  * Normalizes the order so (A,B) and (B,A) produce the same key.
  */
 function wallKey(from: Position, to: Position): string {
-  // Sort positions to ensure consistent key regardless of direction
   if (from.x < to.x || (from.x === to.x && from.y < to.y)) {
     return `${from.x},${from.y}|${to.x},${to.y}`;
   }
@@ -88,78 +250,46 @@ export class World {
   private _beepers: Map<string, number>; // positionKey -> count
   private _walls: Set<string>; // wallKey set
 
-  // Store initial state for reset
-  private _initialKarel: Karel;
-  private _initialBeepers: Map<string, number>;
-  private _isModified: boolean = false;
-
   constructor(map: KarelMap) {
     this._dimensions = { ...map.dimensions };
-
-    // Initialize Karel
     this._karel = Karel.fromJSON(map.karel);
-    this._initialKarel = this._karel.clone();
 
-    // Initialize beepers
     this._beepers = new Map();
-    this._initialBeepers = new Map();
     for (const beeper of map.beepers) {
       const key = positionKey({ x: beeper.x, y: beeper.y });
-      this._beepers.set(key, beeper.count);
-      this._initialBeepers.set(key, beeper.count);
+      this._beepers.set(key, (this._beepers.get(key) ?? 0) + beeper.count);
     }
 
-    // Initialize walls with validation
     this._walls = new Set();
     for (const wall of map.walls) {
       this.addWall(wall.from, wall.to);
     }
   }
 
-  /**
-   * World dimensions.
-   */
   get dimensions(): Dimensions {
     return { ...this._dimensions };
   }
 
-  /**
-   * Width of the world.
-   */
   get width(): number {
     return this._dimensions.width;
   }
 
-  /**
-   * Height of the world.
-   */
   get height(): number {
     return this._dimensions.height;
   }
 
-  /**
-   * Reference to Karel robot.
-   */
   get karel(): Karel {
     return this._karel;
   }
 
   /**
    * Add a wall between two adjacent cells.
-   * Validates that cells are adjacent.
    */
   addWall(from: Position, to: Position): void {
     if (!areAdjacent(from, to)) {
       throw new Error(ErrorMessages.invalidWall(from.x, from.y, to.x, to.y));
     }
     this._walls.add(wallKey(from, to));
-  }
-
-  /**
-   * Remove a wall between two cells.
-   */
-  removeWall(from: Position, to: Position): void {
-    this._walls.delete(wallKey(from, to));
   }
 
   /**
@@ -186,53 +316,32 @@ export class World {
    * Blocked if: out of bounds OR wall exists between cells.
    */
   isBlocked(from: Position, to: Position): boolean {
-    // Out of bounds is blocked
     if (!this.isInBounds(to)) {
       return true;
     }
-
-    // Check for wall between cells
     return this.hasWall(from, to);
   }
 
-  /**
-   * Check if Karel's front is blocked.
-   */
   frontIsBlocked(): boolean {
     return this.isBlocked(this._karel.position, this._karel.frontPosition());
   }
 
-  /**
-   * Check if Karel's front is clear.
-   */
   frontIsClear(): boolean {
     return !this.frontIsBlocked();
   }
 
-  /**
-   * Check if Karel's left is blocked.
-   */
   leftIsBlocked(): boolean {
     return this.isBlocked(this._karel.position, this._karel.leftPosition());
   }
 
-  /**
-   * Check if Karel's left is clear.
-   */
   leftIsClear(): boolean {
     return !this.leftIsBlocked();
   }
 
-  /**
-   * Check if Karel's right is blocked.
-   */
   rightIsBlocked(): boolean {
     return this.isBlocked(this._karel.position, this._karel.rightPosition());
   }
 
-  /**
-   * Check if Karel's right is clear.
-   */
   rightIsClear(): boolean {
     return !this.rightIsBlocked();
   }
@@ -244,16 +353,10 @@ export class World {
     return this._beepers.get(positionKey(pos)) ?? 0;
   }
 
-  /**
-   * Check if there's a beeper at Karel's current position.
-   */
   nextToABeeper(): boolean {
     return this.getBeepers(this._karel.position) > 0;
   }
 
-  /**
-   * Check if Karel has beepers in bag.
-   */
   beeperInBag(): boolean {
     return this._karel.hasBeepersInBag();
   }
@@ -288,15 +391,13 @@ export class World {
   // ========== Karel Actions ==========
 
   /**
-   * Move Karel forward.
-   * Throws if front is blocked.
+   * Move Karel forward. Throws if front is blocked (error shutoff).
    */
   move(): void {
     if (this.frontIsBlocked()) {
       throw new Error(ErrorMessages.moveBlocked());
     }
     this._karel.move();
-    this._isModified = true;
   }
 
   /**
@@ -304,12 +405,10 @@ export class World {
    */
   turnLeft(): void {
     this._karel.turnLeft();
-    this._isModified = true;
   }
 
   /**
-   * Pick up a beeper at Karel's current position.
-   * Throws if no beeper at position.
+   * Pick up a beeper at Karel's position. Throws if there is none (error shutoff).
    */
   pickBeeper(): void {
     const pos = this._karel.position;
@@ -317,19 +416,16 @@ export class World {
       throw new Error(ErrorMessages.noBeepersToPickUp(pos.x, pos.y));
     }
     this._karel.pickBeeper();
-    this._isModified = true;
   }
 
   /**
-   * Put down a beeper at Karel's current position.
-   * Throws if no beepers in Karel's bag.
+   * Put down a beeper at Karel's position. Throws if the bag is empty (error shutoff).
    */
   putBeeper(): void {
     if (!this._karel.putBeeper()) {
       throw new Error(ErrorMessages.noBeepersInBag());
     }
     this.addBeepers(this._karel.position);
-    this._isModified = true;
   }
 
   // ========== Condition Checking ==========
@@ -373,33 +469,14 @@ export class World {
         return !this._karel.isFacing(Direction.West);
       case "beeper-in-bag":
         return this.beeperInBag();
+      case "no-beeper-in-bag":
+        return !this.beeperInBag();
       default:
-        throw new Error(`Unknown condition: ${condition}`);
+        throw new Error(ErrorMessages.unknownCondition(condition));
     }
   }
 
-  // ========== State Management ==========
-
-  /**
-   * Reset world to initial state.
-   */
-  reset(): void {
-    // Reset Karel
-    this._karel = this._initialKarel.clone();
-
-    // Reset beepers
-    this._beepers = new Map(this._initialBeepers);
-
-    // Clear modified flag
-    this._isModified = false;
-  }
-
-  /**
-   * Check if world has been modified from initial state.
-   */
-  get isModified(): boolean {
-    return this._isModified;
-  }
+  // ========== Serialization ==========
 
   /**
    * Get all beeper positions and counts.
@@ -435,35 +512,10 @@ export class World {
    */
   toJSON(): KarelMap {
     return {
-      dimensions: this._dimensions,
+      dimensions: { ...this._dimensions },
       karel: this._karel.toJSON(),
       beepers: this.getAllBeepers(),
       walls: this.getAllWalls(),
     };
-  }
-
-  /**
-   * Create a World from a KarelMap.
-   */
-  static fromJSON(map: KarelMap): World {
-    return new World(map);
-  }
-
-  /**
-   * Create an empty world with given dimensions.
-   */
-  static createEmpty(
-    width: number,
-    height: number,
-    karelX: number = 1,
-    karelY: number = 1,
-    karelFacing: Direction = Direction.North
-  ): World {
-    return new World({
-      dimensions: { width, height },
-      karel: { x: karelX, y: karelY, facing: karelFacing, beepers: 0 },
-      beepers: [],
-      walls: [],
-    });
   }
 }

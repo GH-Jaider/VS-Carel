@@ -1,5 +1,11 @@
 /**
  * Parser for Karel instructions.
+ *
+ * Recursive-descent with error recovery: instead of aborting on the first
+ * problem it records a diagnostic, re-synchronizes at the next statement
+ * boundary and keeps going, so students see all their mistakes at once.
+ * It always returns a best-effort AST; callers decide whether to execute
+ * based on the presence of error-severity diagnostics.
  */
 
 import { Token, TokenType } from "@/interpreter/types/tokens";
@@ -13,163 +19,182 @@ import {
   IterateNode,
   InstructionCallNode,
 } from "@/interpreter/types/ast";
-import { ParseError, Diagnostic } from "@/interpreter/types/errors";
-import { ErrorMessages } from "@/i18n/messages";
+import { Diagnostic } from "@/interpreter/types/errors";
+import { ErrorMessages } from "@/interpreter/messages";
 import { Lexer } from "@/interpreter/parsing/lexer";
 import { BUILT_IN_INSTRUCTIONS } from "@/interpreter/parsing/constants";
 
-/**
- * Parser for Karel instructions.
- */
+const STATEMENT_BOUNDARIES = new Set([
+  TokenType.If,
+  TokenType.While,
+  TokenType.Iterate,
+  TokenType.Begin,
+  TokenType.End,
+  TokenType.Else,
+  TokenType.DefineNewInstruction,
+  TokenType.BeginningOfExecution,
+  TokenType.EndOfExecution,
+  TokenType.EndOfProgram,
+]);
+
 export class Parser {
   private tokens: Token[] = [];
-  private current: number = 0;
+  private current = 0;
   private diagnostics: Diagnostic[] = [];
-  private customInstructions: Set<string> = new Set();
+  private customInstructions = new Set<string>();
 
   parse(source: string): { ast: ProgramNode | null; diagnostics: Diagnostic[] } {
-    const lexer = new Lexer(source);
-    this.tokens = lexer.tokenize();
+    this.tokens = new Lexer(source).tokenize();
     this.current = 0;
     this.diagnostics = [];
     this.customInstructions = new Set();
 
-    try {
-      const ast = this.parseProgram();
-      return { ast, diagnostics: this.diagnostics };
-    } catch (e) {
-      if (e instanceof ParseError) {
-        this.diagnostics.push({
-          message: e.message,
-          line: e.line,
-          column: e.column ?? 0,
-          severity: "error",
-        });
-      }
+    if (this.check(TokenType.EOF)) {
+      this.report(ErrorMessages.emptyProgram(), this.peek());
       return { ast: null, diagnostics: this.diagnostics };
+    }
+
+    this.collectInstructionNames();
+    const ast = this.parseProgram();
+    return { ast, diagnostics: this.diagnostics };
+  }
+
+  /**
+   * Pre-pass: register every DEFINE-NEW-INSTRUCTION name up front so calls
+   * may reference instructions defined later in the file (forward references)
+   * and instructions may call themselves (recursion).
+   */
+  private collectInstructionNames(): void {
+    for (let i = 0; i < this.tokens.length - 1; i++) {
+      if (this.tokens[i].type !== TokenType.DefineNewInstruction) {
+        continue;
+      }
+      const nameToken = this.tokens[i + 1];
+      if (nameToken.type !== TokenType.Identifier) {
+        continue;
+      }
+      const name = nameToken.value.toLowerCase();
+      if (BUILT_IN_INSTRUCTIONS.has(name)) {
+        this.report(ErrorMessages.cannotRedefineBuiltIn(nameToken.value), nameToken);
+      } else if (this.customInstructions.has(name)) {
+        this.report(ErrorMessages.duplicateInstruction(nameToken.value), nameToken, "warning");
+      }
+      this.customInstructions.add(name);
     }
   }
 
   private parseProgram(): ProgramNode {
-    // Expect BEGINNING-OF-PROGRAM
-    if (!this.check(TokenType.BeginningOfProgram)) {
-      throw new ParseError(ErrorMessages.missingProgramStart(), this.peek().line);
-    }
-    this.advance();
+    this.expectStructure(TokenType.BeginningOfProgram, ErrorMessages.missingProgramStart());
 
-    // Parse definitions
     const definitions: DefineInstructionNode[] = [];
     while (this.check(TokenType.DefineNewInstruction)) {
-      definitions.push(this.parseDefineInstruction());
+      const def = this.parseDefineInstruction();
+      if (def) {
+        definitions.push(def);
+      }
     }
 
-    // Expect BEGINNING-OF-EXECUTION
-    if (!this.check(TokenType.BeginningOfExecution)) {
-      throw new ParseError(ErrorMessages.missingExecutionStart(), this.peek().line);
-    }
-    this.advance();
+    this.expectStructure(TokenType.BeginningOfExecution, ErrorMessages.missingExecutionStart());
 
-    // Parse execution statements
-    const statements: ASTNode[] = [];
-    while (!this.check(TokenType.EndOfExecution) && !this.check(TokenType.EOF)) {
-      statements.push(this.parseStatement());
-    }
+    const statements = this.parseStatementsUntil([
+      TokenType.EndOfExecution,
+      TokenType.EndOfProgram,
+    ]);
 
-    // Check for turnoff
-    const lastStmt = statements[statements.length - 1];
-    if (
-      !lastStmt ||
-      lastStmt.type !== "call" ||
-      (lastStmt as InstructionCallNode).name.toLowerCase() !== "turnoff"
-    ) {
-      this.diagnostics.push({
-        message: ErrorMessages.missingTurnoff(),
-        line: this.peek().line - 1,
-        column: 0,
-        severity: "error",
-      });
+    if (statements.length > 0 && !this.containsTurnoff(statements, definitions)) {
+      this.report(ErrorMessages.missingTurnoff(), this.peek(), "warning");
     }
 
-    // Expect END-OF-EXECUTION
-    if (!this.check(TokenType.EndOfExecution)) {
-      throw new ParseError(ErrorMessages.missingExecutionEnd(), this.peek().line);
-    }
-    this.advance();
+    this.expectStructure(TokenType.EndOfExecution, ErrorMessages.missingExecutionEnd());
+    this.expectStructure(TokenType.EndOfProgram, ErrorMessages.missingProgramEnd());
 
-    // Expect END-OF-PROGRAM
-    if (!this.check(TokenType.EndOfProgram)) {
-      throw new ParseError(ErrorMessages.missingProgramEnd(), this.peek().line);
+    if (!this.check(TokenType.EOF)) {
+      this.report(ErrorMessages.contentAfterProgramEnd(), this.peek(), "warning");
     }
-    this.advance();
 
     return {
       type: "program",
       definitions,
-      execution: {
-        type: "execution",
-        statements,
-      },
+      execution: { type: "execution", statements },
     };
   }
 
-  private parseDefineInstruction(): DefineInstructionNode {
+  private parseDefineInstruction(): DefineInstructionNode | null {
     const defToken = this.advance(); // DEFINE-NEW-INSTRUCTION
 
-    // Expect instruction name
     if (!this.check(TokenType.Identifier)) {
-      throw new ParseError(
-        "Expected instruction name after DEFINE-NEW-INSTRUCTION",
-        this.peek().line
-      );
+      this.report(ErrorMessages.expectedInstructionName(), this.peek());
+      this.synchronize();
+      return null;
     }
     const nameToken = this.advance();
-    const name = nameToken.value;
 
-    // Register custom instruction
-    this.customInstructions.add(name.toLowerCase());
-
-    // Expect AS
-    if (!this.check(TokenType.As)) {
-      throw new ParseError("Expected AS after instruction name", this.peek().line);
+    if (this.check(TokenType.As)) {
+      this.advance();
+    } else {
+      this.report(ErrorMessages.expectedKeyword("AS", this.peek().value), this.peek());
     }
-    this.advance();
 
-    // Parse body block
-    const body = this.parseBlock();
+    const body = this.parseBody();
 
     return {
       type: "define",
-      name,
+      name: nameToken.value,
       body,
       line: defToken.line,
     };
   }
 
-  private parseBlock(): BlockNode {
-    // Expect BEGIN
-    if (!this.check(TokenType.Begin)) {
-      throw new ParseError("Expected BEGIN", this.peek().line);
-    }
-    this.advance();
-
+  /**
+   * A statement list bounded by the given closing tokens (or EOF).
+   */
+  private parseStatementsUntil(stopTypes: TokenType[]): ASTNode[] {
     const statements: ASTNode[] = [];
-    while (!this.check(TokenType.End) && !this.check(TokenType.EOF)) {
-      statements.push(this.parseStatement());
+    while (!this.checkAny(stopTypes) && !this.check(TokenType.EOF)) {
+      const statement = this.parseStatement();
+      if (statement) {
+        statements.push(statement);
+      }
     }
-
-    // Expect END
-    if (!this.check(TokenType.End)) {
-      throw new ParseError(ErrorMessages.unmatchedBegin(this.peek().line), this.peek().line);
-    }
-    this.advance();
-
-    return {
-      type: "block",
-      statements,
-    };
+    return statements;
   }
 
-  private parseStatement(): ASTNode {
+  /**
+   * The body of THEN/ELSE/DO/TIMES/AS: either a BEGIN...END block or,
+   * as in classic Karel, a single statement.
+   */
+  private parseBody(): BlockNode {
+    if (this.check(TokenType.Begin)) {
+      return this.parseBlock();
+    }
+    if (this.check(TokenType.EOF)) {
+      this.report(ErrorMessages.expectedKeyword("BEGIN or an instruction", ""), this.peek());
+      return { type: "block", statements: [] };
+    }
+    const statement = this.parseStatement();
+    return { type: "block", statements: statement ? [statement] : [] };
+  }
+
+  private parseBlock(): BlockNode {
+    this.advance(); // BEGIN (checked by caller)
+
+    const statements = this.parseStatementsUntil([
+      TokenType.End,
+      TokenType.EndOfExecution,
+      TokenType.EndOfProgram,
+    ]);
+
+    if (this.check(TokenType.End)) {
+      this.advance();
+      this.skipOptionalSemicolon(); // Pattis-style `END;` is fine
+    } else {
+      this.report(ErrorMessages.expectedKeyword("END", this.peek().value), this.peek());
+    }
+
+    return { type: "block", statements };
+  }
+
+  private parseStatement(): ASTNode | null {
     const token = this.peek();
 
     switch (token.type) {
@@ -181,141 +206,211 @@ export class Parser {
         return this.parseIterate();
       case TokenType.Begin:
         return this.parseBlock();
-      default:
+      case TokenType.Identifier:
         return this.parseInstructionCall();
+      case TokenType.Semicolon:
+        this.advance();
+        this.report(ErrorMessages.unexpectedSemicolon(), token);
+        return null;
+      default:
+        // A stray keyword, number or condition where a statement should be.
+        this.advance();
+        this.report(ErrorMessages.unexpectedToken(token.value), token);
+        return null;
     }
+  }
+
+  private parseCondition(): string {
+    if (this.check(TokenType.Condition)) {
+      return this.advance().value;
+    }
+    const token = this.peek();
+    this.report(ErrorMessages.unknownCondition(token.value || "nothing"), token);
+    if (token.type === TokenType.Identifier) {
+      // Probably a misspelled condition: consume it so parsing continues cleanly.
+      this.advance();
+      return token.value;
+    }
+    return "";
   }
 
   private parseIf(): IfNode {
     const ifToken = this.advance(); // IF
 
-    // Expect condition
-    if (!this.check(TokenType.Condition)) {
-      throw new ParseError(
-        ErrorMessages.unknownCondition(this.peek().value, this.peek().line),
-        this.peek().line
-      );
+    const condition = this.parseCondition();
+
+    if (this.check(TokenType.Then)) {
+      this.advance();
+    } else {
+      this.report(ErrorMessages.expectedKeyword("THEN", this.peek().value), this.peek());
     }
-    const condition = this.advance().value;
 
-    // Expect THEN
-    if (!this.check(TokenType.Then)) {
-      throw new ParseError("Expected THEN after condition", this.peek().line);
-    }
-    this.advance();
+    const thenBranch = this.parseBody();
 
-    // Parse then branch
-    const thenBranch = this.parseBlock();
-
-    // Check for ELSE
     let elseBranch: BlockNode | undefined;
     if (this.check(TokenType.Else)) {
       this.advance();
-      elseBranch = this.parseBlock();
+      elseBranch = this.parseBody();
     }
 
-    return {
-      type: "if",
-      condition,
-      thenBranch,
-      elseBranch,
-      line: ifToken.line,
-    };
+    return { type: "if", condition, thenBranch, elseBranch, line: ifToken.line };
   }
 
   private parseWhile(): WhileNode {
     const whileToken = this.advance(); // WHILE
 
-    // Expect condition
-    if (!this.check(TokenType.Condition)) {
-      throw new ParseError(
-        ErrorMessages.unknownCondition(this.peek().value, this.peek().line),
-        this.peek().line
-      );
+    const condition = this.parseCondition();
+
+    if (this.check(TokenType.Do)) {
+      this.advance();
+    } else {
+      this.report(ErrorMessages.expectedKeyword("DO", this.peek().value), this.peek());
     }
-    const condition = this.advance().value;
 
-    // Expect DO
-    if (!this.check(TokenType.Do)) {
-      throw new ParseError("Expected DO after condition", this.peek().line);
-    }
-    this.advance();
+    const body = this.parseBody();
 
-    // Parse body
-    const body = this.parseBlock();
-
-    return {
-      type: "while",
-      condition,
-      body,
-      line: whileToken.line,
-    };
+    return { type: "while", condition, body, line: whileToken.line };
   }
 
   private parseIterate(): IterateNode {
     const iterateToken = this.advance(); // ITERATE
 
-    // Expect number
-    if (!this.check(TokenType.Number)) {
-      throw new ParseError(ErrorMessages.invalidIterateCount(this.peek().line), this.peek().line);
+    let count = 0;
+    if (this.check(TokenType.Number)) {
+      count = parseInt(this.advance().value, 10);
+    } else {
+      this.report(ErrorMessages.invalidIterateCount(), this.peek());
+      if (this.check(TokenType.Identifier)) {
+        this.advance(); // consume whatever was written where the number goes
+      }
     }
-    const count = parseInt(this.advance().value, 10);
 
-    // Expect TIMES
-    if (!this.check(TokenType.Times)) {
-      throw new ParseError("Expected TIMES after number", this.peek().line);
+    if (this.check(TokenType.Times)) {
+      this.advance();
+    } else {
+      this.report(ErrorMessages.expectedKeyword("TIMES", this.peek().value), this.peek());
     }
-    this.advance();
 
-    // Parse body
-    const body = this.parseBlock();
+    const body = this.parseBody();
 
-    return {
-      type: "iterate",
-      count,
-      body,
-      line: iterateToken.line,
-    };
+    return { type: "iterate", count, body, line: iterateToken.line };
   }
 
   private parseInstructionCall(): InstructionCallNode {
     const token = this.advance();
-    const name = token.value;
-    const line = token.line;
+    const lowerName = token.value.toLowerCase();
 
-    // Validate instruction name
-    const lowerName = name.toLowerCase();
     if (!BUILT_IN_INSTRUCTIONS.has(lowerName) && !this.customInstructions.has(lowerName)) {
-      this.diagnostics.push({
-        message: ErrorMessages.unknownInstruction(name, line),
-        line,
-        column: token.column,
-        severity: "error",
-      });
+      this.report(ErrorMessages.unknownInstruction(token.value), token);
     }
 
-    // Expect semicolon (unless next token is END)
-    if (
-      !this.check(TokenType.Semicolon) &&
-      !this.check(TokenType.End) &&
-      !this.check(TokenType.Else) &&
-      !this.check(TokenType.EndOfExecution)
+    if (this.check(TokenType.Semicolon)) {
+      this.advance();
+    } else if (
+      !this.checkAny([
+        TokenType.End,
+        TokenType.Else,
+        TokenType.EndOfExecution,
+        TokenType.EndOfProgram,
+        TokenType.EOF,
+      ])
     ) {
-      this.diagnostics.push({
-        message: ErrorMessages.missingSemicolon(line),
-        line,
-        column: token.column + name.length,
-        severity: "error",
-      });
-    } else if (this.check(TokenType.Semicolon)) {
+      this.report(ErrorMessages.missingSemicolon(), token);
+    }
+
+    return { type: "call", name: token.value, line: token.line };
+  }
+
+  /**
+   * Expect a structural keyword; report (without consuming anything) if absent.
+   */
+  private expectStructure(type: TokenType, message: string): void {
+    if (this.check(type)) {
+      this.advance();
+      this.skipOptionalSemicolon();
+      return;
+    }
+    this.report(message, this.peek());
+  }
+
+  private skipOptionalSemicolon(): void {
+    if (this.check(TokenType.Semicolon)) {
       this.advance();
     }
+  }
 
-    return {
-      type: "call",
-      name,
-      line,
+  /**
+   * Skip tokens until a likely statement boundary, guaranteeing progress.
+   */
+  private synchronize(): void {
+    if (!this.isAtEnd()) {
+      this.advance();
+    }
+    while (!this.isAtEnd()) {
+      if (this.tokens[this.current - 1].type === TokenType.Semicolon) {
+        return;
+      }
+      if (STATEMENT_BOUNDARIES.has(this.peek().type)) {
+        return;
+      }
+      this.advance();
+    }
+  }
+
+  private containsTurnoff(statements: ASTNode[], definitions: DefineInstructionNode[]): boolean {
+    const visit = (nodes: ASTNode[]): boolean => {
+      for (const node of nodes) {
+        switch (node.type) {
+          case "call":
+            if ((node as InstructionCallNode).name.toLowerCase() === "turnoff") {
+              return true;
+            }
+            break;
+          case "block":
+            if (visit((node as BlockNode).statements)) {
+              return true;
+            }
+            break;
+          case "if": {
+            const ifNode = node as IfNode;
+            if (visit(ifNode.thenBranch.statements)) {
+              return true;
+            }
+            if (ifNode.elseBranch && visit(ifNode.elseBranch.statements)) {
+              return true;
+            }
+            break;
+          }
+          case "while":
+            if (visit((node as WhileNode).body.statements)) {
+              return true;
+            }
+            break;
+          case "iterate":
+            if (visit((node as IterateNode).body.statements)) {
+              return true;
+            }
+            break;
+        }
+      }
+      return false;
     };
+
+    return visit(statements) || definitions.some((d) => visit(d.body.statements));
+  }
+
+  private report(
+    message: string,
+    token: Token,
+    severity: "error" | "warning" | "info" = "error"
+  ): void {
+    this.diagnostics.push({
+      message,
+      line: token.line,
+      column: token.column,
+      endColumn: token.column + Math.max(token.value.length, 1),
+      severity,
+    });
   }
 
   // Helper methods
@@ -325,6 +420,11 @@ export class Parser {
 
   private check(type: TokenType): boolean {
     return this.peek().type === type;
+  }
+
+  private checkAny(types: TokenType[]): boolean {
+    const current = this.peek().type;
+    return types.some((t) => t === current);
   }
 
   private advance(): Token {
