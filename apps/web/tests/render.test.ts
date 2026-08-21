@@ -57,7 +57,12 @@ describe("fitCellSize", () => {
   });
 
   it("stops growing in a container much larger than the world", () => {
-    expect(fitCellSize({ width: 2, height: 2 }, { width: 4000, height: 3000 })).toBe(72);
+    // The exact ceiling is a judgement call and may move; that there is one,
+    // and that it is what binds here rather than the container, is not.
+    const cell = fitCellSize({ width: 2, height: 2 }, { width: 4000, height: 3000 });
+
+    expect(cell).toBeLessThan(4000 / 2);
+    expect(cell).toBe(fitCellSize({ width: 2, height: 2 }, { width: 9000, height: 9000 }));
   });
 
   it("survives a container that has not been laid out yet", () => {
@@ -94,6 +99,33 @@ describe("computeLayout", () => {
     const bare = computeLayout(WORLD, CONTAINER, false);
     expect(bare.axisMargin).toBe(0);
     expect(bare.originX).toBe(4);
+  });
+
+  it("asks for the same cell again when offered exactly the drawing plus its margin", () => {
+    // The chrome cuts the world's frame to `canvasWidth/Height + 16` and the
+    // renderer then measures that frame to lay the world out a second time --
+    // see FRAME_SLACK and fitViewport in main.ts. The two only agree because
+    // 16 is exactly the padding this function holds back before it divides,
+    // and the whole arrangement is circular if they ever stop agreeing: a
+    // smaller cell would leave the slack back inside the frame, a larger one
+    // would paint over its border. A narrow world is the case that catches it,
+    // since one pixel of slop there is a whole cell.
+    for (const size of [
+      { width: 10, height: 8 },
+      { width: 2, height: 3 },
+      { width: 1, height: 1 },
+      { width: 20, height: 3 },
+    ]) {
+      for (const axes of [true, false]) {
+        const first = computeLayout(size, CONTAINER, axes);
+        const again = computeLayout(
+          size,
+          { width: first.canvasWidth + 16, height: first.canvasHeight + 16 },
+          axes
+        );
+        expect(again.cell, `${size.width}x${size.height} axes=${axes}`).toBe(first.cell);
+      }
+    }
   });
 });
 

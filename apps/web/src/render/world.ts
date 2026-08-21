@@ -38,7 +38,11 @@ const WALL_WIDTH = 4;
 const AXIS_MARGIN = 25;
 /** Small enough panels stay readable; large ones stop looking absurd. */
 const MIN_CELL = 16;
-const MAX_CELL = 72;
+// A ceiling only so a 1x1 world does not become a single enormous square. It
+// was low enough that a small teaching world sat tiny in a tall column with a
+// screen of nothing above it, which is the opposite of what a beginner needs:
+// the fewer corners there are, the larger each one should be.
+const MAX_CELL = 120;
 const FIT_PADDING = 8;
 
 /**

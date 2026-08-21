@@ -303,6 +303,107 @@ button {
   z-index: 2;
 }
 
+/* Two documents cut into one border, where the single title used to be. A tab
+   is the title chip it replaces -- same size, same tracking, same ground -- so
+   a column with one document in it looks exactly as it always did, and the one
+   with two reads as a choice rather than as a control bar. The active one
+   takes the pink the titles have; the other is faint until it is pointed at.
+   No inverse video here: these sit *on* the rule, and a filled block would
+   read as a button floating over the box rather than as its name. */
+
+.box-tabs {
+  position: absolute;
+  top: 0;
+  left: 9px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+  background: var(--bg);
+}
+
+.box-tab {
+  padding: 0 6px;
+  border: none;
+  background: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  transition: color 0.1s;
+}
+
+.box-tab[hidden] {
+  display: none;
+}
+
+.box-tab:hover {
+  color: var(--text-dim);
+}
+
+.box-tab[aria-selected="true"] {
+  color: var(--pink);
+}
+
+/* The separator between them, drawn by the second tab so a lone tab has none:
+   `program · map`, the way a status line separates two fields. */
+.box-tab + .box-tab::before {
+  content: "·";
+  margin-right: 7px;
+  margin-left: -6px;
+  color: var(--line-bright);
+}
+
+/* The other end of the same border: the note that says which file this is,
+   and the one action that belongs to the file. */
+.box-actions {
+  position: absolute;
+  top: 0;
+  right: 9px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 52%;
+  min-width: 0;
+  transform: translateY(-50%);
+  padding: 0 6px;
+  background: var(--bg);
+}
+
+/* Already inside a chip that carries the ground and is placed for it. */
+.box-actions .box-note {
+  position: static;
+  max-width: none;
+  transform: none;
+  padding: 0;
+  background: none;
+}
+
+.box-action {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  transition:
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.box-action:hover {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.box-action[hidden] {
+  display: none;
+}
+
 .box-note,
 .panel-note {
   position: absolute;
@@ -723,7 +824,9 @@ button {
 
 .workshop {
   display: grid;
-  /* The editor takes whatever the problems panel does not. */
+  /* The editor takes whatever the problems panel does not. There are two
+     problems panels in the markup -- one per document -- but never two on
+     screen, and a `hidden` one is not a grid item at all. */
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 12px;
   min-width: 0;
@@ -733,9 +836,10 @@ button {
 
 .stage {
   display: grid;
-  /* Only the viewport's track is declared: the console, the palette and the
-     readout make their own as implicit rows, so the hidden palette costs
-     neither a track nor the gap that would come with it. */
+  /* Only the world's track is declared: the console and the readout make
+     their own as implicit rows. The world takes every pixel the two of them
+     do not, which is the whole arrangement of this column -- it is what a
+     person looks at while they think, and the rest is furniture. */
   grid-template-rows: minmax(0, 1fr);
   grid-auto-rows: auto;
   gap: 10px;
@@ -752,7 +856,7 @@ button {
               contribution form
      gallery  one full-width surface, the workbench put away -- the level list
 
-   The narrow rule below 1120px collapses all three to a single column, so
+   The narrow rule below 1000px collapses all three to a single column, so
    these three lines are the whole of the mode layout on a wide screen. */
 .bench[data-layout="guide"] {
   /* The program column gives up some width so the lesson can have some. A
@@ -781,7 +885,13 @@ button {
 
 .editor {
   position: relative;
-  display: flex;
+  /* One cell, two documents stacked in it. Both are laid out at all times --
+     an editor in a box that is not displayed measures itself as zero and
+     comes back with no gutter and no scroll position -- so the one that is
+     not in front is hidden with `visibility`, which still keeps it out of the
+     tab order and out of the accessibility tree. */
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   border: 1px solid var(--line);
@@ -789,11 +899,16 @@ button {
 }
 
 .editor-host {
-  flex: 1;
+  grid-area: 1 / 1;
   min-width: 0;
   min-height: 0;
   /* The frame clips the scroller; the box titles sit outside it. */
   overflow: hidden;
+}
+
+.editor-host.is-off {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .cm-editor {
@@ -1065,6 +1180,12 @@ button {
   min-height: 0;
 }
 
+/* `display: flex` above would otherwise beat the UA rule for [hidden], and
+   there is one of these panels per document. */
+.problems[hidden] {
+  display: none;
+}
+
 .problems .panel-body {
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1146,17 +1267,68 @@ button.problem:hover {
 
 /* --------------------------------------------------------------- canvas -- */
 
+/* The row the stage gives the world, and the frame inside it.
+
+   They are two elements because they answer two different questions. The slot
+   answers "how much room is there", and it is measured: it fills the row and
+   nothing inside it can change its size. The frame answers "how big is the
+   drawing", and the chrome sets its width and height in pixels to exactly the
+   canvas plus the margin the renderer holds back — see fitViewport in main.ts.
+   Sizing the frame from its own contents instead would be circular, because
+   the renderer fits the canvas to the box it is given.
+
+   What this buys is the border ending up around the world rather than a couple
+   of hundred pixels away from it, which is what a 10×8 grid in a 986px column
+   looked like before: a small drawing adrift in a large empty box. */
+
+.world-slot {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  /* A world can be too big for any column: the renderer will not draw a cell
+     smaller than 16px, so a 60x60 grid needs a thousand pixels whatever it is
+     offered. When that happens the world is panned inside its row rather than
+     spilling over the console or dragging the whole page sideways. It cannot
+     start a scrollbar it does not need: the frame is cut to fit this box, so
+     it only ever overflows when the cell has hit that floor. */
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-bright) transparent;
+}
+
+.world-slot::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.world-slot::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
+
 .viewport {
   position: relative;
+  /* Never squeezed by the row it sits in: the size set on it is the size the
+     canvas was drawn at, and a flex item that shrank would put the drawing
+     outside its own border. */
+  flex: none;
+  /* Down and centred: the world sits on the console, so the controls stay
+     attached to the thing they control. What a world cannot use -- the
+     renderer will not draw a cell larger than 72px, so a small world in a
+     large column always leaves some -- collects above it in one piece,
+     instead of being split in two gaps with the transport marooned at the
+     bottom of the column. */
+  margin: auto auto 0;
+  min-width: 0;
   min-height: 0;
+  /* The same margin `fitViewport` counts into the box it sets, so the drawing
+     is not flush against its own rule. */
+  padding: 8px;
   border: 1px solid var(--line);
   /* Matches the canvas fill exactly, so the title chip straddling the top
      border has the same ground above and below it. */
   background: var(--bg);
   overflow: visible;
-}
-
-.viewport {
   /* The canvas sizes itself to the world it draws, so the box centres the
      element rather than the renderer centring the drawing inside its own
      bitmap — which would push the far columns off the edge. `auto` margins
@@ -1181,12 +1353,46 @@ button.problem:hover {
 
 /* -------------------------------------------------------------- console -- */
 
+/* One or two lines under the world: the transport always, the map tools while
+   the world is being built. Rows rather than one long wrap, so turning the map
+   editor on adds a line to the console instead of opening a panel that shoves
+   the world up the page. */
+
 .console {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.console-row {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
   min-width: 0;
+}
+
+.console-row[hidden] {
+  display: none;
+}
+
+/* The map tools are one instrument rather than five groups, so they sit closer
+   together than the console's own furniture does. */
+.map-row {
+  gap: 8px;
+}
+
+/* What just happened to the map, for a few seconds. Empty most of the time,
+   and it takes no width when it is. Green for something that went right,
+   because at this size the colour is the whole message. */
+.console-note {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.console-note[data-flash="true"] {
+  color: var(--green);
 }
 
 .transport {
@@ -1362,35 +1568,20 @@ button.problem:hover {
 }
 
 /* -------------------------------------------------------------- palette -- */
-/* The map editor's instrument panel. It is the same box as every other one --
-   one rule, a title chip cut into the top border -- because switching to edit
-   mode should feel like a panel lighting up on the machine already in front of
-   you, not like a different application.
+/* The map editor, which is a line of the console and not a panel of its own.
+   What lives here is what the hand needs while it is painting: which tool, how
+   big the world is, how many beepers Karel starts with, and the two ways to
+   start over. Anything that is really an operation on the *file* went with the
+   file, to the map tab over the code column.
 
    Selection is inverse video throughout, and each group borrows the accent it
-   already owns elsewhere: pink for the tool in hand (Karel's own colour), cyan
-   for the one button that hands something to somebody else. */
+   already owns elsewhere: pink for the tool in hand, Karel's own colour. */
 
-.palette {
-  position: relative;
-  display: grid;
-  gap: 9px;
-  padding: 13px 11px 11px;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
-  min-width: 0;
-}
-
-/* `display: grid` above would otherwise beat the UA rule for [hidden]. */
-.palette[hidden] {
-  display: none;
-}
-
-.palette-row {
-  display: flex;
+/* A label and the field it names, which wrap as one thing or not at all. */
+.map-field {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
   min-width: 0;
 }
 
@@ -1405,15 +1596,19 @@ button.problem:hover {
   color: var(--text-faint);
 }
 
-.palette-spacer {
-  flex: 1;
-}
-
 /* What the tool in hand does, in one line. The rules of the world -- walls on
    edges, a right click taking a beeper back -- are not guessable, and a hint
-   that changes with the tool is cheaper than a legend nobody reads. */
+   that changes with the tool is cheaper than a legend nobody reads.
+
+   It takes the end of the row and whatever is left of it: growing from nothing
+   rather than from its own text is what keeps a long sentence from wrapping
+   the whole instrument onto a second line. */
 .palette-hint {
-  margin-left: auto;
+  /* Takes the end of the row, and a whole line of its own when the row cannot
+     spare it that much: the sentence is the one piece of teaching in the
+     instrument, and half of it says nothing. */
+  flex: 1 1 240px;
+  text-align: right;
   font-size: 10.5px;
   color: var(--text-faint);
   white-space: nowrap;
@@ -1558,83 +1753,27 @@ button.problem:hover {
   display: none;
 }
 
-/* A note that reports something went right. Everything else this chip says is
-   ordinary, so the colour is the whole message. */
-.palette .box-note[data-flash="true"] {
-  color: var(--green);
-}
-
 /* ----------------------------------------------------------- map source -- */
-/* The world's own file, beside the canvas that draws it. Two boxes: the text
-   on the left, what is wrong with it on the right, laid out exactly like the
-   program and its problems one panel over -- because it is the same job, and
-   somebody who has read one of those lists can read this one. */
-
-.map-source {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
-  gap: 10px;
-  min-width: 0;
-}
-
-.source-box {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
-}
-
-.source-host {
-  flex: 1;
-  min-width: 0;
-  /* Tall enough for a small world whole and a large one's shape, short enough
-     that the canvas above it keeps most of the stage. */
-  height: 174px;
-  overflow: hidden;
-}
+/* The world's own file. It is a document like the program is a document, so it
+   is shown the way the program is shown -- same box, same tab strip, same
+   problems panel underneath -- and only the type size is its own: a .klm is
+   read as a shape, several nested lines at a time, rather than a line at a
+   time like a program. */
 
 .source-host .cm-editor {
-  font-size: 12px;
+  /* A size down from the program's. A .klm is scanned for its shape rather
+     than read a line at a time, and this is what keeps the longest line a
+     canonical file writes -- a wall, with both of its corners -- inside the
+     column without wrapping. */
+  font-size: 11px;
 }
 
-/* A box nested inside the palette stands on the palette's ground, not the
-   page's, so its title chip has to carry that ground -- otherwise the break it
-   cuts in the border shows up as a stripe of the wrong colour. The palette's
-   own chip is not touched: that one straddles the outer border, where the page
-   really is behind it. */
-.map-source .box-title,
-.map-source .box-note,
-.map-source .panel-title,
-.map-source .panel-note {
-  background: var(--bg-panel);
-}
-
-.map-problems {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.map-problems .panel-body {
-  padding: 12px 8px 10px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-bright) transparent;
-}
-
-.map-problems .panel-body::-webkit-scrollbar {
-  width: 8px;
-}
-.map-problems .panel-body::-webkit-scrollbar-thumb {
-  background: var(--line);
-}
-
-/* The same answer the program box gives: the box owns the focus ring, because
-   CodeMirror's own would be drawn inside a rule that is already there. */
-.source-box:has(.cm-editor.cm-focused) {
-  border-color: var(--text);
+/* The map's list needs nothing of its own beyond the .problems rules it
+   already carries. It is named all the same, because its rows are text rather
+   than buttons -- most faults in a .klm have no line to jump to -- and a row
+   that cannot be clicked must not look as though it can. */
+.map-problems .problem-text {
+  user-select: text;
 }
 
 /* JSON, in the same three registers the program uses: the structure of the
@@ -1664,17 +1803,38 @@ button.problem:hover {
 }
 
 /* -------------------------------------------------------------- readout -- */
-/* Karel's readings are few and short -- position, facing, bag, steps -- so
-   they sit in a row under the world they describe rather than in a side rail.
-   Auto-fit lets a fifth panel wrap onto a second line without any help. */
+/* Karel's readings are four short values -- corner, facing, bag, steps -- and
+   they are a status line, not four instruments. One rule above them ties them
+   to the world they describe; the label is faint, the figure is not, and the
+   whole strip costs the world twenty pixels instead of eighty.
+
+   It reads as the top half of the status bar at the foot of the page, which is
+   deliberate: same size, same tracking, same faint labels. It stays here
+   rather than joining that bar because these four are the world's, and the
+   world is this column. */
 
 .readout {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
-  gap: 14px 12px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 18px;
   min-width: 0;
-  /* Room for the title chips, which straddle each panel's top border. */
-  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.reading {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reading-label {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 .panel {
@@ -1723,7 +1883,6 @@ button.problem:hover {
 }
 
 .metric-value {
-  grid-column: 3;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -2473,7 +2632,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   /* One measure for everything in the column, exactly as the manual does it:
      blocks of different widths read as a page that could not decide where its
      right edge was. It only binds when the column is wide -- stacked under
-     1120px the guide is the width of the page, and a line of prose a thousand
+     1000px the guide is the width of the page, and a line of prose a thousand
      pixels long is unreadable. */
   --guide-measure: 72ch;
   overflow-y: auto;
@@ -3192,9 +3351,8 @@ textarea.text-input {
 .problems,
 .viewport,
 .console,
-.palette,
 .statusbar,
-.readout > * {
+.readout {
   animation: paint 0.22s steps(4, end) backwards;
 }
 
@@ -3220,20 +3378,8 @@ textarea.text-input {
 .statusbar {
   animation-delay: 0.18s;
 }
-.readout > *:nth-child(1) {
+.readout {
   animation-delay: 0.16s;
-}
-.readout > *:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.readout > *:nth-child(3) {
-  animation-delay: 0.24s;
-}
-.readout > *:nth-child(4) {
-  animation-delay: 0.28s;
-}
-.readout > *:nth-child(5) {
-  animation-delay: 0.32s;
 }
 
 /* Two animations run on this page and both are ornament: the wipe above, and
@@ -3260,7 +3406,22 @@ textarea.text-input {
 
 /* ----------------------------------------------------------- responsive -- */
 
-@media (max-width: 1120px) {
+/* A laptop at 1024 is a screen this page has to work on whole, without the
+   visitor scrolling to find the world -- so the three columns give up width
+   before the layout gives up being one screen. A Karel procedure still fits in
+   330px, and the lesson still reads at 300. */
+@media (max-width: 1180px) {
+  :root {
+    --editor-rail: 430px;
+    --guide-rail: 320px;
+  }
+
+  .bench[data-layout="guide"] {
+    --editor-rail: 340px;
+  }
+}
+
+@media (max-width: 1000px) {
   /* Below this the program and the world cannot both be read at once, so the
      page stops being a fixed-height instrument and starts scrolling. */
   body {
@@ -3309,7 +3470,11 @@ textarea.text-input {
     padding: 18px 12px 0;
   }
 
-  .viewport {
+  /* Stacked, the stage has no height of its own to divide up, so the row the
+     world is measured against has to be given one. The frame inside it is
+     still cut to the drawing; this only says how much room the drawing is
+     being offered. */
+  .world-slot {
     aspect-ratio: 5 / 4;
   }
 
@@ -3369,17 +3534,5 @@ textarea.text-input {
 
   .files-label {
     display: none;
-  }
-}
-
-@media (max-width: 860px) {
-  /* Side by side, neither the file nor the reasons it will not load has room
-     to be read. Stacked, both do, and the list is the shorter of the two. */
-  .map-source {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .source-host {
-    height: 148px;
   }
 }

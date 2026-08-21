@@ -42,9 +42,15 @@
  * owners of one state, and that is the bug this file is arranged to prevent.
  */
 
-import { MAX_WORLD_SIZE, validateKarelMap, type KarelMap, type Wall } from "@karel/core";
+import {
+  MAX_WORLD_SIZE,
+  validateKarelMap,
+  type Dimensions,
+  type KarelMap,
+  type Wall,
+} from "@karel/core";
 import { createEditor } from "./editor/editor.js";
-import { createRenderer } from "./render/world.js";
+import { computeLayout, createRenderer } from "./render/world.js";
 import { highlight, renderHelp } from "./help.js";
 import { THEMES, currentTheme, onThemeChange, restoreTheme, setTheme } from "./render/theme.js";
 // The skin packs bring their own picker. All this file owes them is the two
@@ -147,6 +153,15 @@ type Screen = "board" | "gallery" | "contribute";
 /** What the canvas is right now: a readout, or an instrument. */
 type EditMode = "run" | "edit";
 
+/**
+ * Which of the two documents the code column is showing.
+ *
+ * They are the two files this page deals in -- the program a person writes and
+ * the world it runs in -- and they share one box, one problems panel and one
+ * pair of tabs, because they are the same kind of thing: text you edit.
+ */
+type Doc = "program" | "map";
+
 type Tool = "wall" | "beeper" | "karel";
 
 /**
@@ -234,6 +249,20 @@ async function copyText(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * How much wider and taller the world's frame is than the drawing inside it.
+ *
+ * The renderer sizes the canvas to exactly what it draws and fits that into
+ * whatever box it is given, holding back a margin of its own at each edge
+ * before it picks a cell size. This number is that margin, doubled, and it is
+ * the only value that makes the frame and the renderer agree: cut the box any
+ * tighter and the renderer would choose a smaller cell than the frame was cut
+ * for, leaving the slack back inside; cut it looser and, for a narrow world,
+ * it would choose a *larger* one and paint over the border. The invariant is
+ * pinned by a test in tests/render.test.ts.
+ */
+const FRAME_SLACK = 16;
 
 /** What each tool does, said once, where the tool is chosen. */
 const TOOL_HINT: Record<Tool, MessageKey> = {
@@ -421,6 +450,16 @@ class Application {
   private mode: Mode;
   private screen: Screen;
   private editMode: EditMode = "run";
+  /**
+   * The map is only ever shown as text while the world is being edited.
+   *
+   * That is not a restriction on the tab, it is what the tab means: the file
+   * describes the world a run *starts* from, so showing it beside a program
+   * half-way through changing that world would be showing a lie, and letting
+   * it be typed into would put two owners on one state. Opening the tab turns
+   * the map editor on, exactly as the toggle beside the world does.
+   */
+  private doc: Doc = "program";
 
   // ── learn ───────────────────────────────────────────────────────────────
   private progress: LearnProgress;
@@ -517,6 +556,14 @@ class Application {
     galleryBody: query("#gallery-body"),
     workshop: query(".workshop"),
     stage: query(".stage"),
+    worldSlot: query("#world-slot"),
+    viewport: query("#viewport"),
+    tabs: query("#doc-tabs"),
+    mapTab: query<HTMLButtonElement>("#tab-map"),
+    editorHost: query("#editor-host"),
+    mapHost: query("#map-source-host"),
+    programProblems: query("#program-problems"),
+    mapProblemsPanel: query("#map-problems-panel"),
     themes: query("#themes"),
     langs: query("#langs"),
     rate: query("#rate-options"),
@@ -620,6 +667,7 @@ class Application {
     this.mapSource.onChange((text) => this.applyMapSource(text));
 
     this.buildModes();
+    this.bindTabs();
     this.buildThemes();
     this.buildLanguages();
     this.buildSpeeds();
@@ -645,10 +693,11 @@ class Application {
       this.session.setSource(this.editor.getSource());
       this.render();
     });
-    new ResizeObserver(() => {
-      this.renderer.resize();
-      this.render();
-    }).observe(query("#viewport"));
+    // The slot, not the viewport. The viewport is cut to fit the drawing, so
+    // observing it would be watching this file's own output; the slot is the
+    // row the stage gives the world, and nothing inside it can change its
+    // size. render() re-cuts the frame and repaints in one pass.
+    new ResizeObserver(() => this.render()).observe(this.dom.worldSlot);
 
     if (shared) {
       // The link has been taken in, so it becomes this browser's workspace and
@@ -892,15 +941,53 @@ class Application {
   private buildReadout(): void {
     // Four readings, built once and updated in place. Rebuilding the nodes on
     // every step would throw away the flash animation that marks a change.
+    //
+    // One line, not four boxes: "1, 1" and "north" are two words each, and a
+    // full rule drawn around each of them cost the world eighty pixels of
+    // height to say nothing the words did not already say.
     for (const [key, label] of METRICS) {
-      const panel = document.createElement("section");
-      panel.className = "panel";
-      panel.innerHTML =
-        `<span class="panel-title" data-i18n="${label}"></span>` +
-        `<div class="panel-body"><span class="metric-value" data-metric="${key}">—</span></div>`;
-      panel.querySelector(".panel-title")!.textContent = t(label);
-      this.dom.readout.append(panel);
+      const reading = document.createElement("span");
+      reading.className = "reading";
+      reading.innerHTML =
+        `<span class="reading-label" data-i18n="${label}"></span>` +
+        `<span class="metric-value" data-metric="${key}">—</span>`;
+      reading.querySelector(".reading-label")!.textContent = t(label);
+      this.dom.readout.append(reading);
     }
+  }
+
+  /**
+   * The two tabs over the code column.
+   *
+   * Opening the map is opening the map editor: see the note on `doc`. Going
+   * back to the program leaves the editor on, because painting a world with
+   * the program in front of you is a perfectly good way to work.
+   */
+  private bindTabs(): void {
+    for (const tab of this.dom.tabs.querySelectorAll<HTMLButtonElement>(".box-tab")) {
+      tab.addEventListener("click", () => this.setDoc(tab.dataset["doc"] as Doc));
+    }
+  }
+
+  private setDoc(doc: Doc): void {
+    if (doc === "map") {
+      if (!this.canEditWorld()) {
+        return;
+      }
+      // Set before the mode changes: entering edit mode renders, and the
+      // render has to already know which document it is drawing.
+      this.doc = "map";
+      if (this.editMode !== "edit") {
+        this.setEditMode("edit"); // renders
+      } else {
+        this.render();
+      }
+      this.mapSource.focus();
+      return;
+    }
+    this.doc = "program";
+    this.render();
+    this.editor.focus();
   }
 
   private bindTransport(): void {
@@ -1073,8 +1160,10 @@ class Application {
     if (!result.ok) {
       // The world on the canvas survives a file that will not load -- losing
       // your own world to somebody else's broken one would be the worst
-      // possible answer. The text goes into the source panel with the reasons
-      // beside it, which is the one place on this page where it can be fixed.
+      // possible answer. The text is put in the map tab with the reasons under
+      // it, which is the one place on this page where it can be fixed, and the
+      // tab is opened onto it.
+      this.doc = "map";
       this.setEditMode("edit");
       this.mapSourcePinned = true;
       this.mapSource.setText(text);
@@ -1417,6 +1506,11 @@ class Application {
       return;
     }
     this.editMode = mode;
+    if (mode === "run") {
+      // The map is the world's file and the world is no longer being changed,
+      // so the tab that showed it has nothing to show. See the note on `doc`.
+      this.doc = "program";
+    }
     this.stroke = null;
     this.cursor = null;
     this.dom.shareUrlField.hidden = true;
@@ -1537,6 +1631,7 @@ class Application {
    */
   private enterContext(): void {
     this.editMode = "run";
+    this.doc = "program";
     this.stroke = null;
     this.cursor = null;
     this.edgeCursor = null;
@@ -1661,6 +1756,9 @@ class Application {
       return;
     }
 
+    // Before the draw: the renderer fits the world to the box it is given, so
+    // the box has to be the right size first.
+    this.fitViewport(view.world.dimensions);
     this.renderer.draw(view.world, {
       showAxes: this.showAxes,
       cursor: editing ? this.cursor : null,
@@ -1688,14 +1786,65 @@ class Application {
 
     const { width, height } = view.world.dimensions;
     this.dom.worldNote.textContent = `${width}x${height}`;
-    this.dom.programNote.textContent = this.contextLabel();
 
+    this.renderDocs();
     this.renderPalette(view.world);
     this.renderProblems();
     this.renderMetrics(view.world, view.steps);
     this.renderGuide(view);
     this.renderSelections();
     renderHelp(this.dom.aboutContent, { label: this.contextLabel(), brief: this.contextBrief() });
+  }
+
+  /**
+   * Cut the world's frame to the drawing it is about to hold.
+   *
+   * The renderer sizes the canvas to exactly what it draws and this box
+   * centres it, so the box is the whole of what decides whether the border
+   * hugs the world or floats two hundred pixels away from it. What is
+   * measured is the slot, never the viewport: the viewport is this method's
+   * own output, and reading it back would set the two chasing each other down
+   * to nothing.
+   *
+   * The odd twos are the border, which `box-sizing: border-box` counts in the
+   * width set here but which `clientWidth` -- what the renderer measures --
+   * does not.
+   */
+  private fitViewport(world: Dimensions): void {
+    const slot = this.dom.worldSlot;
+    const available = { width: slot.clientWidth - 2, height: slot.clientHeight - 2 };
+    if (available.width <= 0 || available.height <= 0) {
+      return; // never laid out, or the stage is put away
+    }
+    const layout = computeLayout(world, available, this.showAxes);
+    this.dom.viewport.style.width = `${layout.canvasWidth + FRAME_SLACK + 2}px`;
+    this.dom.viewport.style.height = `${layout.canvasHeight + FRAME_SLACK + 2}px`;
+  }
+
+  /**
+   * Which of the two documents the code column is showing.
+   *
+   * The tab, the editor, the problems panel and the chip in the top right all
+   * move together, because they are four views of one answer.
+   */
+  private renderDocs(): void {
+    // A tab for a document that cannot be opened here is worse than no tab.
+    this.dom.mapTab.hidden = !this.canEditWorld();
+    const map = this.doc === "map" && this.canEditWorld();
+
+    for (const tab of this.dom.tabs.querySelectorAll<HTMLButtonElement>(".box-tab")) {
+      tab.setAttribute("aria-selected", String((tab.dataset["doc"] === "map") === map));
+    }
+    // Hidden by visibility, not by display: both editors stay laid out, or the
+    // one coming back would have measured itself against a box of no size.
+    this.dom.editorHost.classList.toggle("is-off", map);
+    this.dom.mapHost.classList.toggle("is-off", !map);
+    this.dom.programProblems.hidden = map;
+    this.dom.mapProblemsPanel.hidden = !map;
+    this.dom.formatMap.hidden = !map;
+    // The extension is not translated and not rewritten: ".klm" is what the
+    // file is called in either language.
+    this.dom.programNote.textContent = map ? ".klm" : this.contextLabel();
   }
 
   private renderPalette(world: KarelMap): void {
