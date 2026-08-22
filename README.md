@@ -31,11 +31,27 @@ eventually pass someone in one place and fail them in the other.
 
 ## In the browser
 
-|                                                                   |                                                                                                                                                                                                                                                                         |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **learn**                                                         | Eleven chapters, from the grid to a program that defines its own instructions and calls them from a loop. Each one opens with a program that fails in a way worth reading, and checks your answer when it runs.                                                         |
-| **levels** <br> [![levels](docs/levels.png)](docs/levels.png)     | Fifteen worlds in three bands. Built one worth solving? The page writes the file and opens a pre-filled issue here, with the world, the goal and a reference solution all captured from one run you just watched finish, so nobody can submit a level nobody can solve. |
-| **sandbox** <br> [![sandbox](docs/sandbox.png)](docs/sandbox.png) | A world you build by hand: click an edge to raise a wall, a square to stack beepers, or edit it as JSON beside the canvas. Open and save both formats; they are the same files the extension opens and the CLI grades.                                                  |
+### learn
+
+Eleven chapters, from the grid to a program that defines its own instructions and calls them
+from a loop. Each one opens with a program that fails in a way worth reading, and checks your
+answer when it runs. That is the screenshot at the top of this page.
+
+### levels
+
+Fifteen worlds in three bands. Built one worth solving? The page writes the file and opens a
+pre-filled issue here, with the world, the goal and a reference solution all captured from one
+run you just watched finish, so nobody can submit a level nobody can solve.
+
+![The level gallery: fifteen worlds grouped into starter, tricky and hard](docs/levels.png)
+
+### sandbox
+
+A world you build by hand: click an edge to raise a wall, a square to stack beepers, or edit it
+as JSON beside the canvas. Open and save both formats; they are the same files the extension
+opens and the CLI grades.
+
+![The sandbox: a program in the editor beside a ten-by-eight world of walls and beepers](docs/sandbox.png)
 
 Four colour themes, three drawing styles, English and Spanish.
 
