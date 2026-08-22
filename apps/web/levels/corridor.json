@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "corridor", "es": "el pasillo" },
   "brief": {
-    "en": "Nine corners in a line and a wall at the end. Walk Karel to the far corner without counting the steps by hand.",
+    "en": "Nine squares in a line and a wall at the end. Walk Karel to the far end without counting the steps by hand.",
     "es": "Nueve esquinas en fila y un muro al final. Lleva a Karel hasta la última esquina sin contar los pasos a mano."
   },
   "world": {

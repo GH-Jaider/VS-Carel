@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "the ferry", "es": "el transbordo" },
   "brief": {
-    "en": "Karel can only carry what he picks up, and the pile must cross the row one beeper at a time. Rebuild it on the far corner and come home empty-handed.",
+    "en": "Karel can only carry what he picks up, and the pile must cross the row one beeper at a time. Rebuild it on the far square and come home empty-handed.",
     "es": "Karel sólo lleva lo que recoge, y la pila tiene que cruzar la fila de un zumbador en un zumbador. Recompónla en la esquina del fondo y vuelve con las manos vacías."
   },
   "world": {

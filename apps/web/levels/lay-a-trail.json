@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "lay a trail", "es": "dejar rastro" },
   "brief": {
-    "en": "Karel's bag holds six beepers and the row is six corners long. Empty the bag, one beeper per corner, without counting.",
+    "en": "Karel's bag holds six beepers and the row is six squares long. Empty the bag, one beeper per square, without counting.",
     "es": "La mochila de Karel lleva seis zumbadores y la fila mide seis esquinas. Vacía la mochila, un zumbador por esquina, sin contar."
   },
   "world": {

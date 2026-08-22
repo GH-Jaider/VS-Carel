@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "stack them up", "es": "amontonar" },
   "brief": {
-    "en": "Four beepers are scattered along the row. Sweep them up and leave the whole pile on the last corner.",
+    "en": "Four beepers are scattered along the row. Sweep them up and leave the whole pile on the last square.",
     "es": "Hay cuatro zumbadores repartidos por la fila. Recógelos todos y deja la pila entera en la última esquina."
   },
   "world": {

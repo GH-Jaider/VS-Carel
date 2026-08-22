@@ -16,7 +16,7 @@ import { Exit, type ExitCode } from "./exit.js";
 import { renderJson, renderText } from "./output.js";
 import { isSupervisedChild, superviseSelf } from "./supervise.js";
 
-const USAGE = `karel — run and grade Karel programs
+const USAGE = `karel: run and grade Karel programs
 
 Usage:
   karel run <program.kli> --world <world.klm> [options]

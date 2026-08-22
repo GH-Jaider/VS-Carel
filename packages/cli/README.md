@@ -1,10 +1,10 @@
 # karel
 
 **Karel the Robot, headless.** `karel` runs a `.kli` program against a `.klm` world with no
-editor and no window, and reports the outcome as an exit code — which means a marker with
+editor and no window, and reports the outcome as an exit code, which means a marker with
 sixty submissions can grade them with a `for` loop instead of sixty double-clicks.
 
-Every other Karel — Reeborg, omegaUp, CodeHS, fredoverflow — is a place a student writes a
+Every other Karel (Reeborg, omegaUp, CodeHS, fredoverflow) is a place a student writes a
 program. None of them will tell a shell script whether that program was right. That is what
 this command is for.
 
@@ -18,8 +18,8 @@ $ echo $?
 ## Installing
 
 The CLI is not on npm yet. It builds to **one file, `karel.mjs`, ~55 KB, with no
-dependencies at all** — it imports `node:fs`, `node:path`, `node:util` and
-`node:child_process`, and nothing else — so installing it means putting that file somewhere on
+dependencies at all**: it imports `node:fs`, `node:path`, `node:util` and
+`node:child_process`, and nothing else, so installing it means putting that file somewhere on
 your `PATH`.
 
 **From a release.** Every release attaches `karel.mjs`. Put it on your `PATH` and make it
@@ -66,12 +66,12 @@ $ karel run examples/demo-program.kli --world examples/simple-world.klm
 demo-program.kli: finished after 13 steps
 ```
 
-When the program stops on an error, the reason goes to **stderr** with the line — so
+When the program stops on an error, the reason goes to **stderr** with the line, so
 redirecting stdout to a file still leaves the diagnosis on screen:
 
 ```bash
 $ karel run wall.kli --world examples/simple-world.klm
-wall.kli: stopped after 7 steps on line 5 — Karel hit a wall: the front is blocked
+wall.kli: stopped after 7 steps on line 5: Karel hit a wall: the front is blocked
 ```
 
 Add `--assert-world` to say what the world should look like when the program is done. This is
@@ -80,11 +80,11 @@ not crash.
 
 ```bash
 $ karel run submission.kli --world start.klm --assert-world solved.klm
-submission.kli: finished after 3 steps — expected Karel at (2, 1), found (1, 3)
+submission.kli: finished after 3 steps: expected Karel at (2, 1), found (1, 3)
 ```
 
 `--assert-world` compares the parts of a world a program can change: Karel's position, heading
-and bag, and every pile of beepers. The comparison only runs after a clean finish — if the
+and bag, and every pile of beepers. The comparison only runs after a clean finish: if the
 program walked into a wall, that is the finding worth reporting, not the world state it left
 behind.
 
@@ -95,7 +95,7 @@ Before anything is read, parsed or executed, `karel` checks that the expected wo
 a grid, and that is exactly why they are worth checking: a difference there cannot be a wrong
 answer, so it is proof that the two files came from different problems.
 
-A mismatch therefore exits `64` — bad invocation — and not `1`. Your grading setup is wrong,
+A mismatch therefore exits `64` (bad invocation) and not `1`. Your grading setup is wrong,
 not the student's program, and marking a class against the answer key for another exercise is
 worth stopping the run over.
 
@@ -111,8 +111,8 @@ $ echo $?
 Walls are compared as a set of positions, so the order they happen to appear in the file does
 not matter, and a wall written from either of its two sides is the same wall.
 
-This is what makes the recommended way to build an answer key —
-[running a reference solution and keeping its `world`](#building-an---assert-world) — correct
+This is what makes the recommended way to build an answer key,
+[running a reference solution and keeping its `world`](#building-an---assert-world), correct
 by construction: that output carries the original walls forward with it. A `.klm` typed by
 hand with the walls left out will be rejected, however right the beepers in it are.
 
@@ -134,7 +134,7 @@ in exactly the right state and finishes facing south:
 
 ```bash
 $ karel run corner.kli -w corner-start.klm -a corner-solved.klm
-corner.kli: finished after 13 steps — expected Karel facing east, found south
+corner.kli: finished after 13 steps: expected Karel facing east, found south
 $ karel run corner.kli -w corner-start.klm -a corner-solved.klm --ignore-facing
 corner.kli: finished after 13 steps
 ```
@@ -152,7 +152,7 @@ answer in milliseconds.
 
 ```bash
 $ karel run loop.kli --world start.klm --max-steps 10000
-loop.kli: stopped after 10000 steps on line 5 — Program stopped after 10000 steps: it looks like an infinite loop
+loop.kli: stopped after 10000 steps on line 5: Program stopped after 10000 steps: it looks like an infinite loop
 ```
 
 `--timeout <seconds>` bounds the run by the clock instead of by instructions, and expiring has
@@ -166,7 +166,7 @@ $ echo $?
 ```
 
 It is not there for slow programs, because there are none. Exhausting the default budget of
-100 000 instructions takes about 35 ms end to end on a laptop — Node's own start-up included —
+100 000 instructions takes about 35 ms end to end on a laptop, Node's own start-up included,
 so a run still going after a second is not computing, it is stuck. What `--timeout` covers is
 the part `--max-steps` cannot see: reading the file, tokenizing it and parsing it all happen
 before the first instruction is ever counted, and a step budget can do nothing about a hang in
@@ -175,7 +175,7 @@ any of them. `--timeout` is the outer bound that holds whichever phase stopped m
 Enforcing it takes a second process. Every phase of a run is synchronous, so a hang holds the
 only thread and a timer scheduled on that thread never gets its turn to fire. When you pass
 `--timeout`, `karel` re-runs itself as a child process and watches the clock from the parent,
-killing the child with `SIGKILL` if it overruns — the thing being defended against is a
+killing the child with `SIGKILL` if it overruns. The thing being defended against is a
 process too busy to handle a signal. The child does the real work and exits with whatever code
 it would have had anyway; the parent substitutes `4` only when it had to step in.
 `KAREL_SUPERVISED=1` in the child's environment is what keeps this from recursing.
@@ -196,7 +196,7 @@ a job that is guaranteed to end.
 
 ## Checking a program
 
-`check` parses without executing. No world needed — it answers "does this even compile", which
+`check` parses without executing. No world needed: it answers "does this even compile", which
 is the first thing you want to know about a submission and the only thing you can know about
 one that does not.
 
@@ -211,8 +211,8 @@ broken.kli: 3 errors
   6:1 error: Missing END-OF-EXECUTION after the instructions
 ```
 
-It reports every error, not just the first, and the same warnings the editor shows —
-a program that never calls `turnoff`, an instruction defined twice:
+It reports every error, not just the first, and the same warnings the editor shows, such as
+a program that never calls `turnoff`, or an instruction defined twice:
 
 ```bash
 $ karel check noturnoff.kli
@@ -232,7 +232,7 @@ conversations to have with a student.
 | ---- | ------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `0`  | `OK`          | The program ran to completion, and matched `--assert-world` if one was given.          | Correct. Award the marks.                                                                      |
 | `1`  | `FAILED`      | An error shutoff (wall, missing beeper, empty bag), or the final world did not match.  | The logic is wrong. The message says how.                                                      |
-| `2`  | `PARSE_ERROR` | The program did not parse. Nothing was executed.                                       | It does not compile — a syntax problem, not an algorithm one.                                  |
+| `2`  | `PARSE_ERROR` | The program did not parse. Nothing was executed.                                       | It does not compile: a syntax problem, not an algorithm one.                                  |
 | `3`  | `LIMIT`       | The step budget ran out.                                                               | It does not terminate. Almost always a loop with no exit.                                      |
 | `4`  | `TIMEOUT`     | `--timeout` expired and the run was killed.                                            | Nothing was decided either way. Look for the hang, then rerun.                                 |
 | `64` | `USAGE`       | Unknown flag, missing file, malformed world, an `--assert-world` for another exercise. | Your grading script is wrong, not the student's program. Investigate before you record a zero. |
@@ -279,7 +279,7 @@ before the first instruction runs. Between them the loop is guaranteed to finish
 guarantee is what makes grading in a loop worth doing at all.
 
 That is the whole autograder. But four failures that all say `FAIL` are four students you now
-have to open by hand — and the exit code already knows why each one failed. Branch on it:
+have to open by hand, and the exit code already knows why each one failed. Branch on it:
 
 ```bash
 #!/usr/bin/env bash
@@ -315,26 +315,26 @@ Two details this script depends on, both of which bite under `set -e`.
 bare `reason=$(karel …)` aborts the script on the first student who got it wrong, and you
 grade one file instead of sixty. For the same reason the diagnosis is printed from an `if`
 rather than `[ -n "$reason" ] && printf …`, which fails as the last command in the loop body
-whenever `$reason` is empty — that is, on every submission that passed.
+whenever `$reason` is empty, that is, on every submission that passed.
 
-`2>&1 >/dev/null` — in that order — keeps karel's explanation and throws away the success
+`2>&1 >/dev/null`, in that order, keeps karel's explanation and throws away the success
 line, so `$reason` is empty for a pass and is the diagnosis for a failure:
 
 ```
 ana.kli        PASS
 luis.kli       FAIL  wrong result
-                 luis.kli: finished after 3 steps — expected Karel at (2, 1), found (1, 3)
+                 luis.kli: finished after 3 steps: expected Karel at (2, 1), found (1, 3)
 marta.kli      FAIL  does not compile
                  marta.kli: 3 errors
 pablo.kli      FAIL  does not terminate
-                 pablo.kli: stopped after 10000 steps on line 5 — Program stopped after 10000 steps: it looks like an infinite loop
+                 pablo.kli: stopped after 10000 steps on line 5: Program stopped after 10000 steps: it looks like an infinite loop
 sara.kli       FAIL  wrong result
-                 sara.kli: stopped after 7 steps on line 5 — Karel hit a wall: the front is blocked
+                 sara.kli: stopped after 7 steps on line 5: Karel hit a wall: the front is blocked
 4 of 5 submissions failed
 ```
 
 Five students, five verdicts, one command, and a script exit code you can hang a CI job on.
-No submission here hit the `4` branch — with `--timeout 10` against runs that finish in
+No submission here hit the `4` branch: with `--timeout 10` against runs that finish in
 milliseconds, none should. The branch is there for the day one does, so that a hang shows up
 as a labelled row instead of a grading script that never returns.
 
@@ -446,7 +446,7 @@ The objects below are real output from the runs on this page, re-wrapped to fit:
 }
 ```
 
-**`check`, or a `run` whose program did not parse** — no `world`, no `steps`, because nothing
+**`check`, or a `run` whose program did not parse**: no `world`, no `steps`, because nothing
 ran:
 
 ```json
@@ -471,7 +471,7 @@ ran:
 | `line`        | most errors         | 1-based line the program stopped on                                                                         |
 | `message`     | `status: "error"`   | The same sentence the human output prints                                                                   |
 | `steps`       | `run` that executed | Visible instructions performed                                                                              |
-| `world`       | `run` that executed | The world as execution ended — after a failure too, which is how you see where Karel got stuck              |
+| `world`       | `run` that executed | The world as execution ended, after a failure too, which is how you see where Karel got stuck              |
 | `diagnostics` | always              | Parse findings: `message`, `line`, 0-based `column`, `endColumn`, `severity` (`error` / `warning` / `info`) |
 
 `diagnostics` columns are 0-based, matching the parser; the human output prints them from 1,
@@ -479,7 +479,7 @@ matching every editor. Add one when you render them yourself.
 
 `--json` composes with `--timeout`: the child writes straight to the inherited stdout, so the
 object arrives on the pipe exactly as it would without supervision. There is no JSON on a
-timeout, though — the process that would have printed it was killed. `4` on an empty stdout is
+timeout, though, because the process that would have printed it was killed. `4` on an empty stdout is
 the whole report.
 
 Some things worth asking it:
@@ -520,7 +520,7 @@ field is a valid `.klm` in its own right:
 karel run reference.kli --world start.klm --json | jq .world > solved.klm
 ```
 
-Then check the circle closes — the reference solution must pass its own assertion:
+Then check the circle closes, because the reference solution must pass its own assertion:
 
 ```bash
 $ karel run reference.kli --world start.klm --assert-world solved.klm
@@ -531,7 +531,7 @@ $ echo $?
 
 This flow is not just convenient, it is the one the tool is built around. `--assert-world`
 requires the expected world to have the same dimensions and walls as `--world`, and `.world`
-from a run of that same `start.klm` carries both forward untouched — so the key it produces is
+from a run of that same `start.klm` carries both forward untouched, so the key it produces is
 accepted by construction. Write one by hand with only Karel and the beepers in it and the run
 stops at exit `64` before it grades anything.
 
@@ -543,7 +543,7 @@ submission.
 
 Second, generate the key from the same `start.klm` the class will be graded against. A key
 built from a different starting world is a key for a different exercise, and `karel` will say
-so — which is the good outcome, but only if you notice it before you run the batch.
+so, which is the good outcome, but only if you notice it before you run the batch.
 
 Third, the key records a heading for Karel whether or not the exercise cares about one. If the
 statement only says where to end up, grade with `--ignore-facing` rather than hand-editing the
@@ -566,12 +566,12 @@ comparisons that decide a grade: `sameExercise`, which asks whether the expected
 to this problem at all, and the beeper-by-beeper check that follows it. Nothing there touches
 the filesystem or the process, so what counts as a pass is testable without spawning anything.
 `src/exit.ts` is the one place the exit codes are defined, and `src/output.ts` the one place
-results are rendered. `src/supervise.ts` is the `--timeout` supervisor — the only code that
+results are rendered. `src/supervise.ts` is the `--timeout` supervisor, the only code that
 spawns a process, and only when the flag is given. `src/main.ts` is the only file that does
 I/O.
 
 `tests/` spawns the built `dist/karel.mjs` for real and asserts on exit codes and streams,
-because that pair — not any internal function — is the contract this README documents. The
+because that pair, not any internal function, is the contract this README documents. The
 test run rebuilds the bundle first, so it can never pass against a stale one.
 
 The language itself, the world format and the eighteen conditions are documented in the

@@ -9,7 +9,7 @@ Three ways to run, pick your favorite:
 The **world opens beside your code** and Karel starts moving.
 
 The program runs in the world with the same name (`maze.kli` → `maze.klm`).
-The link above `BEGINNING-OF-PROGRAM` shows which world is used — click it to change.
+The link above `BEGINNING-OF-PROGRAM` shows which world is used. Click it to change.
 
 While it runs, watch the **status bar** at the bottom: state, world, and speed
 (click the speed to change it, even mid-run).

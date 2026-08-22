@@ -84,7 +84,7 @@ export const MOD_KEY = "MOD";
 const INSTRUCTIONS: HelpTerm[] = [
   {
     name: "move",
-    gloss: "One corner forward, the way he is facing. A wall in the way is an error, not a bump.",
+    gloss: "One square forward, the way he is facing. A wall in the way is an error, not a bump.",
   },
   {
     name: "turnleft",
@@ -92,11 +92,11 @@ const INSTRUCTIONS: HelpTerm[] = [
   },
   {
     name: "pickbeeper",
-    gloss: "Take one beeper from the corner he stands on and put it in the bag.",
+    gloss: "Take one beeper from the square he stands on and put it in the bag.",
   },
   {
     name: "putbeeper",
-    gloss: "Drop one beeper from the bag onto the corner he stands on.",
+    gloss: "Drop one beeper from the bag onto the square he stands on.",
   },
   {
     name: "turnoff",
@@ -110,7 +110,7 @@ const CONDITION_FAMILIES: HelpFamily[] = [
   {
     question: "what is straight ahead",
     gloss:
-      "Whether the corner in front of Karel can be stepped into. A wall blocks it, and so does " +
+      "Whether the square in front of Karel can be stepped into. A wall blocks it, and so does " +
       "the edge of the world.",
     names: ["front-is-clear", "front-is-blocked"],
   },
@@ -124,15 +124,15 @@ const CONDITION_FAMILIES: HelpFamily[] = [
   {
     question: "where the beepers are",
     gloss:
-      "One pair asks about the corner he is standing on, the other about the bag he is carrying. " +
-      "Both are worth checking before `pickbeeper` or `putbeeper`, which fail on an empty corner " +
+      "One pair asks about the square he is standing on, the other about the bag he is carrying. " +
+      "Both are worth checking before `pickbeeper` or `putbeeper`, which fail on an empty square " +
       "and an empty bag.",
     names: ["next-to-a-beeper", "not-next-to-a-beeper", "beeper-in-bag", "no-beeper-in-bag"],
   },
   {
     question: "which way he is facing",
     gloss:
-      "North is up the screen and east is to the right — the same bearing the facing readout " +
+      "North is up the screen and east is to the right, the same bearing the facing readout " +
       "shows under the world.",
     names: [
       "facing-north",
@@ -172,8 +172,8 @@ export const HELP_SECTIONS: HelpSection[] = [
       {
         kind: "prose",
         text:
-          "Karel is a robot standing on a grid of corners. He walks forward one corner at a " +
-          "time, turns left, and picks up or puts down the markers called beepers — five " +
+          "Karel is a robot standing on a grid of squares. He walks forward one square at a " +
+          "time, turns left, and picks up or puts down the markers called beepers. Five " +
           "instructions, and nothing else.",
       },
       {
@@ -218,7 +218,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       },
       {
         kind: "code",
-        caption: "the smallest program that does anything — paste it in and press run",
+        caption: "the smallest program that does anything: paste it in and press run",
         source: [
           "BEGINNING-OF-PROGRAM",
           "    BEGINNING-OF-EXECUTION",
@@ -248,7 +248,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         text:
           "Four of the five can fail: walking into a wall, picking up a beeper that is not " +
           "there, putting down one you do not have. A failure stops the program and points at " +
-          "the line — which is why the conditions below exist.",
+          "the line, which is why the conditions below exist.",
       },
     ],
   },
@@ -265,17 +265,17 @@ export const HELP_SECTIONS: HelpSection[] = [
       },
       {
         kind: "code",
-        caption: "IF — do it only when the world says so. ELSE is optional.",
+        caption: "IF: do it only when the world says so. ELSE is optional.",
         source: ["IF front-is-clear THEN", "    move", "ELSE", "    turnleft"].join("\n"),
       },
       {
         kind: "code",
-        caption: "WHILE — keep going while the answer stays yes",
+        caption: "WHILE: keep going while the answer stays yes",
         source: ["WHILE front-is-clear DO", "BEGIN", "    move", "END"].join("\n"),
       },
       {
         kind: "code",
-        caption: "ITERATE — a fixed number of times",
+        caption: "ITERATE: a fixed number of times",
         source: ["ITERATE 3 TIMES", "BEGIN", "    move;", "    turnleft", "END"].join("\n"),
       },
       {
@@ -341,15 +341,15 @@ export const HELP_SECTIONS: HelpSection[] = [
         kind: "terms",
         rows: [
           {
-            name: "corners",
+            name: "squares",
             gloss:
-              "Karel always stands on a corner, never between two. Coordinates are 1-based and " +
+              "Karel always stands on a square, never between two. Coordinates are 1-based and " +
               "(1, 1) is the bottom-left: x counts right, y counts up.",
           },
           {
             name: "walls",
             gloss:
-              "A wall sits on the edge between two corners rather than on a corner, and blocks " +
+              "A wall sits on the edge between two squares rather than on a square, and blocks " +
               "movement in both directions.",
           },
           {
@@ -361,7 +361,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           {
             name: "beepers",
             gloss:
-              "Beepers stack. A corner holds any number of them and the canvas prints the " +
+              "Beepers stack. A square holds any number of them and the canvas prints the " +
               "count; the bag Karel carries is counted separately, under the world.",
           },
         ],
@@ -386,7 +386,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         rows: [
           { keys: [MOD_KEY, "enter"], action: "run the program, or restart it" },
           { keys: [MOD_KEY, "."], action: "one instruction, then wait" },
-          { keys: ["esc"], action: "stop — and close this dialog" },
+          { keys: ["esc"], action: "stop, and close this dialog" },
           { keys: ["r"], action: "put the world back as it started" },
           { keys: ["e"], action: "open or close the map editor" },
           { keys: ["1", "4"], action: "switch between the built-in worlds" },
@@ -405,10 +405,10 @@ export const HELP_SECTIONS: HelpSection[] = [
         rows: [
           {
             name: "click an edge",
-            gloss: "Put a wall between two corners, or click it again to take it away.",
+            gloss: "Put a wall between two squares, or click it again to take it away.",
           },
           {
-            name: "click a corner",
+            name: "click a square",
             gloss:
               "With the beeper tool, adds one; alt-click or right-click takes one back. With " +
               "the karel tool, sets him down there.",

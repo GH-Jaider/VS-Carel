@@ -64,7 +64,7 @@ export function renderText(
       const where = result.failure.line === undefined ? "" : ` on line ${result.failure.line}`;
       out.push([
         process.stderr,
-        `${programName}: ${verb} after ${count(result.steps, "step")}${where} — ${result.failure.message}`,
+        `${programName}: ${verb} after ${count(result.steps, "step")}${where}: ${result.failure.message}`,
       ]);
       return out;
     }

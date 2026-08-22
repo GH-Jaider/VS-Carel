@@ -9,5 +9,5 @@ Press **F10** to execute exactly one instruction.
 If Karel hits a wall or picks a beeper that isn't there, execution stops with an
 **error shutoff**: the line turns red and the message tells you what happened.
 
-Fix the code (errors are underlined as you type — see the **Problems** panel)
+Fix the code (errors are underlined as you type; see the **Problems** panel)
 and press **F5** to try again. **Shift+F5** stops, **Ctrl/Cmd+Shift+F5** resets the world.

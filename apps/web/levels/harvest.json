@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "harvest", "es": "la cosecha" },
   "brief": {
-    "en": "Twenty corners, a beeper on every one. Sweep the field row by row, turning at each wall, until nothing is left on the ground.",
+    "en": "Twenty squares, a beeper on every one. Sweep the field row by row, turning at each wall, until nothing is left on the ground.",
     "es": "Veinte esquinas y un zumbador en cada una. Barre el campo fila a fila, girando en cada muro, hasta no dejar nada en el suelo."
   },
   "ignoreFacing": true,

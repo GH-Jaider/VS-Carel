@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "unpack", "es": "repartir" },
   "brief": {
-    "en": "A pile of four sits under Karel's feet. Carry it east and deal it out, one beeper per corner, stopping when the bag runs dry.",
+    "en": "A pile of four sits under Karel's feet. Carry it east and deal it out, one beeper per square, stopping when the bag runs dry.",
     "es": "Hay una pila de cuatro bajo los pies de Karel. Llévala al este y repártela, un zumbador por esquina, y para cuando la mochila se vacíe."
   },
   "world": {

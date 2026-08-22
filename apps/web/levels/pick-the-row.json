@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "pick the row", "es": "recoger la fila" },
   "brief": {
-    "en": "Five beepers lie ahead, one per corner. Collect every one of them and stop at the far wall.",
+    "en": "Five beepers lie ahead, one per square. Collect every one of them and stop at the far wall.",
     "es": "Hay cinco zumbadores por delante, uno por esquina. Recógelos todos y párate junto al muro del fondo."
   },
   "world": {

@@ -22,7 +22,7 @@ const en = {
   // Runtime (error shutoffs)
   moveBlocked: () => "Karel hit a wall: the front is blocked",
   noBeepersToPickUp: (x: number, y: number) =>
-    `There is no beeper to pick up at corner (${x}, ${y})`,
+    `There is no beeper to pick up at square (${x}, ${y})`,
   noBeepersInBag: () => "Karel's beeper bag is empty",
   unknownInstruction: (name: string) => `Unknown instruction '${name}'`,
   unknownCondition: (name: string) => `Unknown condition '${name}'`,
@@ -78,10 +78,10 @@ const en = {
     `expected Karel facing ${expected}, found ${found}`,
   goalWrongBag: (expected: number, found: number) =>
     `expected ${expected} ${expected === 1 ? "beeper" : "beepers"} in the bag, found ${found}`,
-  goalWrongPile: (expected: number, corner: string, found: number) =>
-    `expected ${expected} ${expected === 1 ? "beeper" : "beepers"} at ${corner}, found ${found}`,
-  goalUnexpectedPile: (corner: string, found: number) =>
-    `expected no beepers at ${corner}, found ${found}`,
+  goalWrongPile: (expected: number, square: string, found: number) =>
+    `expected ${expected} ${expected === 1 ? "beeper" : "beepers"} at ${square}, found ${found}`,
+  goalUnexpectedPile: (square: string, found: number) =>
+    `expected no beepers at ${square}, found ${found}`,
 
   // Parser
   emptyProgram: () => "The program is empty. Start with BEGINNING-OF-PROGRAM",
@@ -119,7 +119,7 @@ type Catalogue = { [K in keyof typeof en]: (typeof en)[K] };
 const es: Catalogue = {
   // Runtime (error shutoffs)
   moveBlocked: () => "Karel chocó contra un muro: el frente está bloqueado",
-  noBeepersToPickUp: (x, y) => `No hay ningún zumbador que recoger en la esquina (${x}, ${y})`,
+  noBeepersToPickUp: (x, y) => `No hay ningún zumbador que recoger en la casilla (${x}, ${y})`,
   noBeepersInBag: () => "La mochila de Karel está vacía",
   unknownInstruction: (name) => `La instrucción '${name}' no existe`,
   unknownCondition: (name) => `La condición '${name}' no existe`,
@@ -170,10 +170,10 @@ const es: Catalogue = {
     `se esperaba a Karel mirando al ${expected}, mira al ${found}`,
   goalWrongBag: (expected, found) =>
     `se esperaban ${expected} ${expected === 1 ? "zumbador" : "zumbadores"} en la mochila, hay ${found}`,
-  goalWrongPile: (expected, corner, found) =>
-    `se esperaban ${expected} ${expected === 1 ? "zumbador" : "zumbadores"} en ${corner}, hay ${found}`,
-  goalUnexpectedPile: (corner, found) =>
-    `no se esperaba ningún zumbador en ${corner}, hay ${found}`,
+  goalWrongPile: (expected, square, found) =>
+    `se esperaban ${expected} ${expected === 1 ? "zumbador" : "zumbadores"} en ${square}, hay ${found}`,
+  goalUnexpectedPile: (square, found) =>
+    `no se esperaba ningún zumbador en ${square}, hay ${found}`,
 
   // Parser
   emptyProgram: () => "El programa está vacío. Empieza con BEGINNING-OF-PROGRAM",

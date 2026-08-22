@@ -1,6 +1,6 @@
 # VS Karel
 
-Learn programming with **Karel the Robot** in VS Code: write Karel programs, run them, and watch the robot move through its world — with live error checking, step-by-step execution, and worlds you can edit as validated JSON.
+Learn programming with **Karel the Robot** in VS Code: write Karel programs, run them, and watch the robot move through its world, with live error checking, step-by-step execution, and worlds you can edit as validated JSON.
 
 ## Getting started
 
@@ -18,7 +18,7 @@ The **Get Started with Karel** walkthrough (Help → Welcome) covers the same st
 | Step one instruction            | `F10` (current line highlights, world updates in sync)                                                              |
 | Stop                            | `Shift+F5`                                                                                                          |
 | Reset world                     | `Ctrl+Shift+F5` (`Cmd+Shift+F5` on Mac)                                                                             |
-| See the world                   | Just open the `.klm` file — it opens as the drawn world, not JSON                                                   |
+| See the world                   | Just open the `.klm` file: it opens as the drawn world, not JSON                                                   |
 | Edit a world                    | Click the `{}` button in the world's title bar to edit the JSON (schema-validated); the drawing updates as you type |
 | Change the world a program uses | Click **World: … (change)** above the program, or the globe in the status bar                                       |
 | Change speed                    | Click the speed in the status bar (applies live)                                                                    |
@@ -60,7 +60,7 @@ Errors are underlined as you type (all of them, not just the first), and snippet
 
 ## Worlds (`.klm`)
 
-**Opening a `.klm` file shows the world itself** — the grid, walls, beepers and Karel — as its editor. Running a program animates it right there; there is no separate visualizer window. To see or edit the underlying JSON, click the `{}` button in the editor title (or right-click the file → _Open With → Text Editor_).
+**Opening a `.klm` file shows the world itself** (the grid, walls, beepers and Karel) as its editor. Running a program animates it right there; there is no separate visualizer window. To see or edit the underlying JSON, click the `{}` button in the editor title (or right-click the file → _Open With → Text Editor_).
 
 The JSON has schema-backed **autocomplete and validation**:
 
@@ -100,8 +100,8 @@ Press `F5` to launch the Extension Development Host. Its build task builds the i
 
 This is a pnpm workspace with two packages:
 
-- **`packages/core`** (`@karel/core`) — the interpreter: lexer, parser and execution engine, pure TypeScript with no VS Code dependency and covered by unit tests (`pnpm test`).
-- **`packages/vscode`** (this extension) — `src/controller.ts` owns all execution state; the status bar, CodeLens, decorations and world editor are thin projections of it.
+- **`packages/core`** (`@karel/core`). The interpreter: lexer, parser and execution engine, pure TypeScript with no VS Code dependency and covered by unit tests (`pnpm test`).
+- **`packages/vscode`** (this extension). `src/controller.ts` owns all execution state; the status bar, CodeLens, decorations and world editor are thin projections of it.
 
 ## License
 

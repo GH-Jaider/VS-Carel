@@ -5,7 +5,7 @@
   "author": "GH-Jaider",
   "title": { "en": "the stack", "es": "la pila" },
   "brief": {
-    "en": "Three steps east, then put all four beepers down on the same corner. A pile is just four putbeepers in one place.",
+    "en": "Three steps east, then put all four beepers down on the same square. A pile is just four putbeepers in one place.",
     "es": "Tres pasos al este y deja los cuatro zumbadores en la misma esquina. Una pila no es más que cuatro putbeeper en el mismo sitio."
   },
   "world": {

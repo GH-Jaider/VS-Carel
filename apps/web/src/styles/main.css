@@ -1518,11 +1518,18 @@ button.problem:hover {
   font-weight: 700;
 }
 
+/* The view toggles ride with the transport rather than being pushed to the
+   far edge. An `auto` margin here used to right-align them, which looked
+   deliberate only while the whole console fitted on one line: below about
+   1560px the group wrapped on its own and left a single chip stranded
+   against the right edge, floating over the readout. Files is ordered last
+   instead, so the group that drops to a second row is a coherent one and it
+   drops flush left, where a second row belongs. */
+
 .toggles {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
-  margin-left: auto;
 }
 
 /* Checkbox as a terminal would draw it: a bracketed cell that fills in. */
@@ -1567,12 +1574,18 @@ button.problem:hover {
    is a drawer nobody finds. The buttons are the masthead's ghost buttons, so
    the group reads as chrome and not as another instrument. */
 
+/* Ordered after the toggles even though it comes before them in the markup,
+   where it sits next to the other document controls. Opening and saving is
+   the least urgent thing in this row, so it is the group that gives way when
+   the console runs out of width. */
+
 .files {
   display: flex;
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
   min-width: 0;
+  order: 1;
 }
 
 .files-label {
