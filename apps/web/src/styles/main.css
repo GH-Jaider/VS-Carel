@@ -856,16 +856,100 @@ button {
   padding: 9px 14px 10px 12px;
 }
 
-/* The bench holds three surfaces and shows two of them at a time. `data-layout`
-   is written by the chrome and is the only thing that decides the columns:
+/* The bench holds four surfaces and shows two or three of them at a time.
+   `data-layout` is written by the chrome and is the only thing that decides
+   the columns:
 
      plain    the workbench, two columns -- sandbox
-     guide    a lesson rail before it, three columns -- learn, a level, the
-              contribution form
+     learn    a strip across the top, then two columns: the lesson taking
+              turns with the program, and the world
+     level    two columns, the brief stacked above the program in the first
+     guide    a column of its own before the workbench, three columns -- the
+              contribution form, which is a form and needs the room
      gallery  one full-width surface, the workbench put away -- the level list
 
-   The narrow rule below 1120px collapses all three to a single column, so
-   these three lines are the whole of the mode layout on a wide screen. */
+   The two graded modes differ because the amount of prose differs, and that
+   is the whole of the reason. A chapter is several paragraphs with worked
+   examples in them: it needs a column, so it takes turns with the program in
+   one. A level's brief is a single sentence: it sits above the editor and
+   costs it almost nothing.
+
+   The narrow rule below 1120px collapses all of them to a single column, so
+   the blocks below are the whole of the mode layout on a wide screen. */
+
+.bench[data-layout="learn"] {
+  /* Wide enough for the lesson's own measure -- 72ch of 12px mono, plus the
+     column's padding -- since the same column has to hold a chapter and a
+     program without either of them being cramped. */
+  --editor-rail: 560px;
+  grid-template-columns: minmax(320px, var(--editor-rail)) minmax(0, 1fr);
+  /* The strip takes what it needs; the two columns take the rest. */
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.bench[data-layout="learn"] .strip {
+  grid-area: 1 / 1 / 2 / 3;
+}
+
+.bench[data-layout="learn"] .workshop {
+  grid-area: 2 / 1;
+}
+
+.bench[data-layout="learn"] .stage {
+  grid-area: 2 / 2;
+}
+
+.bench[data-layout="level"] {
+  --editor-rail: 520px;
+  grid-template-columns: minmax(320px, var(--editor-rail)) minmax(0, 1fr);
+  /* Not halves. The brief takes what its sentence needs and no more, and the
+     program takes everything that is left: a one-line task in a box half a
+     column tall is a lie about how much there is to read. */
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+/* The cap on the brief, so a long one cannot eat the editor: about a third of
+   the column, worked out rather than declared as a fraction, since a fraction
+   would also apply to the short ones. 74px is the masthead and the status bar,
+   which the bench does not have. */
+.bench[data-layout="level"] .guide {
+  grid-area: 1 / 1;
+  max-height: calc((100dvh - 74px) / 3);
+  /* The gap below is the program column's own top padding, which has to be
+     there anyway for the tab chip cut into its border. */
+  margin: 9px 0 0 14px;
+}
+
+.bench[data-layout="level"] .workshop {
+  grid-area: 2 / 1;
+  /* Room for the tabs cut into the top of the box, clear of the brief above. */
+  padding-top: 18px;
+}
+
+.bench[data-layout="level"] .stage {
+  grid-area: 1 / 2 / 3 / 3;
+}
+
+/* Set tighter than the same box in a column of its own. Everything in a brief
+   is competing for a third of a column, and the sentence has to win: the
+   generous rhythm that suits a page of prose would spend most of the cap on
+   the air between four short blocks. */
+.bench[data-layout="level"] .guide-scroll {
+  padding: 12px 14px 14px;
+}
+
+.bench[data-layout="level"] .guide-task {
+  margin-bottom: 0;
+}
+
+.bench[data-layout="level"] .guide-actions {
+  margin: 10px 0 0;
+}
+
+.bench[data-layout="level"] .guide-note {
+  margin: 8px 0 0;
+}
+
 .bench[data-layout="guide"] {
   /* The program column gives up some width so the lesson can have some. A
      Karel procedure still fits at 430px without wrapping. */
@@ -917,6 +1001,23 @@ button {
 .editor-host.is-off {
   visibility: hidden;
   pointer-events: none;
+}
+
+/* The chapter, in the same cell as the two editors. It is hidden the other
+   way, with `hidden`: nothing in here measures itself the way CodeMirror does,
+   and a pane that were merely invisible would still hold the box open at the
+   height of the whole chapter wherever the box grows with its content. */
+.lesson-host {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lesson-host[hidden] {
+  display: none;
 }
 
 .cm-editor {
@@ -2519,14 +2620,175 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   }
 }
 
+/* ---------------------------------------------------------------- strip -- */
+/* The chapter strip: learn's own band across the top of both columns.
+
+   It exists because the lesson takes turns with the program in learn, and
+   three things must not take turns with anything -- where you are in the book,
+   what this chapter asks for, and what the last run was judged to be. All
+   three are about the chapter rather than about either document, so they live
+   above both columns and stay put while the tabs change underneath.
+
+   No box: a rule around it would cut the page into a third region competing
+   with the two below. It is a line of chrome, drawn like the masthead's. */
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  padding: 10px 14px 2px;
+  min-width: 0;
+}
+
+/* `display: flex` above would otherwise beat the UA rule for [hidden]. */
+.strip[hidden] {
+  display: none;
+}
+
+.strip-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.strip-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.strip-count {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.strip-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+
+/* The task, and under it whatever the run was judged to be. They share one
+   block because the verdict answers the task: a miss is only readable next to
+   the sentence it missed, and a strip that swapped one for the other would
+   take the question away at the moment it is needed most. */
+.strip-brief {
+  flex: 1 1 340px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.strip-task {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--cyan);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* The verdict slot is never empty: before a run it holds the invitation to
+   make one, so the strip is the same height before and after, and the world
+   beside it does not jump when a program finishes. */
+.strip-verdict .guide-note,
+.strip-verdict .verdict {
+  margin: 0;
+  max-width: none;
+}
+
+/* Set in the box the verdict will be drawn in, down to the rule it will grow
+   on the left, so that the invitation and a miss are exactly the same height
+   and the strip does not move between them. */
+.strip-verdict .guide-note {
+  padding: 5px 10px;
+  border-left: 2px solid transparent;
+}
+
+/* One line rather than a block: the mark, the sentence and the way on, laid
+   out across the strip the way everything else in it is. */
+.strip-verdict .verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 5px 10px;
+}
+
+.strip-verdict .verdict-mark {
+  margin-bottom: 0;
+}
+
+.strip-verdict .verdict p {
+  font-size: 11.5px;
+}
+
+.strip-verdict .guide-actions {
+  margin: 0;
+}
+
+/* The chapter rail: eleven numbered cells, which is the whole table of
+   contents and the whole progress report in one strip. A solved chapter is
+   marked rather than coloured over, so the strip still reads as a sequence. */
+.chapter-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.chapter-chip {
+  min-width: 24px;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.chapter-chip:hover {
+  color: var(--text);
+  border-color: var(--line-bright);
+}
+
+.chapter-chip[data-solved="true"] {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+}
+
+.chapter-chip[aria-current="true"] {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: var(--bg);
+  font-weight: 700;
+}
+
 /* ---------------------------------------------------------------- guide -- */
-/* The third column. It is the same box as every other one on the page -- one
+/* The prose box. It is the same box as every other one on the page -- one
    rule, a title chip cut into the top border -- and everything inside it is
    built by the chrome, so every class below is one main.ts writes by hand.
 
-   It scrolls on its own rather than growing the page: the lesson is the only
-   long-form reading on the bench, and a chapter that pushed the world off the
-   bottom of the screen would defeat the reason the column exists. */
+   It is a level's brief above the program, and the contribution form in a
+   column of its own. In learn the same classes are used inside the lesson
+   pane, which is this box's content behind a tab.
+
+   It scrolls on its own rather than growing the page: a brief that pushed the
+   editor off the bottom of the screen would defeat the reason it is up
+   there. */
 
 .guide {
   position: relative;
@@ -2570,47 +2832,6 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 
 .guide-scroll:focus-visible {
   outline-offset: -2px;
-}
-
-/* The chapter rail: eleven numbered cells, which is the whole table of
-   contents and the whole progress report in one strip. A solved chapter is
-   marked rather than coloured over, so the strip still reads as a sequence. */
-.chapter-rail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-bottom: 14px;
-}
-
-.chapter-chip {
-  min-width: 24px;
-  padding: 2px 4px;
-  border: 1px solid var(--line);
-  background: none;
-  color: var(--text-faint);
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-  transition:
-    color 0.1s,
-    border-color 0.1s,
-    background 0.1s;
-}
-
-.chapter-chip:hover {
-  color: var(--text);
-  border-color: var(--line-bright);
-}
-
-.chapter-chip[data-solved="true"] {
-  color: var(--green);
-  border-color: color-mix(in srgb, var(--green) 45%, transparent);
-}
-
-.chapter-chip[aria-current="true"] {
-  background: var(--purple);
-  border-color: var(--purple);
-  color: var(--bg);
-  font-weight: 700;
 }
 
 .guide-head {
@@ -3261,6 +3482,7 @@ textarea.text-input {
 }
 
 .masthead,
+.strip,
 .guide,
 .gallery,
 .editor,
@@ -3276,6 +3498,7 @@ textarea.text-input {
 .masthead {
   animation-delay: 0.02s;
 }
+.strip,
 .guide,
 .gallery {
   animation-delay: 0.04s;
@@ -3351,14 +3574,48 @@ textarea.text-input {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* More specific than the rule above, so it has to be unwound by name. */
-  .bench[data-layout="guide"] {
+  /* More specific than the rule above, so they have to be unwound by name --
+     the placements with them, or a column that was told to sit in the second
+     track would create one. */
+  .bench[data-layout="guide"],
+  .bench[data-layout="learn"],
+  .bench[data-layout="level"] {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .bench[data-layout="learn"] .strip,
+  .bench[data-layout="learn"] .workshop,
+  .bench[data-layout="learn"] .stage,
+  .bench[data-layout="level"] .guide,
+  .bench[data-layout="level"] .workshop,
+  .bench[data-layout="level"] .stage {
+    grid-area: auto;
   }
 
   .workshop,
-  .bench[data-layout="guide"] .workshop {
+  .bench[data-layout="guide"] .workshop,
+  .bench[data-layout="level"] .workshop {
     padding: 9px 12px 0;
+  }
+
+  /* Stacked, a brief has the page to grow into and no column to eat. The
+     margin is the stacked one, which the placement above had overridden. */
+  .bench[data-layout="level"] .guide {
+    max-height: none;
+    margin: 9px 12px 0;
+  }
+
+  /* The lesson has no parent height to fill either, so it grows with the
+     chapter and the page scrolls -- the same answer the guide column gets
+     three rules down, and for the same reason. The box has to give up its
+     minimum for it, or the pane would be clipped at 320px. */
+  .lesson-host {
+    overflow: visible;
+  }
+
+  .editor:has(> .lesson-host:not([hidden])) {
+    min-height: 0;
   }
 
   /* Stacked, the guide and the gallery have no parent height to fill, so they

@@ -185,12 +185,15 @@ const en = {
   "mode.levelsTitle": "Worlds with a goal, and a way to send your own",
   "mode.sandboxTitle": "A free world, the program and the map editor",
 
-  // ── The guide column ────────────────────────────────────────────────────
-  // The third column: the lesson in learn, the brief in a level, the form
-  // when a level is being sent. Nothing here appears in sandbox.
+  // ── The lesson, the brief and the strip ─────────────────────────────────
+  // The chapter in learn -- the strip across the top and the lesson behind a
+  // tab -- the brief above a level's program, and the form when a level is
+  // being sent. Nothing here appears in sandbox.
   "guide.group": "The lesson and the task",
   "guide.lesson": "lesson",
   "guide.brief": "level",
+  // The word cut in front of the chapter rail, naming what the numbers are.
+  "guide.chapter": "chapter",
   "guide.chapters": "Chapters",
   "guide.task": "the task",
   "guide.hint": "a hint",
@@ -700,10 +703,11 @@ const es: Catalogue = {
   "mode.levelsTitle": "Mundos con un objetivo, y cómo enviar el tuyo",
   "mode.sandboxTitle": "Un mundo libre, el programa y el editor de mapas",
 
-  // ── The guide column ────────────────────────────────────────────────────
+  // ── The lesson, the brief and the strip ─────────────────────────────────
   "guide.group": "La lección y el objetivo",
   "guide.lesson": "lección",
   "guide.brief": "nivel",
+  "guide.chapter": "capítulo",
   "guide.chapters": "Capítulos",
   "guide.task": "el objetivo",
   "guide.hint": "una pista",

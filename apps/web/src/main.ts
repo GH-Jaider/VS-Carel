@@ -17,13 +17,22 @@
  * There is one active mode, named in the masthead, and it decides what the
  * bench is:
  *
- *   learn    the book. A lesson column, a chapter's world, a chapter's
- *            program, and a check that runs the moment the program finishes.
- *   levels   the collection. A gallery to choose from, the same solving
- *            workbench once one is open, and the form that turns a world you
- *            built into a pull-worthy issue on the repository.
+ *   learn    the book. A strip across the top saying where you are and what
+ *            this chapter asks for, a column where the lesson takes turns
+ *            with the program, the chapter's world, and a check that runs the
+ *            moment the program finishes.
+ *   levels   the collection. A gallery to choose from, then the brief above
+ *            the program and the world beside them, and the form that turns a
+ *            world you built into a pull-worthy issue on the repository.
  *   sandbox  the free world: the program, the map editor, files and the link.
  *            Everything this page could do before the modes existed.
+ *
+ * The two graded modes are laid out differently on purpose, and the reason is
+ * the amount of prose. A chapter is several paragraphs with worked examples in
+ * them, so it needs a column of its own -- and takes turns with the program in
+ * one, since three columns leave neither the lesson nor the world enough room.
+ * A level's brief is one sentence, so it sits above the editor and costs it
+ * almost nothing.
  *
  * Two rules keep them from becoming three applications. The Session is still
  * the only owner of execution, whatever mode is on; and the world is only
@@ -138,6 +147,13 @@ function query<T extends HTMLElement>(selector: string): T {
 type Mode = "learn" | "levels" | "sandbox";
 
 /**
+ * How the bench is arranged. Written to `data-layout`, where the stylesheet
+ * is the only thing that reads it; see the bench block in main.css for what
+ * each one draws and why the two graded modes differ.
+ */
+type Layout = "plain" | "learn" | "level" | "guide" | "gallery";
+
+/**
  * Which surface `levels` is showing. The other two modes are always on the
  * board; keeping one field rather than one per mode means "what is on screen"
  * is answered in one place.
@@ -154,7 +170,16 @@ type EditMode = "run" | "edit";
  * the world it runs in -- and they share one box, one pair of tabs and one
  * problems panel, because they are the same kind of thing: text you edit.
  */
-type Doc = "program" | "map";
+/**
+ * What the code column is showing.
+ *
+ * Two of these are files; `lesson` is the chapter, which is not a file at all.
+ * It is in the same union anyway because it is chosen the same way, from the
+ * same strip of tabs cut into the same border, and one field answering "what
+ * is in front" is what keeps the tabs, the panes and the panel under them from
+ * disagreeing.
+ */
+type Doc = "program" | "map" | "lesson";
 
 type Tool = "wall" | "beeper" | "karel";
 
@@ -448,6 +473,24 @@ class Application {
   /** How many of the current chapter's hints have been asked for. */
   private hintsShown = 0;
 
+  /**
+   * Which tab each chapter was last left on, for this visit only.
+   *
+   * Deliberately not persisted. The rule for a chapter nobody has an opinion
+   * about is the one that matters -- an unsolved chapter opens on the lesson,
+   * a solved one on the program -- and a beginner coming back tomorrow should
+   * meet the lesson again rather than a preference they set by accident. But
+   * within one sitting, going to chapter 4 to look something up and coming
+   * back must not undo the tab you were working in.
+   */
+  private readonly learnDoc = new Map<string, Doc>();
+  /**
+   * Where the lesson was scrolled to, so switching to the program and back
+   * does not throw away the reader's place. The pane is hidden with `hidden`,
+   * which means the browser forgets its scroll position.
+   */
+  private lessonScroll = 0;
+
   // ── levels ──────────────────────────────────────────────────────────────
   private level: Level | null;
   private solvedLevels: Set<string>;
@@ -511,6 +554,8 @@ class Application {
    */
   private guideKey = "";
   private galleryKey = "";
+  /** The same trick for the chapter strip, which is prose about a chapter. */
+  private stripKey = "";
 
   /**
    * The world as a .klm file, editable, beside the canvas that draws it.
@@ -536,10 +581,19 @@ class Application {
     gallery: query("#gallery"),
     galleryNote: query("#gallery-note"),
     galleryBody: query("#gallery-body"),
+    strip: query("#chapter-strip"),
+    chapterRail: query("#chapter-rail"),
+    chapterCount: query("#chapter-count"),
+    chapterName: query("#chapter-name"),
+    chapterTask: query("#chapter-task"),
+    chapterVerdict: query("#chapter-verdict"),
     workshop: query(".workshop"),
     stage: query(".stage"),
     docTabs: query("#doc-tabs"),
     mapTab: query<HTMLButtonElement>("#tab-map"),
+    lessonTab: query<HTMLButtonElement>("#tab-lesson"),
+    lessonHost: query("#lesson-host"),
+    lessonBody: query("#lesson-body"),
     editorHost: query("#editor-host"),
     mapHost: query("#map-source-host"),
     programProblems: query("#program-problems"),
@@ -631,11 +685,22 @@ class Application {
     this.renderer = createRenderer(this.dom.canvas);
     this.editor = createEditor(this.dom.editorHost, this.startingProgram());
     this.editor.onChange((source) => {
+      // Whoever is writing this program is working on the program, so that is
+      // what the column should be showing. It matters for the buttons that
+      // write it for you -- "start again" while the lesson is in front would
+      // otherwise put the chapter's program somewhere the reader cannot see.
+      this.showProgram();
       this.session.setSource(source);
       this.rememberProgram(source);
       this.persist();
     });
     this.session.setSource(this.editor.getSource());
+    // The same choice enterContext makes, made for the context the page opens
+    // in: learn is the door for someone who has never met Karel, and the whole
+    // point of opening on the lesson is that they are the visitor who arrives
+    // cold. Only after the editor exists -- filling it is a change, and a
+    // change brings the program to the front.
+    this.doc = this.openingDoc();
 
     // Opened on the world the session starts from, which is the only world the
     // map editor ever edits: the panel and the canvas are two views of one
@@ -932,7 +997,7 @@ class Application {
   }
 
   /**
-   * The two tabs cut into the top of the code column.
+   * The tabs cut into the top of the code column.
    *
    * Opening the map is opening the map editor -- see the note on `doc` for
    * why the two cannot be separated. Going back to the program leaves the
@@ -961,9 +1026,70 @@ class Application {
       this.mapSource.focus();
       return;
     }
+    if (doc === "lesson") {
+      if (this.mode !== "learn") {
+        return;
+      }
+      this.doc = "lesson";
+      this.rememberDoc();
+      this.render();
+      // The pane is a scroll container with a tabindex, so it can be read from
+      // the keyboard the moment it is opened.
+      this.dom.lessonBody.focus();
+      return;
+    }
+    // Where the reader was in the chapter, kept by hand: the pane is hidden
+    // with `hidden`, and the browser does not remember the scroll position of
+    // an element it has stopped laying out.
+    if (this.doc === "lesson") {
+      this.lessonScroll = this.dom.lessonBody.scrollTop;
+    }
     this.doc = "program";
+    this.rememberDoc();
     this.render();
     this.editor.focus();
+  }
+
+  /**
+   * Which document the code column opens on, entering a context.
+   *
+   * Only learn has anything to decide. A lesson behind a tab is a lesson a
+   * beginner can miss entirely, so an unsolved chapter opens on it; a chapter
+   * already solved opens on the program, because someone coming back to one is
+   * coming back to the code they wrote. Either answer is overridden by the tab
+   * the reader last chose in that chapter this visit.
+   */
+  private openingDoc(): Doc {
+    if (this.mode !== "learn") {
+      return "program";
+    }
+    const chapter = this.chapter();
+    return (
+      this.learnDoc.get(chapter.id) ??
+      (this.progress.solved.includes(chapter.id) ? "program" : "lesson")
+    );
+  }
+
+  private rememberDoc(): void {
+    if (this.mode === "learn" && this.doc !== "map") {
+      this.learnDoc.set(this.chapter().id, this.doc);
+    }
+  }
+
+  /**
+   * Reading is over: bring the program to the front.
+   *
+   * Called from every route that acts on the program rather than on the page
+   * -- running it, stepping it, writing into it -- because a run whose active
+   * line is highlighted behind a lesson is a run nobody can follow.
+   */
+  private showProgram(): void {
+    if (this.doc !== "lesson") {
+      return;
+    }
+    this.lessonScroll = this.dom.lessonBody.scrollTop;
+    this.doc = "program";
+    this.rememberDoc();
   }
 
   private bindTransport(): void {
@@ -971,10 +1097,14 @@ class Application {
       if (this.session.primaryAction() === "stop") {
         this.session.stop();
       } else {
+        this.showProgram();
         void this.session.run();
       }
     });
-    this.dom.step.addEventListener("click", () => this.session.step());
+    this.dom.step.addEventListener("click", () => {
+      this.showProgram();
+      this.session.step();
+    });
     this.dom.reset.addEventListener("click", () => this.session.reset());
   }
 
@@ -995,6 +1125,7 @@ class Application {
       if (chord && event.key === "Enter") {
         event.preventDefault();
         if (this.editMode === "run" && this.onBoard()) {
+          this.showProgram();
           void this.session.run();
         }
         return;
@@ -1002,6 +1133,7 @@ class Application {
       if (chord && event.key === ".") {
         event.preventDefault();
         if (this.editMode === "run" && this.onBoard()) {
+          this.showProgram();
           this.session.step();
         }
         return;
@@ -1607,7 +1739,6 @@ class Application {
    */
   private enterContext(): void {
     this.editMode = "run";
-    this.doc = "program";
     this.stroke = null;
     this.cursor = null;
     this.edgeCursor = null;
@@ -1622,12 +1753,17 @@ class Application {
     // definition. Blanking the signature is how they are asked to rebuild.
     this.guideKey = "";
     this.galleryKey = "";
+    this.stripKey = "";
+    this.lessonScroll = 0;
     this.note("");
     this.dom.shareUrlField.hidden = true;
 
     this.session.setWorld(this.startingWorld()); // renders, through onChange
     const source = this.startingProgram();
     this.editor.setSource(source);
+    // After the editor has been filled and not before: filling it is a change
+    // like any other, and a change brings the program to the front.
+    this.doc = this.openingDoc();
     this.session.setSource(source);
     this.persist();
     this.render();
@@ -1669,10 +1805,11 @@ class Application {
    */
   private judge(view: SessionView): void {
     if (view.state !== "done" || !this.isGraded()) {
-      if (this.verdict) {
-        this.verdict = null;
-        this.guideKey = "";
-      }
+      // Nothing is blanked here on purpose. The verdict is part of the guide's
+      // signature, so dropping it already asks for a rebuild -- and blanking
+      // the key as well would make the rebuild look like a move to a different
+      // chapter, which is what decides whether the reader's place is kept.
+      this.verdict = null;
       this.judged = false;
       return;
     }
@@ -1696,10 +1833,30 @@ class Application {
         this.solvedLevels = markLevelSolved(this.level.id);
       }
     }
-    this.guideKey = "";
   }
 
   // ── Projection ──────────────────────────────────────────────────────────
+
+  /** How the bench is arranged here. One answer, in one place. */
+  private layout(): Layout {
+    if (!this.onBoard()) {
+      return "gallery";
+    }
+    if (this.mode === "learn") {
+      return "learn";
+    }
+    if (this.mode === "levels") {
+      // The form is long, and a form that scrolls inside a third of a column
+      // is a form nobody finishes: it keeps the column of its own.
+      if (this.screen === "contribute") {
+        return "guide";
+      }
+      if (this.level) {
+        return "level";
+      }
+    }
+    return "plain";
+  }
 
   private render(): void {
     const view = this.session.view();
@@ -1707,12 +1864,16 @@ class Application {
 
     const board = this.onBoard();
     const editing = this.editMode === "edit";
-    const guided = board && this.mode !== "sandbox";
+    const layout = this.layout();
 
     // One attribute decides the columns; see the bench block in main.css.
-    this.dom.bench.dataset["layout"] = board ? (guided ? "guide" : "plain") : "gallery";
+    this.dom.bench.dataset["layout"] = layout;
     this.dom.bench.dataset["mode"] = this.mode;
-    this.dom.guide.hidden = !guided;
+    // The strip is learn's; the prose box is a level's brief and the
+    // contribution form's column. Nothing else on the bench moves between
+    // modes, which is what keeps the world column identical in all three.
+    this.dom.strip.hidden = layout !== "learn";
+    this.dom.guide.hidden = !(layout === "level" || layout === "guide");
     this.dom.gallery.hidden = board;
     this.dom.workshop.hidden = !board;
     this.dom.stage.hidden = !board;
@@ -1770,32 +1931,51 @@ class Application {
   }
 
   /**
-   * Which of the two documents the code column is showing.
+   * Which of the three things the code column is showing.
    *
-   * The pair of tabs, the two editors stacked in one box, the problems panel
-   * under them, the chip in the top right and the one action that belongs to
-   * the file all move together, because they are five views of one answer.
+   * The strip of tabs, the panes stacked in one box, the problems panel under
+   * them, the chip in the top right and the one action that belongs to the
+   * file all move together, because they are five views of one answer.
+   *
+   * Never more than two tabs at once: the map is cut only where the world is
+   * the visitor's to change, the lesson only in learn, and those two are never
+   * true at the same time -- a chapter whose world could be rearranged by hand
+   * would be a chapter that could be passed without writing a program.
    */
   private renderDocs(): void {
     // A tab for a document that cannot be opened here is worse than no tab: in
     // learn and in an opened level the world is not the visitor's to change,
     // and the box goes back to looking like a box with one name on it.
     const editable = this.canEditWorld();
+    const teaching = this.mode === "learn";
     this.dom.mapTab.hidden = !editable;
+    this.dom.lessonTab.hidden = !teaching;
     // With one document there is no choice to mark, so the lone tab goes back
     // to being the title chip it replaced; see the box block in main.css.
-    this.dom.docTabs.dataset["choice"] = String(editable);
+    this.dom.docTabs.dataset["choice"] = String(editable || teaching);
     const map = this.doc === "map" && editable;
+    const lesson = this.doc === "lesson" && teaching;
+    const front = map ? "map" : lesson ? "lesson" : "program";
 
     for (const tab of this.dom.docTabs.querySelectorAll<HTMLButtonElement>(".box-tab")) {
-      tab.setAttribute("aria-selected", String((tab.dataset.doc === "map") === map));
+      tab.setAttribute("aria-selected", String(tab.dataset.doc === front));
     }
     // Hidden by visibility, not by display: an editor in a box that is not
     // displayed measures itself as zero and comes back with no gutter and no
     // scroll position. See the .editor rule in main.css.
-    this.dom.editorHost.classList.toggle("is-off", map);
+    this.dom.editorHost.classList.toggle("is-off", map || lesson);
     this.dom.mapHost.classList.toggle("is-off", !map);
-    this.dom.programProblems.hidden = map;
+    // The lesson is prose, so it is hidden the other way round -- see the
+    // .lesson-host rule in main.css -- and its scroll position is put back by
+    // hand, because a display: none element loses it.
+    const wasOff = this.dom.lessonHost.hidden;
+    this.dom.lessonHost.hidden = !lesson;
+    if (lesson && wasOff) {
+      this.dom.lessonBody.scrollTop = this.lessonScroll;
+    }
+    // A report on the file in front, which is why it goes with the file: with
+    // the chapter in front there is no file to report on.
+    this.dom.programProblems.hidden = map || lesson;
     this.dom.mapProblemsPanel.hidden = !map;
     this.dom.formatMap.hidden = !map;
     // The extension is neither translated nor rewritten: ".klm" is what the
@@ -1994,16 +2174,14 @@ class Application {
 
   private renderGuide(view: SessionView): void {
     if (this.mode === "sandbox") {
-      return; // the column is not on screen at all
+      return; // neither surface is on screen at all
     }
 
+    const teaching = this.mode === "learn";
     const contributing = this.mode === "levels" && this.screen === "contribute";
-    if (this.mode === "learn") {
-      this.dom.guideTitle.textContent = t("guide.lesson");
-      this.dom.guideNote.textContent = t("guide.progress", {
-        done: this.progress.solved.length,
-        total: CHAPTERS.length,
-      });
+    if (teaching) {
+      // Everything the box's own chips would have said is in the strip.
+      this.renderStrip();
     } else if (contributing) {
       this.dom.guideTitle.textContent = t("contribute.title");
       this.dom.guideNote.textContent = "";
@@ -2012,23 +2190,82 @@ class Application {
       this.dom.guideNote.textContent = this.level ? t(DIFFICULTY_LABEL[this.level.difficulty]) : "";
     }
 
+    // In learn the prose is the lesson pane, behind a tab in the code column;
+    // everywhere else it is the box of its own. One builder either way -- the
+    // classes inside are the same, and so is the measure they are set to.
+    const host = teaching ? this.dom.lessonBody : this.dom.guideBody;
     const context = this.guideContext();
     const signature = this.guideSignature();
     if (signature !== this.guideKey) {
       const moved = !this.guideKey.startsWith(`${context}|`);
       this.guideKey = signature;
-      this.dom.guideBody.replaceChildren(...this.buildGuide());
+      host.replaceChildren(...this.buildGuide());
       if (moved) {
         // A different chapter, a different level: start at the top of it. A
         // verdict arriving in the chapter already open is not a move, and
         // yanking the page out from under the reader would be rude.
-        this.dom.guideBody.scrollTop = 0;
+        host.scrollTop = 0;
+        this.lessonScroll = 0;
+      } else if (this.verdict && !teaching) {
+        // The one exception, and the reason it is an exception: a brief is
+        // capped at a third of the column, so a verdict landing at the end of
+        // a full one would be a verdict nobody sees. In learn there is nothing
+        // to scroll -- the verdict is in the strip, always in view.
+        host.scrollTop = host.scrollHeight;
       }
     }
 
     if (contributing) {
       this.updateContribution(view);
     }
+  }
+
+  /**
+   * The chapter strip: where you are in the book, what this chapter asks for,
+   * and what the last run was judged to be.
+   *
+   * All three are about the chapter rather than about the lesson or the
+   * program, which is why they are above both columns instead of inside the
+   * one that takes turns: a task you cannot read without opening a tab is a
+   * task you will forget, and a verdict behind a tab is a verdict nobody sees.
+   *
+   * Rebuilt on the same terms the prose is -- eleven chips with a listener
+   * apiece is far too much work to redo on every executed instruction.
+   */
+  private renderStrip(): void {
+    const signature = this.guideSignature();
+    if (signature === this.stripKey) {
+      return;
+    }
+    this.stripKey = signature;
+
+    const chapter = this.chapter();
+    // The table of contents and the progress report are the same strip: one
+    // cell per chapter, marked when it has been solved.
+    this.dom.chapterRail.replaceChildren(
+      ...CHAPTERS.map((entry, index) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chapter-chip";
+        chip.textContent = String(index + 1);
+        chip.title = entry.title;
+        chip.setAttribute("aria-label", `${index + 1}. ${entry.title}`);
+        chip.dataset["solved"] = String(this.progress.solved.includes(entry.id));
+        chip.setAttribute("aria-current", String(entry.id === chapter.id));
+        chip.addEventListener("click", () => this.openChapter(entry.id));
+        return chip;
+      })
+    );
+    this.dom.chapterCount.textContent = t("guide.progress", {
+      done: this.progress.solved.length,
+      total: CHAPTERS.length,
+    });
+    this.dom.chapterName.textContent = chapter.title;
+    this.dom.chapterTask.textContent = chapter.task;
+    // Never empty: with no verdict yet this is the invitation to earn one, so
+    // the strip is the same height before and after a run and the world beside
+    // it does not jump when a program finishes.
+    this.dom.chapterVerdict.replaceChildren(this.verdictNode());
   }
 
   private buildGuide(): HTMLElement[] {
@@ -2043,39 +2280,17 @@ class Application {
 
   // ── learn ───────────────────────────────────────────────────────────────
 
+  /**
+   * The lesson itself: prose, worked examples, hints, and the way on.
+   *
+   * What is not here is as decided as what is. The chapter's name, its number,
+   * the task and the verdict are all in the strip above both columns, because
+   * this pane takes turns with the program and none of those four may.
+   */
   private buildChapterGuide(): HTMLElement[] {
     const chapter = this.chapter();
     const at = chapterIndex(chapter.id);
     const nodes: HTMLElement[] = [];
-
-    // The table of contents and the progress report are the same strip: one
-    // cell per chapter, marked when it has been solved.
-    const rail = document.createElement("nav");
-    rail.className = "chapter-rail";
-    rail.setAttribute("aria-label", t("guide.chapters"));
-    for (const [index, entry] of CHAPTERS.entries()) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "chapter-chip";
-      chip.textContent = String(index + 1);
-      chip.title = entry.title;
-      chip.setAttribute("aria-label", `${index + 1}. ${entry.title}`);
-      chip.dataset["solved"] = String(this.progress.solved.includes(entry.id));
-      chip.setAttribute("aria-current", String(entry.id === chapter.id));
-      chip.addEventListener("click", () => this.openChapter(entry.id));
-      rail.append(chip);
-    }
-    nodes.push(rail);
-
-    nodes.push(heading(chapter.title));
-    nodes.push(
-      tags([
-        `${at + 1} / ${CHAPTERS.length}`,
-        ...(this.progress.solved.includes(chapter.id) ? [t("guide.solved")] : []),
-      ])
-    );
-    nodes.push(taskBox(chapter.task));
-    nodes.push(this.verdictNode());
 
     for (const block of chapter.lesson) {
       if (block.kind === "prose") {
@@ -2197,7 +2412,13 @@ class Application {
       ])
     );
     nodes.push(taskBox(levelBrief(level)));
-    nodes.push(this.verdictNode());
+    // Only once there is one. In learn the invitation to run holds the strip's
+    // verdict slot open so the strip cannot change height mid-chapter; here the
+    // box is capped at a third of the column and a paragraph explaining what
+    // will happen later is exactly the wrong thing to spend that third on.
+    if (this.verdict) {
+      nodes.push(this.verdictNode());
+    }
 
     const actions = document.createElement("div");
     actions.className = "guide-actions";
@@ -2235,7 +2456,13 @@ class Application {
     return at >= 0 && at + 1 < LEVELS.length ? LEVELS[at + 1] : null;
   }
 
-  /** What the check said, or an invitation to find out. */
+  /**
+   * What the check said, or an invitation to find out.
+   *
+   * The invitation is not a placeholder: in the chapter strip it is what keeps
+   * the verdict's slot the same height before and after a run, so the world
+   * beside it does not jump the moment a program finishes.
+   */
   private verdictNode(): HTMLElement {
     if (!this.verdict) {
       const note = document.createElement("p");

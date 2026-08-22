@@ -174,15 +174,48 @@
       </header>
 
       <main class="bench" id="bench" data-layout="plain" data-mode="sandbox">
-        <!-- The guide. A third column rather than a panel over the editor,
-             because the lesson, the program and the world all have to be
-             readable at the same moment: the whole act of learning here is
-             reading a paragraph, changing a line and watching the robot. It
-             is absent in sandbox, where there is nothing to guide.
+        <!-- The chapter strip: where you are in the book, across the top of
+             both columns. It is on screen in learn and nowhere else.
+
+             Everything a chapter is about lives here rather than beside the
+             lesson, because the lesson takes turns with the program: the
+             table of contents, the chapter's name, the one sentence that says
+             what has to happen, and the verdict a finished run gets. The
+             verdict goes here for the same reason the task does -- it is
+             about the chapter, not about either document -- and it is where
+             the eye already is when a run ends. -->
+        <section class="strip" id="chapter-strip" hidden>
+          <div class="strip-where">
+            <span class="strip-label" data-i18n="guide.chapter">chapter</span>
+            <!-- Filled by the chrome: one .chapter-chip per chapter. -->
+            <nav
+              class="chapter-rail"
+              id="chapter-rail"
+              data-i18n-aria="guide.chapters"
+              aria-label="Chapters"
+            ></nav>
+            <span class="strip-count" id="chapter-count"></span>
+            <h2 class="strip-name" id="chapter-name"></h2>
+          </div>
+          <div class="strip-brief">
+            <p class="strip-task" id="chapter-task"></p>
+            <!-- Filled by the chrome: the invitation to run, and then the
+                 verdict itself. One line either way, so the strip does not
+                 change height under the reader when a program finishes. -->
+            <div class="strip-verdict" id="chapter-verdict"></div>
+          </div>
+        </section>
+
+        <!-- The guide. A box of its own rather than a panel over the editor,
+             because the task, the program and the world all have to be
+             readable at the same moment. It is absent in sandbox, where there
+             is nothing to guide, and absent in learn, where a chapter is far
+             too much prose for a box above the editor: there the lesson takes
+             turns with the program instead, in the code column, and the strip
+             above carries the task.
 
              Filled by the chrome, which decides what a guide is per mode:
-             the chapter in learn, the brief in a level, the form when a
-             level is being sent. -->
+             the brief in a level, the form when a level is being sent. -->
         <aside
           class="guide"
           id="guide"
@@ -191,7 +224,7 @@
           hidden
         >
           <!-- Written by the chrome, which is the only thing that knows whether
-               this column is a lesson, a level or a form. -->
+               this box is a level or a form. -->
           <span class="box-title" id="guide-title">lesson</span>
           <span class="box-note" id="guide-note"></span>
           <div class="guide-scroll" id="guide-body" tabindex="0"></div>
@@ -212,6 +245,22 @@
               data-i18n-aria="panel.documents"
               aria-label="Files"
             >
+              <!-- The chapter's lesson, cut into the same border as the files
+                   and in the same place: in learn it is one of the things this
+                   column can be showing, so it is chosen the way the other two
+                   are. Only ever on screen in learn. -->
+              <button
+                class="box-tab"
+                id="tab-lesson"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-doc="lesson"
+                data-i18n="guide.lesson"
+                hidden
+              >
+                lesson
+              </button>
               <button
                 class="box-tab"
                 id="tab-program"
@@ -267,6 +316,15 @@
                  gutter and no scroll position. -->
             <div class="editor-host" id="editor-host"></div>
             <div class="editor-host source-host is-off" id="map-source-host"></div>
+
+            <!-- The chapter, in the same cell as the two editors and chosen by
+                 the same strip of tabs. Hidden by `hidden` rather than by the
+                 `is-off` the editors use: nothing in here measures itself, and
+                 a pane that is only invisible would still hold the box open at
+                 the height of the whole chapter on a narrow screen. -->
+            <div class="lesson-host" id="lesson-host" hidden>
+              <div class="guide-scroll" id="lesson-body" tabindex="0"></div>
+            </div>
           </div>
 
           <div class="panel problems" id="program-problems">
