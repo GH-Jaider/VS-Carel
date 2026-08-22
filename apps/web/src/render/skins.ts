@@ -409,34 +409,70 @@ export const terminalSkin: Skin = {
  * turn pixel art into mud: the four facings are four rotations of the *mask*,
  * each still square to the screen.
  *
- * The look is deliberately low-resolution rather than merely thick. A dot
- * lattice instead of rules, piles that are literally stacks, walls as bars
- * with square ends.
+ * What that unit builds: a lattice of dashed rules, walls as solid blocks
+ * that own their edge from one corner to the other, and piles that are
+ * literally stacks of chips. The rim is drawn out of the same block as an
+ * interior wall and piered at every joint between two of them, because a rim
+ * *is* a wall — the one the hit test refuses to let anybody toggle — and a
+ * pack that drew it as a band around the outside was saying otherwise.
  */
 
 /** The sprite is this many pack-pixels on a side. */
 const SPRITE = 8;
 
 /**
- * Karel facing north. Read as a squat robot: a pointed head, a body that
- * flares to the shoulders and back in, and two feet. Eight rows is the
- * smallest that still reads as a facing creature rather than as a blob, and
- * it divides the cell cleanly.
+ * The sprite plus the ring of ground around it.
  *
- * The shoulders are two rows deep rather than one on purpose. Turned a
- * quarter, a one-row flare becomes a single pixel sticking out of the side,
- * which reads as a mistake; two rows read as the same shape seen from
- * another angle, which is what it is.
+ * Karel wears a one-pixel halo so he still reads while standing on a pile,
+ * and a halo is ground colour: whatever it covers, it erases. So the footprint
+ * that has to stay clear of the walls is ten pack-pixels and not eight, and
+ * ten is what `unit` sizes against.
+ *
+ * Sizing against `SPRITE` alone is what broke this pack. At the largest cell
+ * the sprite came to 78% of the cell, the halo took it to 97%, and the pixel
+ * left over on each side was less than the four a wall reaches in from the
+ * boundary — so a Karel standing anywhere along the edge of the world rubbed
+ * a notch out of the rim behind him, measured at 294 pixels of ground on the
+ * wall in a six-by-four world.
+ */
+const SPRITE_BOX = SPRITE + 2;
+
+/**
+ * Karel facing north.
+ *
+ * `#` is Karel, `o` is a hole cut clean through him to the ground, `.` is
+ * outside him altogether.
+ *
+ * The hull is nearly the whole square, and that is deliberate twice over.
+ *
+ * It is what makes the turn work: anything that only reads with one
+ * particular edge downward — the pair of feet the first draft had — becomes
+ * two spikes out of Karel's flank a quarter turn later, which is what made
+ * the east-facing sprite look like a squashed insect. A body that fills its
+ * box turns into itself.
+ *
+ * And it is what makes standing on a pile read. The halo below is a dilation
+ * of this shape, so whatever the hull does not reach, the chips underneath
+ * show through; a rounder Karel left the corners of the pile sticking out as
+ * loose specks of beeper colour, which looks like a fault rather than like a
+ * robot on a heap of something.
+ *
+ * Which way he faces is told three times, and all three survive the turn: the
+ * prow tapers four, six, eight across the first three rows; the visor sits
+ * behind the prow; and the stern carries two exhaust notches. The visor is a
+ * hole rather than a second colour, because one ink and the ground is the
+ * whole palette a pack is allowed. Holes need no handling in the fill — the
+ * halo covers them, since each touches Karel on every side.
  */
 const KAREL_SPRITE = [
-  "...##...",
   "..####..",
-  "..####..",
+  ".######.",
+  "##oooo##",
   "########",
   "########",
-  "..####..",
-  "..#..#..",
-  "..#..#..",
+  "########",
+  "########",
+  "##.##.##",
 ] as const;
 
 type Mask = boolean[][];
@@ -466,35 +502,49 @@ const KAREL_MASKS: Record<Facing, Mask> = (() => {
 })();
 
 /**
- * The pack's pixel: the largest whole CSS pixel that fits the sprite inside
- * roughly three quarters of a cell. Never below one, or the sprite vanishes.
+ * The pack's pixel: the largest whole CSS pixel that keeps Karel *and his
+ * halo* inside seven tenths of a cell.
+ *
+ * Seven tenths is not a taste: what is left over — three twentieths of a cell
+ * on each side — is the clearance every other mark in this pack inherits, and
+ * it has to beat the four pixels a wall drawn at `maxWallWidth` reaches in
+ * from the boundary. It does, at every cell size between the layout's two
+ * clamps, by a pixel and a half at the tightest. Never below one, or the
+ * sprite vanishes.
  */
 function unit(cell: number): number {
-  return Math.max(1, Math.floor((cell * 0.78) / SPRITE));
+  return Math.max(1, Math.floor((cell * 0.7) / SPRITE_BOX));
 }
 
 function blockWallWidth(c: SkinContext): number {
   return clamp(unit(c.layout.cell) * 2, 3, c.maxWallWidth);
 }
 
-/** A bar along a wall's segment, as a filled rectangle on whole pixels. */
+/**
+ * How far past each end of its edge a wall block runs.
+ *
+ * A block drawn between exactly its two corners stops short of them, and
+ * where two walls meet — or where an interior wall runs into the rim — that
+ * leaves a square hole at the joint. Half a width past each end fills it, and
+ * half a width is also the most that can be spent: `maxWallWidth` is twice
+ * the reserve the layout keeps outside the grid, so a block on the world's
+ * edge lands on the last pixel of the bitmap and never past it.
+ */
+function jointReach(c: SkinContext, width: number): number {
+  return Math.min(width / 2, c.rimRoom);
+}
+
+/** One wall block, on whole pixels, with the joints at both ends filled in. */
 function wallBar(c: SkinContext, segment: Segment, width: number): void {
   const { ctx } = c;
   const half = width / 2;
+  const reach = jointReach(c, width);
   if (segment.y1 === segment.y2) {
-    ctx.fillRect(
-      Math.round(segment.x1),
-      Math.round(segment.y1 - half),
-      Math.round(segment.x2 - segment.x1),
-      width
-    );
+    const left = Math.round(segment.x1 - reach);
+    ctx.fillRect(left, Math.round(segment.y1 - half), Math.round(segment.x2 + reach) - left, width);
   } else {
-    ctx.fillRect(
-      Math.round(segment.x1 - half),
-      Math.round(segment.y1),
-      width,
-      Math.round(segment.y2 - segment.y1)
-    );
+    const top = Math.round(segment.y1 - reach);
+    ctx.fillRect(Math.round(segment.x1 - half), top, width, Math.round(segment.y2 + reach) - top);
   }
 }
 
@@ -515,42 +565,109 @@ export const blocksSkin: Skin = {
   drawGrid(c) {
     const { ctx, layout, palette } = c;
     const { cell, originX, originY, world } = layout;
-    const dot = Math.max(2, unit(cell));
+    // A rule is dashed, the dash as long as the pen is wide. What was here
+    // before was a single dot at each interior crossing, which in a
+    // six-by-three world is ten dots floating in the middle of an empty
+    // rectangle: it read as dirt on the screen rather than as a grid, because
+    // nothing joined the dots up.
+    //
+    // The pen is a fraction of the pack-pixel rather than the whole of it.
+    // A rule runs down exactly the line a wall runs down, and the paint order
+    // puts the grid over the edge cursor -- so a rule as wide as a wall does
+    // not sit beside the amber bar that says "a wall would go here", it sits
+    // on top of it and cuts it into pieces.
+    const px = unit(cell);
+    const pen = Math.max(1, Math.round(px * 0.6));
+    // `off` is what puts the pen on whole pixels: an odd pen has to be centred
+    // on a half-pixel to cover whole ones, an even pen on a whole one.
+    const off = Math.floor(pen / 2);
+    const rule = (v: number): number => Math.round(v) - off + pen / 2;
+    const right = originX + world.width * cell;
+    const bottom = originY + world.height * cell;
+
+    ctx.save();
+    ctx.strokeStyle = palette.grid;
     ctx.fillStyle = palette.grid;
+    ctx.lineWidth = pen;
+    ctx.lineCap = "butt";
+    ctx.setLineDash([pen, pen]);
+    ctx.beginPath();
+    for (let x = 1; x < world.width; x++) {
+      const at = rule(originX + x * cell);
+      ctx.moveTo(at, originY);
+      ctx.lineTo(at, bottom);
+    }
+    for (let y = 1; y < world.height; y++) {
+      const at = rule(originY + y * cell);
+      ctx.moveTo(originX, at);
+      ctx.lineTo(right, at);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // A crossing falls wherever the dashes happen to be, so it is filled in by
+    // hand: the lattice would otherwise be at its weakest exactly where it
+    // should be clearest, on the corners of the cells.
     for (let x = 1; x < world.width; x++) {
       for (let y = 1; y < world.height; y++) {
         ctx.fillRect(
-          Math.round(originX + x * cell - dot / 2),
-          Math.round(originY + y * cell - dot / 2),
-          dot,
-          dot
+          Math.round(originX + x * cell) - off,
+          Math.round(originY + y * cell) - off,
+          pen,
+          pen
         );
       }
     }
+    ctx.restore();
   },
 
   drawWalls(c, walls) {
-    const { ctx, palette } = c;
+    const { ctx, layout, palette } = c;
     const width = blockWallWidth(c);
     ctx.fillStyle = palette.wall;
     for (const wall of walls) {
       wallBar(c, c.segment(wall), width);
     }
 
-    // The rim, as four bars rather than a stroked rectangle: a stroke would
+    // The rim, as four blocks rather than a stroked rectangle: a stroke would
     // land on half-pixels at odd widths, which is the one thing this pack
-    // cannot do. `rimRect` gives the centre line; the bars are laid on it.
+    // cannot do. `rimRect` gives the centre line; the blocks are laid on it,
+    // and they overlap at the four corners, which is what squares them off.
     const rim = rimRect(c, width);
     const left = Math.round(rim.x - width / 2);
     const top = Math.round(rim.y - width / 2);
     const right = Math.round(rim.x + rim.width - width / 2);
     const bottom = Math.round(rim.y + rim.height - width / 2);
-    const span = Math.round(rim.width) + width;
-    const rise = Math.round(rim.height) + width;
-    ctx.fillRect(left, top, span, width);
-    ctx.fillRect(left, bottom, span, width);
-    ctx.fillRect(left, top, width, rise);
-    ctx.fillRect(right, top, width, rise);
+    ctx.fillRect(left, top, right - left + width, width);
+    ctx.fillRect(left, bottom, right - left + width, width);
+    ctx.fillRect(left, top, width, bottom - top + width);
+    ctx.fillRect(right, top, width, bottom - top + width);
+
+    // A pier wherever two of the rim's own blocks meet, set against the inner
+    // face. This is the difference between a wall and a picture frame: the
+    // edge of the world is walled cell by cell, exactly as the inside is, and
+    // these are the joints. Inward, because the reserve outside the grid is
+    // already spent on the rim; and in the wall's own colour, because a seam
+    // cut in the ground colour would be a hole in a wall.
+    const deep = unit(layout.cell);
+    if (deep < 2) {
+      // Below two pixels a pier is a speck, and a speck on a three-pixel rim
+      // is noise. The rim carries itself at that size.
+      return;
+    }
+    // Twice as long as it is deep: a square nub at this size disappears into
+    // the band it is attached to, and a joint nobody can see is not a joint.
+    const along = deep * 2;
+    for (let x = 1; x < layout.world.width; x++) {
+      const at = Math.round(rim.x + (x * rim.width) / layout.world.width - along / 2);
+      ctx.fillRect(at, top + width, along, deep);
+      ctx.fillRect(at, bottom - deep, along, deep);
+    }
+    for (let y = 1; y < layout.world.height; y++) {
+      const at = Math.round(rim.y + (y * rim.height) / layout.world.height - along / 2);
+      ctx.fillRect(left + width, at, deep, along);
+      ctx.fillRect(right - deep, at, deep, along);
+    }
   },
 
   drawBeepers(c, beepers) {
@@ -641,8 +758,10 @@ export const blocksSkin: Skin = {
     // reads as standing on top of a pile of beepers rather than as a shape cut
     // out of one. It is a dilation of the mask rather than a stroked outline,
     // which keeps it square to the pixel grid; and it runs one row and column
-    // outside the sprite, because the mask is wider than the sprite box at the
-    // shoulders and an edge pixel needs a halo too.
+    // outside the sprite, because the sprite fills its box to the edge on all
+    // four sides and an edge pixel needs a halo too. That ring is why `unit`
+    // sizes against `SPRITE_BOX`: this loop paints ground, and ground painted
+    // on a wall is a hole in the wall.
     ctx.fillStyle = palette.background;
     for (let r = -1; r <= SPRITE; r++) {
       for (let s = -1; s <= SPRITE; s++) {
@@ -689,17 +808,29 @@ export const blocksSkin: Skin = {
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, width, height);
 
-    const bar = 3;
+    // Two pixels rather than three: at three the rim ate a fifth of a swatch
+    // that is only sixteen pixels tall, and the miniature has to show what is
+    // inside the world, not how heavy its edge is.
+    const bar = 2;
     ctx.fillStyle = palette.wall;
     ctx.fillRect(0, 0, width, bar);
     ctx.fillRect(0, height - bar, width, bar);
     ctx.fillRect(0, 0, bar, height);
     ctx.fillRect(width - bar, 0, bar, height);
+    // The piers, at the one joint a swatch this small has room to show.
+    ctx.fillRect(Math.round(width / 2) - 1, bar, 1, 1);
+    ctx.fillRect(Math.round(width / 2) - 1, height - bar - 1, 1, 1);
+
+    // The dashed rule, in the pack-pixel the swatch can afford, which is one.
+    ctx.fillStyle = palette.grid;
+    for (let y = bar + 1; y < height - bar; y += 2) {
+      ctx.fillRect(Math.round(width / 2) - 1, y, 1, 1);
+    }
 
     // Karel at one pixel per sprite cell, which is what the swatch has room
     // for, and reads as the same creature the world draws.
     const px = 1;
-    const left = Math.round(width * 0.26 - (SPRITE * px) / 2);
+    const left = bar + 1;
     const top = Math.round(height / 2 - (SPRITE * px) / 2);
     ctx.fillStyle = palette.karel;
     const mask = KAREL_MASKS.east;
@@ -712,11 +843,11 @@ export const blocksSkin: Skin = {
     }
 
     ctx.fillStyle = palette.beeper;
-    const side = 5;
-    const bx = Math.round(width * 0.7);
-    const by = Math.round(height / 2 - side / 2 + 1);
-    ctx.fillRect(bx, by, side, side);
-    ctx.fillRect(bx + 2, by - 2, side, side);
+    const side = 4;
+    const bx = width - bar - 2 - side;
+    const by = Math.round(height / 2 - side / 2);
+    ctx.fillRect(bx, by + 1, side, side);
+    ctx.fillRect(bx + 1, by - 1, side, side);
   },
 };
 

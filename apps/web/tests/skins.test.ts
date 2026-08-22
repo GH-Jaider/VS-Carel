@@ -766,3 +766,213 @@ describe("choosing a pack", () => {
     expect(seen).toEqual([]);
   });
 });
+
+// ── Nothing a pack paints in the ground colour lands on a wall ─────────────
+
+describe("a pack leaves the walls whole", () => {
+  /**
+   * Every corner Karel can stand on where a wall is within reach: the four
+   * corners of the world, the middle of each rim, and the cells either side
+   * of the interior walls in `WALLS`.
+   */
+  const AGAINST_A_WALL = [
+    { x: 1, y: 1 },
+    { x: 10, y: 1 },
+    { x: 1, y: 8 },
+    { x: 10, y: 8 },
+    { x: 5, y: 1 },
+    { x: 1, y: 4 },
+    { x: 10, y: 4 },
+    { x: 5, y: 8 },
+    { x: 4, y: 3 },
+    { x: 4, y: 4 },
+    { x: 4, y: 5 },
+    { x: 5, y: 5 },
+    { x: 6, y: 1 },
+    { x: 7, y: 1 },
+  ];
+
+  /**
+   * Points that are certainly inside a wall, whichever pack drew it.
+   *
+   * Sampled rather than taken from the marks themselves, because a pack is
+   * free to draw its walls as one stroked path -- and the box round a stroked
+   * rectangle is the whole rectangle, which would call every mark in the world
+   * an overlap. A point is not a box, and a point on the line a wall is drawn
+   * along is on that wall under every pack.
+   *
+   * The rim is sampled one pixel *outside* the grid, which is inside the rim
+   * for every pack: the rim straddles the boundary and none of the three draws
+   * it thinner than three pixels.
+   */
+  function insideTheWalls(c: SkinContext): { x: number; y: number }[] {
+    const points: { x: number; y: number }[] = [];
+    for (const wall of WORLD.walls) {
+      const s = c.segment(wall);
+      for (const t of [0.15, 0.35, 0.5, 0.65, 0.85]) {
+        points.push({ x: s.x1 + (s.x2 - s.x1) * t, y: s.y1 + (s.y2 - s.y1) * t });
+      }
+    }
+    const { cell, originX, originY, world } = c.layout;
+    for (let x = 1; x <= world.width; x++) {
+      const mid = originX + (x - 0.5) * cell;
+      points.push({ x: mid, y: originY - 1 });
+      points.push({ x: mid, y: originY + world.height * cell + 1 });
+    }
+    for (let y = 1; y <= world.height; y++) {
+      const mid = originY + (world.height - y + 0.5) * cell;
+      points.push({ x: originX - 1, y: mid });
+      points.push({ x: originX + world.width * cell + 1, y: mid });
+    }
+    return points;
+  }
+
+  /** Strictly inside: a mark that stops on the point does not cover it. */
+  function covers(mark: Mark, point: { x: number; y: number }): boolean {
+    const slack = 1e-6;
+    return (
+      point.x > mark.minX + slack &&
+      point.x < mark.maxX - slack &&
+      point.y > mark.minY + slack &&
+      point.y < mark.maxY - slack
+    );
+  }
+
+  for (const skin of SKINS) {
+    it(`${skin.id} never paints ground colour onto a wall`, () => {
+      // Karel is the one thing drawn *after* the walls, and every pack sends
+      // ground colour out with him -- an outline, a sheet, a halo. A halo that
+      // erases the wall behind it is worse than no halo: it opens a hole in
+      // the one shape in the world that means "you cannot go through here".
+      for (const size of SIZES) {
+        const { c, recorder } = contextFor(size);
+        const walls = insideTheWalls(c);
+        for (const cell of AGAINST_A_WALL) {
+          for (const facing of ["north", "east", "south", "west"]) {
+            recorder.marks.length = 0;
+            skin.drawKarel(c, { ...cell, facing, beepers: 0 });
+            const spoiled = recorder.marks.some(
+              (mark) =>
+                mark.colour === PALETTE.background && walls.some((point) => covers(mark, point))
+            );
+            const where = `${skin.id}@${c.layout.cell} (${cell.x},${cell.y}) ${facing}`;
+            expect(`${where}: ${spoiled ? "ground on the wall" : "clear"}`).toBe(`${where}: clear`);
+          }
+        }
+      }
+    });
+  }
+});
+
+// ── The blocks sprite, measured ───────────────────────────────────────────
+
+describe("blocks stands Karel in the middle of his corner", () => {
+  /** The union of Karel's own marks, as one box. */
+  function inkBox(size: { width: number; height: number }, facing: string) {
+    const { c, recorder } = contextFor(size);
+    blocksSkin.drawKarel(c, { x: 5, y: 5, facing, beepers: 0 });
+    const ink = recorder.marks.filter((mark) => mark.colour === PALETTE.karel);
+    expect(ink.length).toBeGreaterThan(0);
+    return {
+      layout: c.layout,
+      minX: Math.min(...ink.map((m) => m.minX)),
+      maxX: Math.max(...ink.map((m) => m.maxX)),
+      minY: Math.min(...ink.map((m) => m.minY)),
+      maxY: Math.max(...ink.map((m) => m.maxY)),
+    };
+  }
+
+  it("centres the ink box on the corner in all four facings", () => {
+    for (const size of SIZES) {
+      for (const facing of ["north", "east", "south", "west"]) {
+        const box = inkBox(size, facing);
+        const centre = cellCenter(box.layout, 5, 5);
+        const label = `${facing}@${box.layout.cell}`;
+        // Half a pixel is all the rounding to the pixel grid can cost; a
+        // sprite that was off by a pack-pixel or more would be the bug the
+        // pack was reported for.
+        expect(`${label} dx ${Math.abs((box.minX + box.maxX) / 2 - centre.x) <= 0.5}`).toBe(
+          `${label} dx true`
+        );
+        expect(`${label} dy ${Math.abs((box.minY + box.maxY) / 2 - centre.y) <= 0.5}`).toBe(
+          `${label} dy true`
+        );
+      }
+    }
+  });
+
+  it("fills its box in every facing, so the sprite is square whichever way it turns", () => {
+    // The four masks are one mask turned, so a facing whose ink stopped short
+    // of the box on some side would mean the rotation lost a row.
+    for (const size of SIZES) {
+      const spans = new Set(
+        ["north", "east", "south", "west"].map((facing) => {
+          const box = inkBox(size, facing);
+          return `${box.maxX - box.minX}x${box.maxY - box.minY}`;
+        })
+      );
+      expect(spans.size).toBe(1);
+    }
+  });
+
+  it("keeps the whole sprite, halo included, off every wall block", () => {
+    // Held here rather than across all three packs because every mark this
+    // pack makes is a real rectangle, so a box test on the recorded marks is
+    // exact. The other two stroke paths, and the box round a stroked
+    // rectangle is the whole rectangle rather than its four sides -- which
+    // would call every mark inside the world an overlap.
+    const overlaps = (a: Mark, b: Mark): boolean => {
+      const slack = 1e-6;
+      return (
+        a.minX < b.maxX - slack &&
+        b.minX < a.maxX - slack &&
+        a.minY < b.maxY - slack &&
+        b.minY < a.maxY - slack
+      );
+    };
+    for (const size of SIZES) {
+      const { c, recorder } = contextFor(size);
+      blocksSkin.drawWalls(c, WORLD.walls);
+      const walls = recorder.marks.filter((mark) => mark.colour === PALETTE.wall);
+      expect(walls.length).toBeGreaterThan(4);
+      for (const cell of [
+        { x: 1, y: 1 },
+        { x: 10, y: 8 },
+        { x: 1, y: 8 },
+        { x: 10, y: 1 },
+        { x: 5, y: 1 },
+        { x: 1, y: 4 },
+        { x: 4, y: 4 },
+        { x: 5, y: 5 },
+      ]) {
+        for (const facing of ["north", "east", "south", "west"]) {
+          recorder.marks.length = 0;
+          blocksSkin.drawKarel(c, { ...cell, facing, beepers: 0 });
+          const spoiled = recorder.marks.some((mark) => walls.some((wall) => overlaps(wall, mark)));
+          const where = `blocks@${c.layout.cell} (${cell.x},${cell.y}) ${facing}`;
+          expect(`${where}: ${spoiled ? "on the wall" : "clear"}`).toBe(`${where}: clear`);
+        }
+      }
+    }
+  });
+});
+
+describe("blocks rules its grid instead of dotting it", () => {
+  it("runs each rule the whole way across the world", () => {
+    // Ten dots floating in the middle of a six-by-three world was the old
+    // grid, and it read as dirt. A rule has to reach both edges.
+    for (const size of SIZES) {
+      const { c, recorder } = contextFor(size);
+      blocksSkin.drawGrid(c);
+      const marks = recorder.marks.filter((mark) => mark.colour === PALETTE.grid);
+      expect(marks.length).toBeGreaterThan(0);
+      const { cell, originX, originY, world } = c.layout;
+      const spanX = Math.max(...marks.map((m) => m.maxX)) - Math.min(...marks.map((m) => m.minX));
+      const spanY = Math.max(...marks.map((m) => m.maxY)) - Math.min(...marks.map((m) => m.minY));
+      expect(spanX).toBeGreaterThanOrEqual(world.width * cell);
+      expect(spanY).toBeGreaterThanOrEqual(world.height * cell);
+      expect(Math.min(...marks.map((m) => m.minX))).toBeGreaterThanOrEqual(originX - cell);
+      expect(Math.min(...marks.map((m) => m.minY))).toBeGreaterThanOrEqual(originY - cell);
+    }
+  });
+});
