@@ -142,7 +142,6 @@ const en = {
 
   // ── Files ───────────────────────────────────────────────────────────────
   "files.group": "Files",
-  "files.label": "files",
   "files.open": "open",
   "files.openTitle": "Open a .kli program or a .klm world from this device",
   "files.saveProgram": "save .kli",
@@ -661,7 +660,6 @@ const es: Catalogue = {
   "palette.formatTitle": "Vuelve a escribir el fichero como lo escribe el lienzo",
 
   "files.group": "Ficheros",
-  "files.label": "ficheros",
   "files.open": "abrir",
   "files.openTitle": "Abre un programa .kli o un mundo .klm de este dispositivo",
   "files.saveProgram": "guardar .kli",
