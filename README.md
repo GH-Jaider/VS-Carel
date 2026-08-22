@@ -16,8 +16,8 @@ worlds to practise on, and a sandbox to play in.
 
 ## What's here
 
-| Package                              | What it is                                                                                                                                                                                             | Status  |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| Package                              | What it is                                                                                                                                                                                            | Status  |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | [`apps/web`](apps/web)               | **The playground**. Learn, practise and play, in English or Spanish. Write a program, watch the robot, build worlds by hand, and send anyone a link that opens exactly what you are looking at.       | Working |
 | [`packages/core`](packages/core)     | `@karel/core`. Lexer, parser, interpreter and world model. No dependencies, no platform assumptions: it runs in a browser, in Node, or anywhere else with a timer.                                    | Working |
 | [`packages/cli`](packages/cli)       | **karel**. Run a program against a world and check the result, so a class's submissions can be graded in a loop or in CI. A distinct exit code per outcome, and a `--timeout` so a batch always ends. | Working |
@@ -31,11 +31,11 @@ eventually pass someone in one place and fail them in the other.
 
 ## In the browser
 
-|                                                                   |                                                                                                                                                                                                                                                                     |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **learn**                                                         | Eleven chapters, from the grid to a program that defines its own instructions and calls them from a loop. Each one opens with a program that fails in a way worth reading, and checks your answer when it runs.                                                     |
+|                                                                   |                                                                                                                                                                                                                                                                         |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **learn**                                                         | Eleven chapters, from the grid to a program that defines its own instructions and calls them from a loop. Each one opens with a program that fails in a way worth reading, and checks your answer when it runs.                                                         |
 | **levels** <br> [![levels](docs/levels.png)](docs/levels.png)     | Fifteen worlds in three bands. Built one worth solving? The page writes the file and opens a pre-filled issue here, with the world, the goal and a reference solution all captured from one run you just watched finish, so nobody can submit a level nobody can solve. |
-| **sandbox** <br> [![sandbox](docs/sandbox.png)](docs/sandbox.png) | A world you build by hand: click an edge to raise a wall, a square to stack beepers, or edit it as JSON beside the canvas. Open and save both formats; they are the same files the extension opens and the CLI grades.                                               |
+| **sandbox** <br> [![sandbox](docs/sandbox.png)](docs/sandbox.png) | A world you build by hand: click an edge to raise a wall, a square to stack beepers, or edit it as JSON beside the canvas. Open and save both formats; they are the same files the extension opens and the CLI grades.                                                  |
 
 Four colour themes, three drawing styles, English and Spanish.
 

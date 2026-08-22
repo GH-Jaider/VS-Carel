@@ -232,7 +232,7 @@ conversations to have with a student.
 | ---- | ------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `0`  | `OK`          | The program ran to completion, and matched `--assert-world` if one was given.          | Correct. Award the marks.                                                                      |
 | `1`  | `FAILED`      | An error shutoff (wall, missing beeper, empty bag), or the final world did not match.  | The logic is wrong. The message says how.                                                      |
-| `2`  | `PARSE_ERROR` | The program did not parse. Nothing was executed.                                       | It does not compile: a syntax problem, not an algorithm one.                                  |
+| `2`  | `PARSE_ERROR` | The program did not parse. Nothing was executed.                                       | It does not compile: a syntax problem, not an algorithm one.                                   |
 | `3`  | `LIMIT`       | The step budget ran out.                                                               | It does not terminate. Almost always a loop with no exit.                                      |
 | `4`  | `TIMEOUT`     | `--timeout` expired and the run was killed.                                            | Nothing was decided either way. Look for the hang, then rerun.                                 |
 | `64` | `USAGE`       | Unknown flag, missing file, malformed world, an `--assert-world` for another exercise. | Your grading script is wrong, not the student's program. Investigate before you record a zero. |
@@ -471,7 +471,7 @@ ran:
 | `line`        | most errors         | 1-based line the program stopped on                                                                         |
 | `message`     | `status: "error"`   | The same sentence the human output prints                                                                   |
 | `steps`       | `run` that executed | Visible instructions performed                                                                              |
-| `world`       | `run` that executed | The world as execution ended, after a failure too, which is how you see where Karel got stuck              |
+| `world`       | `run` that executed | The world as execution ended, after a failure too, which is how you see where Karel got stuck               |
 | `diagnostics` | always              | Parse findings: `message`, `line`, 0-based `column`, `endColumn`, `severity` (`error` / `warning` / `info`) |
 
 `diagnostics` columns are 0-based, matching the parser; the human output prints them from 1,

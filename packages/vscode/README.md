@@ -18,7 +18,7 @@ The **Get Started with Karel** walkthrough (Help → Welcome) covers the same st
 | Step one instruction            | `F10` (current line highlights, world updates in sync)                                                              |
 | Stop                            | `Shift+F5`                                                                                                          |
 | Reset world                     | `Ctrl+Shift+F5` (`Cmd+Shift+F5` on Mac)                                                                             |
-| See the world                   | Just open the `.klm` file: it opens as the drawn world, not JSON                                                   |
+| See the world                   | Just open the `.klm` file: it opens as the drawn world, not JSON                                                    |
 | Edit a world                    | Click the `{}` button in the world's title bar to edit the JSON (schema-validated); the drawing updates as you type |
 | Change the world a program uses | Click **World: … (change)** above the program, or the globe in the status bar                                       |
 | Change speed                    | Click the speed in the status bar (applies live)                                                                    |
