@@ -12,30 +12,15 @@ worlds to practise on, and a sandbox to play in.
 
 [![CI](https://github.com/GH-Jaider/karel/actions/workflows/ci.yml/badge.svg)](https://github.com/GH-Jaider/karel/actions/workflows/ci.yml)
 
-![Learning the language in the browser](docs/learn.png)
-
-## What's here
-
-| Package                              | What it is                                                                                                                                                                                            | Status  |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| [`apps/web`](apps/web)               | **The playground**. Learn, practise and play, in English or Spanish. Write a program, watch the robot, build worlds by hand, and send anyone a link that opens exactly what you are looking at.       | Working |
-| [`packages/core`](packages/core)     | `@karel/core`. Lexer, parser, interpreter and world model. No dependencies, no platform assumptions: it runs in a browser, in Node, or anywhere else with a timer.                                    | Working |
-| [`packages/cli`](packages/cli)       | **karel**. Run a program against a world and check the result, so a class's submissions can be graded in a loop or in CI. A distinct exit code per outcome, and a `--timeout` so a batch always ends. | Working |
-| [`packages/vscode`](packages/vscode) | **VS Karel**. Write, run and step through Karel programs inside VS Code, with the world drawn beside the code.                                                                                        | Working |
-
-The interpreter is deliberately separate from whatever happens to host it, so the same
-language, the same error messages and the same world semantics back every one of them. That
-goes for grading too: the browser telling a student their chapter is solved runs the very same
-comparison the command line grades a submission with, because two implementations would
-eventually pass someone in one place and fail them in the other.
-
 ## In the browser
 
 ### learn
 
 Eleven chapters, from the grid to a program that defines its own instructions and calls them
 from a loop. Each one opens with a program that fails in a way worth reading, and checks your
-answer when it runs. That is the screenshot at the top of this page.
+answer when it runs.
+
+![Chapter one: the lesson beside the world Karel has to cross](docs/learn.png)
 
 ### levels
 
@@ -54,6 +39,21 @@ opens and the CLI grades.
 ![The sandbox: a program in the editor beside a ten-by-eight world of walls and beepers](docs/sandbox.png)
 
 Four colour themes, three drawing styles, English and Spanish.
+
+## What's here
+
+| Package                              | What it is                                                                                                                                                                                            | Status  |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| [`apps/web`](apps/web)               | **The playground**. Learn, practise and play, in English or Spanish. Write a program, watch the robot, build worlds by hand, and send anyone a link that opens exactly what you are looking at.       | Working |
+| [`packages/core`](packages/core)     | `@karel/core`. Lexer, parser, interpreter and world model. No dependencies, no platform assumptions: it runs in a browser, in Node, or anywhere else with a timer.                                    | Working |
+| [`packages/cli`](packages/cli)       | **karel**. Run a program against a world and check the result, so a class's submissions can be graded in a loop or in CI. A distinct exit code per outcome, and a `--timeout` so a batch always ends. | Working |
+| [`packages/vscode`](packages/vscode) | **VS Karel**. Write, run and step through Karel programs inside VS Code, with the world drawn beside the code.                                                                                        | Working |
+
+The interpreter is deliberately separate from whatever happens to host it, so the same
+language, the same error messages and the same world semantics back every one of them. That
+goes for grading too: the browser telling a student their chapter is solved runs the very same
+comparison the command line grades a submission with, because two implementations would
+eventually pass someone in one place and fail them in the other.
 
 ## Grading a class
 
