@@ -185,6 +185,9 @@
              about the chapter, not about either document -- and it is where
              the eye already is when a run ends. -->
         <section class="strip" id="chapter-strip" hidden>
+          <!-- Navigation, and quiet: which chapter you are in and how far
+               you have got. It reads as chrome so the task below it can read
+               as the thing being said. -->
           <div class="strip-where">
             <span class="strip-label" data-i18n="guide.chapter">chapter</span>
             <!-- Filled by the chrome: one .chapter-chip per chapter. -->
@@ -195,13 +198,13 @@
               aria-label="Chapters"
             ></nav>
             <span class="strip-count" id="chapter-count"></span>
-            <h2 class="strip-name" id="chapter-name"></h2>
           </div>
           <div class="strip-brief">
+            <h2 class="strip-name" id="chapter-name"></h2>
             <p class="strip-task" id="chapter-task"></p>
-            <!-- Filled by the chrome: the invitation to run, and then the
-                 verdict itself. One line either way, so the strip does not
-                 change height under the reader when a program finishes. -->
+            <!-- Filled by the chrome, and only once a run has been judged.
+                 The slot keeps its height while empty so the world below does
+                 not jump when a program finishes. -->
             <div class="strip-verdict" id="chapter-verdict"></div>
           </div>
         </section>

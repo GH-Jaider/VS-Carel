@@ -1077,6 +1077,26 @@ class Application {
   }
 
   /**
+   * Set while the program is being replaced by the app rather than typed.
+   *
+   * Loading a chapter calls setSource, which the editor reports as a document
+   * change like any other — so without this, arriving at a fresh chapter
+   * counted as the reader starting to write and pushed the lesson out of the
+   * way before they had read a word of it.
+   */
+  private loadingSource = false;
+
+  /** Replace the program without it counting as the reader having written. */
+  private loadProgram(source: string): void {
+    this.loadingSource = true;
+    try {
+      this.editor.setSource(source);
+    } finally {
+      this.loadingSource = false;
+    }
+  }
+
+  /**
    * Reading is over: bring the program to the front.
    *
    * Called from every route that acts on the program rather than on the page
@@ -1084,7 +1104,7 @@ class Application {
    * line is highlighted behind a lesson is a run nobody can follow.
    */
   private showProgram(): void {
-    if (this.doc !== "lesson") {
+    if (this.doc !== "lesson" || this.loadingSource) {
       return;
     }
     this.lessonScroll = this.dom.lessonBody.scrollTop;
@@ -1760,9 +1780,12 @@ class Application {
 
     this.session.setWorld(this.startingWorld()); // renders, through onChange
     const source = this.startingProgram();
-    this.editor.setSource(source);
-    // After the editor has been filled and not before: filling it is a change
-    // like any other, and a change brings the program to the front.
+    // Not through the editor directly: filling it reads as a document change,
+    // and a change brings the program forward AND records that as the tab this
+    // chapter was left on. Arriving at a chapter therefore used to write
+    // "program" into the very memory openingDoc is about to consult, so the
+    // first visit to every chapter opened on the program.
+    this.loadProgram(source);
     this.doc = this.openingDoc();
     this.session.setSource(source);
     this.persist();
@@ -2265,7 +2288,11 @@ class Application {
     // Never empty: with no verdict yet this is the invitation to earn one, so
     // the strip is the same height before and after a run and the world beside
     // it does not jump when a program finishes.
-    this.dom.chapterVerdict.replaceChildren(this.verdictNode());
+    // Empty until a run has been judged. The slot keeps its height from the
+    // stylesheet, so nothing below it moves -- which is the whole reason a
+    // sentence of standing instructions used to live here, repeating itself on
+    // every chapter for as long as the reader stayed.
+    this.dom.chapterVerdict.replaceChildren(...(this.verdict ? [this.verdictNode()] : []));
   }
 
   private buildGuide(): HTMLElement[] {
@@ -2331,7 +2358,7 @@ class Application {
     }
     actions.append(
       guideButton(t("guide.restart"), () => {
-        this.editor.setSource(chapter.program);
+        this.loadProgram(chapter.program);
         this.session.setSource(chapter.program);
         this.rememberProgram(chapter.program);
         this.session.reset();
@@ -2457,11 +2484,8 @@ class Application {
   }
 
   /**
-   * What the check said, or an invitation to find out.
-   *
-   * The invitation is not a placeholder: in the chapter strip it is what keeps
-   * the verdict's slot the same height before and after a run, so the world
-   * beside it does not jump the moment a program finishes.
+   * What the check said, or -- in a level's brief, where there is no reserved
+   * slot to keep -- an invitation to find out.
    */
   private verdictNode(): HTMLElement {
     if (!this.verdict) {

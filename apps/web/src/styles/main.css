@@ -2633,11 +2633,14 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
    with the two below. It is a line of chrome, drawn like the masthead's. */
 
 .strip {
+  /* Stacked, not side by side. A dense row of numbered chips and a sentence of
+     prose are different textures, and setting them either side of a rule made
+     the bar read as two unrelated things rather than as one place. */
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 18px;
-  padding: 10px 14px 2px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 14px 4px;
   min-width: 0;
 }
 
@@ -2671,10 +2674,12 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 
 .strip-name {
-  margin: 0;
-  font-size: 13px;
+  /* Leads its block. Trailing a row of eleven numbers, it read as another
+     chip's label rather than as the name of what you are reading. */
+  margin: 0 0 3px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
   color: var(--text);
 }
 
@@ -2683,10 +2688,19 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
    the sentence it missed, and a strip that swapped one for the other would
    take the question away at the moment it is needed most. */
 .strip-brief {
-  flex: 1 1 340px;
   display: grid;
   gap: 4px;
   min-width: 0;
+  /* Prose wants a measure. Left to the full width of the bench a task ran the
+     whole way across the window, which is a long way for the eye to come back. */
+  max-width: 92ch;
+}
+
+/* Reserved while empty: the verdict lands here when a run is judged, and a
+   slot that appears out of nowhere would shove the world down under the
+   reader at the exact moment they are looking at it. */
+.strip-verdict:empty {
+  min-height: 19px;
 }
 
 .strip-task {

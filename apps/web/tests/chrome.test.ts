@@ -299,7 +299,14 @@ describe("how much prose there is decides the arrangement", () => {
     // program, and neither the task nor the verdict may take turns with
     // anything. Both are written to the strip's own nodes.
     expect(MAIN).toContain("this.dom.chapterTask.textContent = chapter.task");
-    expect(MAIN).toContain("this.dom.chapterVerdict.replaceChildren(this.verdictNode())");
+    // Asserted by intent rather than by exact expression: what matters is that
+    // the verdict is written to the strip's own node and built by verdictNode,
+    // not the shape of the call, which has already changed once.
+    const writesVerdict = MAIN.slice(
+      MAIN.indexOf("this.dom.chapterVerdict.replaceChildren("),
+      MAIN.indexOf("this.dom.chapterVerdict.replaceChildren(") + 220
+    );
+    expect(writesVerdict).toContain("this.verdictNode()");
     // And the lesson pane no longer draws either of them.
     const lesson = MAIN.slice(
       MAIN.indexOf("private buildChapterGuide()"),
