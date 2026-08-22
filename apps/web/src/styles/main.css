@@ -705,10 +705,12 @@ button {
 
 .skin-swatch {
   display: block;
-  width: 26px;
-  height: 16px;
+  width: 24px;
+  height: 18px;
   padding: 0;
-  border: 1px solid var(--line);
+  /* Transparent rather than absent, so selecting one does not shift the row by
+     the width of a border it did not have a moment ago. */
+  border: 1px solid transparent;
   background: none;
   line-height: 0;
   transition:
@@ -721,7 +723,7 @@ button {
 }
 
 .skin-swatch:hover {
-  border-color: var(--line-bright);
+  border-color: var(--line);
 }
 
 .skin-swatch[aria-pressed="true"] {

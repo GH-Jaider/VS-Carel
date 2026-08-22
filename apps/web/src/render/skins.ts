@@ -366,33 +366,26 @@ export const terminalSkin: Skin = {
     ctx.restore();
   },
 
+  /**
+   * The pack, in the space of a postage stamp.
+   *
+   * Karel alone, and large. An earlier pass drew a whole miniature world in
+   * here -- rim, grid rule, robot and a beeper -- which is five things in a
+   * box with room for one, and at this size they collapsed into speckle. The
+   * robot is what a pack IS: a triangle, a sprite or a drafted arrowhead reads
+   * at this size; a scene does not.
+   */
   drawSwatch({ ctx, palette, width, height }) {
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, width, height);
 
-    ctx.strokeStyle = palette.wall;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(1.5, 1.5, width - 3, height - 3);
-
-    ctx.strokeStyle = palette.grid;
-    ctx.setLineDash([1, 2]);
-    ctx.beginPath();
-    ctx.moveTo(Math.round(width / 2) + 0.5, 2);
-    ctx.lineTo(Math.round(width / 2) + 0.5, height - 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
+    const size = height * 0.74;
     ctx.fillStyle = palette.karel;
     ctx.beginPath();
-    ctx.moveTo(width * 0.26, height * 0.24);
-    ctx.lineTo(width * 0.14, height * 0.72);
-    ctx.lineTo(width * 0.38, height * 0.72);
+    ctx.moveTo(width / 2 + size * 0.58, height / 2);
+    ctx.lineTo(width / 2 - size * 0.42, height / 2 - size / 2);
+    ctx.lineTo(width / 2 - size * 0.42, height / 2 + size / 2);
     ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = palette.beeper;
-    ctx.beginPath();
-    ctx.arc(width * 0.74, height * 0.5, Math.min(width, height) * 0.19, 0, Math.PI * 2);
     ctx.fill();
   },
 };
@@ -804,36 +797,27 @@ export const blocksSkin: Skin = {
     wallBar(c, c.segment(wall), clamp(blockWallWidth(c) + 2, 4, c.maxWallWidth));
   },
 
+  /**
+   * The pack, in the space of a postage stamp.
+   *
+   * Karel alone, and large. An earlier pass drew a whole miniature world in
+   * here -- rim, grid rule, robot and a beeper -- which is five things in a
+   * box with room for one, and at this size they collapsed into speckle. The
+   * robot is what a pack IS: a triangle, a sprite or a drafted arrowhead reads
+   * at this size; a scene does not.
+   */
   drawSwatch({ ctx, palette, width, height }) {
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, width, height);
 
-    // Two pixels rather than three: at three the rim ate a fifth of a swatch
-    // that is only sixteen pixels tall, and the miniature has to show what is
-    // inside the world, not how heavy its edge is.
-    const bar = 2;
-    ctx.fillStyle = palette.wall;
-    ctx.fillRect(0, 0, width, bar);
-    ctx.fillRect(0, height - bar, width, bar);
-    ctx.fillRect(0, 0, bar, height);
-    ctx.fillRect(width - bar, 0, bar, height);
-    // The piers, at the one joint a swatch this small has room to show.
-    ctx.fillRect(Math.round(width / 2) - 1, bar, 1, 1);
-    ctx.fillRect(Math.round(width / 2) - 1, height - bar - 1, 1, 1);
-
-    // The dashed rule, in the pack-pixel the swatch can afford, which is one.
-    ctx.fillStyle = palette.grid;
-    for (let y = bar + 1; y < height - bar; y += 2) {
-      ctx.fillRect(Math.round(width / 2) - 1, y, 1, 1);
-    }
-
-    // Karel at one pixel per sprite cell, which is what the swatch has room
-    // for, and reads as the same creature the world draws.
-    const px = 1;
-    const left = bar + 1;
-    const top = Math.round(height / 2 - (SPRITE * px) / 2);
-    ctx.fillStyle = palette.karel;
+    // Two device pixels to a sprite cell, not one: at one the eight-cell
+    // sprite came out eight pixels tall and read as grit. The swatch is sized
+    // so that two fits.
+    const px = Math.max(1, Math.floor((height - 2) / SPRITE));
+    const left = Math.round((width - SPRITE * px) / 2);
+    const top = Math.round((height - SPRITE * px) / 2);
     const mask = KAREL_MASKS.east;
+    ctx.fillStyle = palette.karel;
     for (let r = 0; r < SPRITE; r++) {
       for (let s = 0; s < SPRITE; s++) {
         if (mask[r]![s]!) {
@@ -841,13 +825,6 @@ export const blocksSkin: Skin = {
         }
       }
     }
-
-    ctx.fillStyle = palette.beeper;
-    const side = 4;
-    const bx = width - bar - 2 - side;
-    const by = Math.round(height / 2 - side / 2);
-    ctx.fillRect(bx, by + 1, side, side);
-    ctx.fillRect(bx + 1, by - 1, side, side);
   },
 };
 
@@ -1118,21 +1095,22 @@ export const classicSkin: Skin = {
     ctx.restore();
   },
 
+  /**
+   * The pack, in the space of a postage stamp.
+   *
+   * Karel alone, and large. An earlier pass drew a whole miniature world in
+   * here -- rim, grid rule, robot and a beeper -- which is five things in a
+   * box with room for one, and at this size they collapsed into speckle. The
+   * robot is what a pack IS: a triangle, a sprite or a drafted arrowhead reads
+   * at this size; a scene does not.
+   */
   drawSwatch({ ctx, palette, width, height }) {
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, width, height);
-    ctx.beginPath();
-    ctx.rect(2, 2, width - 4, height - 4);
-    fillAsSheet(ctx, palette);
 
-    ctx.strokeStyle = palette.wall;
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = "round";
-    ctx.strokeRect(1.5, 1.5, width - 3, height - 3);
-
-    const size = height * 0.62;
+    const size = height * 0.78;
     ctx.save();
-    ctx.translate(width * 0.28, height * 0.5);
+    ctx.translate(width / 2, height / 2);
     ctx.rotate(Math.PI / 2);
     ctx.beginPath();
     ctx.moveTo(0, -size / 2);
@@ -1142,20 +1120,9 @@ export const classicSkin: Skin = {
     ctx.closePath();
     ctx.strokeStyle = palette.karel;
     ctx.lineWidth = 1.5;
+    ctx.lineJoin = "round";
     ctx.stroke();
     ctx.restore();
-
-    const reach = Math.min(width, height) * 0.22;
-    const cx = width * 0.72;
-    const cy = height * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - reach);
-    ctx.lineTo(cx + reach, cy);
-    ctx.lineTo(cx, cy + reach);
-    ctx.lineTo(cx - reach, cy);
-    ctx.closePath();
-    ctx.fillStyle = palette.beeper;
-    ctx.fill();
   },
 };
 
@@ -1254,8 +1221,8 @@ export function resetSkinForTests(): void {
  * container is absent, so a page that has not made room for it still runs.
  */
 
-const SWATCH_WIDTH = 26;
-const SWATCH_HEIGHT = 16;
+const SWATCH_WIDTH = 24;
+const SWATCH_HEIGHT = 18;
 
 /** Draw one pack's miniature, at the current device pixel ratio. */
 function paintSwatch(canvas: HTMLCanvasElement, skin: Skin, palette: ThemeColors): void {

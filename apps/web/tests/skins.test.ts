@@ -406,10 +406,9 @@ describe("every pack implements the whole contract", () => {
           width: 26,
           height: 16,
         });
-        expect(recorder.marks.length).toBeGreaterThan(2);
-        // The swatch has to show the two things that tell packs apart.
+        expect(recorder.marks.length).toBeGreaterThan(1);
+        // Karel is what a pack is: the swatch is his portrait, not a scene.
         expect(recorder.colours.has(PALETTE.karel)).toBe(true);
-        expect(recorder.colours.has(PALETTE.beeper)).toBe(true);
         for (const colour of recorder.colours) {
           expect(PALETTE_COLOURS.has(colour)).toBe(true);
         }
@@ -974,5 +973,28 @@ describe("blocks rules its grid instead of dotting it", () => {
       expect(Math.min(...marks.map((m) => m.minX))).toBeGreaterThanOrEqual(originX - cell);
       expect(Math.min(...marks.map((m) => m.minY))).toBeGreaterThanOrEqual(originY - cell);
     }
+  });
+});
+
+describe("the swatches tell the packs apart", () => {
+  /** Everything a pack puts on its swatch, as one comparable string. */
+  function portrait(skin: Skin): string {
+    const recorder = new Recorder();
+    skin.drawSwatch({
+      ctx: recorder as unknown as CanvasRenderingContext2D,
+      palette: PALETTE,
+      width: 24,
+      height: 18,
+    });
+    return JSON.stringify(recorder.marks);
+  }
+
+  it("gives every pack a different one", () => {
+    // A picker whose three buttons look alike is a picker that tells you
+    // nothing, and the swatches are drawn from the same palette by design —
+    // so what has to differ is the shape, which is the only thing left.
+    const portraits = SKINS.map(portrait);
+
+    expect(new Set(portraits).size).toBe(SKINS.length);
   });
 });
