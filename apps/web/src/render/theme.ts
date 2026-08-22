@@ -17,7 +17,7 @@ export type { ThemeColors, ThemeId };
 
 export const THEMES: ThemeId[] = [
   { id: "charm", label: "charm" },
-  { id: "onyx", label: "onyx" },
+  { id: "matte", label: "matte" },
   { id: "ember", label: "ember" },
   { id: "paper", label: "paper" },
 ];

@@ -93,9 +93,9 @@
   --sw-charm-bg: #0c0c12;
   --sw-charm-a: #ff5fa2;
   --sw-charm-b: #4fe3d2;
-  --sw-onyx-bg: #08090b;
-  --sw-onyx-a: #5cc8ff;
-  --sw-onyx-b: #34d399;
+  --sw-matte-bg: #000000;
+  --sw-matte-a: #ff5fa2;
+  --sw-matte-b: #4fe3d2;
   --sw-ember-bg: #1b1a17;
   --sw-ember-a: #fb4934;
   --sw-ember-b: #8ec07c;
@@ -105,47 +105,53 @@
 }
 
 /* -----------------------------------------------------------------------
-   onyx — the deep one. Near-pure black rather than a tinted charcoal, with
-   the contrast pushed up and the accents kept cool and few. Where charm is
-   loud, this one gets out of the way: the brightest thing on screen should
-   be the world.
+   matte — a true black, and the colour left alone on top of it.
+
+   Every neutral here has its red, green and blue equal, so nothing tints
+   anything: the ground is #000, the panels are lifted by lightness rather
+   than by hue, and the greys stay grey. The accents are charm's own, at
+   charm's own saturation — the depth belongs to the ground, not to the
+   colour, and pulling the chroma out of the palette to match a dark surface
+   is what makes a dark theme look washed rather than deep.
    ----------------------------------------------------------------------- */
-[data-theme="onyx"] {
-  --bg: #08090b;
-  --bg-panel: #0e1014;
-  --bg-raised: #171a20;
+[data-theme="matte"] {
+  --bg: #000000;
+  --bg-panel: #0a0a0a;
+  --bg-raised: #151515;
 
-  --line: #23272f;
-  --line-bright: #3c434e;
+  --line: #1e1e1e;
+  --line-bright: #333333;
 
-  --text: #f1f3f6;
-  --text-dim: #99a1ad;
-  --text-faint: #626a77;
+  --text: #f4f4f4;
+  --text-dim: #9e9e9e;
+  --text-faint: #616161;
 
-  --pink: #5cc8ff;
-  --purple: #a78bfa;
-  --cyan: #2dd4bf;
-  --lime: #a3e635;
-  --amber: #fbbf24;
-  --green: #34d399;
-  --red: #f87171;
-  --blue: #60a5fa;
+  --pink: #ff5fa2;
+  --purple: #a98bff;
+  --cyan: #4fe3d2;
+  --lime: #cdfa54;
+  --amber: #ffc861;
+  --green: #45dd8b;
+  --red: #ff6b6b;
+  --blue: #6fa8ff;
 
-  --canvas-bg: #08090b;
-  --grid: #1e222a;
-  --canvas-label: #838c99;
-  --karel: #5cc8ff;
-  --beeper: #34d399;
-  --beeper-label: #04050a;
-  --wall: #aeb7c4;
-  --cursor: #fbbf24;
+  --canvas-bg: #000000;
+  --grid: #1c1c1c;
+  --canvas-label: #7d7d7d;
+  --karel: #ff5fa2;
+  --beeper: #4fe3d2;
+  --beeper-label: #000000;
+  --wall: #c8c8c8;
+  --cursor: #ffc861;
 
-  --editor-active: rgba(255, 255, 255, 0.035);
-  --editor-exec: rgba(92, 200, 255, 0.16);
-  --editor-sel: rgba(167, 139, 250, 0.3);
+  --editor-active: rgba(255, 255, 255, 0.04);
+  --editor-exec: rgba(255, 95, 162, 0.16);
+  --editor-sel: rgba(169, 139, 255, 0.28);
 
-  --grain: rgba(150, 170, 200, 0.045);
-  --scrim: rgba(8, 9, 11, 0.86);
+  /* Neutral, like everything else here: charm's grain carries a blue lift
+     that would be the one tinted thing on an untinted surface. */
+  --grain: rgba(170, 170, 170, 0.04);
+  --scrim: rgba(0, 0, 0, 0.86);
 }
 
 /* -----------------------------------------------------------------------
@@ -647,14 +653,14 @@ button {
   background: var(--sw-charm-b);
 }
 
-.theme-swatch[data-theme="onyx"] {
-  background: var(--sw-onyx-bg);
+.theme-swatch[data-theme="matte"] {
+  background: var(--sw-matte-bg);
 }
-.theme-swatch[data-theme="onyx"]::before {
-  background: var(--sw-onyx-a);
+.theme-swatch[data-theme="matte"]::before {
+  background: var(--sw-matte-a);
 }
-.theme-swatch[data-theme="onyx"]::after {
-  background: var(--sw-onyx-b);
+.theme-swatch[data-theme="matte"]::after {
+  background: var(--sw-matte-b);
 }
 
 .theme-swatch[data-theme="ember"] {
@@ -3397,7 +3403,7 @@ textarea.text-input {
    read from `--text` at the point of use, and the reason is the swatches.
    Each one carries `data-theme` so it can preview its own palette, and the
    theme rules at the top of this file are plain attribute selectors -- so a
-   swatch does not merely look like onyx, it *is* onyx as far as every custom
+   swatch does not merely look like matte, it *is* matte as far as every custom
    property is concerned, `--text` included. A ring written as `var(--text)`
    would therefore be drawn in the palette the swatch advertises rather than
    the one the page is running, which puts near-black paper ink on a near-black
