@@ -1,0 +1,68 @@
+name: Teletipo bump
+
+# The visual identity lives in GH-Jaider/teletipo. When it cuts a new tag,
+# this job proposes adopting it across the monorepo's web app: one branch,
+# one PR, the whole suite green first. Dependabot cannot be trusted with
+# github:-style pins, hence this file.
+
+on:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Read the newest published tag and the one installed
+        id: tag
+        run: |
+          latest=$(git ls-remote --tags https://github.com/GH-Jaider/teletipo.git "v*" |
+            sed "s|.*refs/tags/||" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" |
+            sort -V | tail -1)
+          current=$(node -p "require('./apps/web/package.json').dependencies.teletipo.split('#')[1]")
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+
+      - name: Stop when the library is already current
+        if: steps.tag.outputs.latest == steps.tag.outputs.current
+        run: echo "teletipo is current at ${{ steps.tag.outputs.current }}; nothing to propose."
+
+      - name: Adopt the new tag and prove it harmless
+        if: steps.tag.outputs.latest != steps.tag.outputs.current
+        run: |
+          pnpm --filter @karel/web add "teletipo@github:GH-Jaider/teletipo#${{ steps.tag.outputs.latest }}"
+          pnpm -r test
+          pnpm lint
+
+      - name: Open the pull request
+        if: steps.tag.outputs.latest != steps.tag.outputs.current
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST: ${{ steps.tag.outputs.latest }}
+        run: |
+          branch="teletipo/$LATEST"
+          git config user.name "teletipo-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout -B "$branch"
+          git commit -am "Bump teletipo to $LATEST"
+          git push --force origin "$branch"
+          gh pr create --head "$branch" \
+            --title "Bump teletipo to $LATEST" \
+            --body "Adopted automatically from GH-Jaider/teletipo. The whole monorepo suite ran green on the bump itself." \
+            || echo "A pull request for $LATEST already stands."
