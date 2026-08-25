@@ -74,12 +74,12 @@
       // Runs before first paint so a stored theme never flashes the default
       // palette on the way in. Deliberately tiny and dependency-free.
       try {
-        var t = localStorage.getItem("karel.theme");
+        var stored = localStorage.getItem("karel.theme");
         // Checked against the known set: a theme that has since been renamed
         // would otherwise leave the page on an attribute nothing styles and
         // no swatch matches.
-        if (["charm", "matte", "ember", "paper"].indexOf(t) >= 0) {
-          document.documentElement.dataset.theme = t;
+        if (["charm", "matte", "ember", "paper"].indexOf(stored) >= 0) {
+          document.documentElement.dataset.theme = stored;
         }
       } catch (e) {}
       try {

@@ -1,16 +1,19 @@
 /**
  * Theme access for everything drawn on the canvas.
  *
- * The palettes live in the stylesheet, not here. That keeps a colour written
- * down exactly once -- the chrome takes it through `var(--x)` and the canvas
- * reads the same property back with `getComputedStyle`. The alternative, a
- * table of hexes in TypeScript mirrored by a table of hexes in CSS, drifts
- * apart the first time anyone adjusts one of them.
+ * The palettes live in the stylesheet, not here — and since teletipo, neither
+ * does the switching: which palette is active, persistence under
+ * "karel.theme" and change notification are the library's ThemeController,
+ * created once below. What remains Karel's own is the mapping from canvas
+ * colour to custom property (PROPERTIES), the cold-load FALLBACKS, and the
+ * public surface main.ts, the skins and the tests already know.
  *
  * Resolving a custom property is not free, so the whole set is read once per
- * theme change and cached.
+ * theme change and cached — teletipo's createTokenReader wires that cache to
+ * the controller.
  */
 
+import { createTheme, createTokenReader } from "teletipo";
 import type { ThemeColors, ThemeId } from "../contracts";
 
 export type { ThemeColors, ThemeId };
@@ -22,8 +25,8 @@ export const THEMES: ThemeId[] = [
   { id: "paper", label: "paper" },
 ];
 
-const DEFAULT_THEME = "charm";
-const STORAGE_KEY = "karel.theme";
+/** Which theme is active, remembered under Karel's own key. */
+const controller = createTheme({ storageKey: "karel.theme" });
 
 /** The custom property each canvas colour is read from. */
 const PROPERTIES: Record<keyof ThemeColors, string> = {
@@ -56,77 +59,30 @@ const FALLBACKS: Record<keyof ThemeColors, string> = {
   cursor: "#a98bff",
 };
 
-let cache: ThemeColors | null = null;
-const listeners = new Set<() => void>();
-
-function read(): ThemeColors {
-  if (typeof document === "undefined") {
-    return { ...FALLBACKS };
-  }
-  const style = getComputedStyle(document.documentElement);
-  const value = (key: keyof ThemeColors): string =>
-    style.getPropertyValue(PROPERTIES[key]).trim() || FALLBACKS[key];
-  return {
-    background: value("background"),
-    grid: value("grid"),
-    label: value("label"),
-    karel: value("karel"),
-    beeper: value("beeper"),
-    beeperLabel: value("beeperLabel"),
-    wall: value("wall"),
-    cursor: value("cursor"),
-  };
-}
+const reader = createTokenReader(controller, PROPERTIES, FALLBACKS);
 
 /** The resolved palette for whichever theme is active. */
 export function colors(): ThemeColors {
-  if (!cache) {
-    cache = read();
-  }
-  return cache;
+  return reader.read();
 }
 
 /** The id of the active theme, in the form `setTheme` accepts back. */
-export function currentTheme(): string {
-  if (typeof document === "undefined") {
-    return DEFAULT_THEME;
-  }
-  return document.documentElement.dataset["theme"] ?? DEFAULT_THEME;
-}
+export const currentTheme = controller.currentTheme;
 
 export function setTheme(id: string): void {
+  // The library ignores ids outside its own list; this array is the same four
+  // palettes, so an unknown id is dropped exactly as it always was here.
   if (!THEMES.some((entry) => entry.id === id)) {
     return;
   }
-  // The default palette is the bare `:root` rule, so it is expressed by the
-  // absence of the attribute rather than by a value.
-  if (id === DEFAULT_THEME) {
-    delete document.documentElement.dataset["theme"];
-  } else {
-    document.documentElement.dataset["theme"] = id;
-  }
-  cache = null;
-  try {
-    localStorage.setItem(STORAGE_KEY, id);
-  } catch {
-    // Private browsing, or storage disabled. The theme still applies for this
-    // visit; only remembering it fails, which is not worth interrupting for.
-  }
-  for (const listener of listeners) {
-    listener();
-  }
+  controller.setTheme(id);
 }
 
 /**
  * Called after the palette changes, once the new one is already resolvable.
  * Returns the function that unsubscribes.
  */
-export function onThemeChange(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
+export const onThemeChange = controller.onChange;
 
 /**
  * Adopt the stored theme.
@@ -135,13 +91,4 @@ export function onThemeChange(listener: () => void): () => void {
  * paint, so the page never flashes the default palette. This is the fallback
  * for when that script did not run.
  */
-export function restoreTheme(): void {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && stored !== currentTheme()) {
-      setTheme(stored);
-    }
-  } catch {
-    // Nothing to restore.
-  }
-}
+export const restoreTheme = controller.restoreTheme;

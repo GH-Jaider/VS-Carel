@@ -11,39 +11,153 @@
      · Square corners, flat fills, no shadows and no gradients. A cell either
        has a colour or it does not.
      · Selection is inverse video — the terminal idiom — never a soft glow.
-     · Saturated accents against near-black, used sparingly enough that each
-       one still means something.
+      · Saturated accents against near-black, used sparingly enough that each
+        one still means something.
+
+   The shared ground — palettes, base layer and the chrome primitives every
+   page dresses itself with — now comes from teletipo (themes.css, base.css,
+   chrome.css via index.css). What follows the import is this app's own shell
+   and instruments, plus a handful of deliberate local overrides where Karel
+   tunes the library.
+ ========================================================================= */
+
+@import "teletipo/index.css";
+
+/* =========================================================================
+   Delegated to teletipo — chrome this file used to carry and now consumes
+   -------------------------------------------------------------------------
+   These families are styled by the library (css/themes.css, base.css,
+   chrome.css), not here. They are named so the class inventory stays
+   checkable from this one file, and so nobody goes looking for their rules:
+
+     · ground: .grain, ::selection, the button reset, @keyframes paint,
+       prefers-reduced-motion.
+     · masthead: .masthead .identity .wordmark .subtitle .masthead-end,
+       .channels .channel .channel-label, .channel .index,
+       .themes .themes-label, .theme-swatch and its per-theme painting,
+       .ghost-button .key-cap.
+     · boxes: .box-title .box-note .panel-title .panel-note .panel .panel-body.
+     · console: .transport .transport-button .glyph .primary, .rate
+       .rate-options .rate-option .rate-label, .toggle (base, unchecked cell,
+       hover, checked fill).
+     · readout: .metrics .metric .metric-label em .metric-value .unit — only
+       .compass is restated here; .good .warn .bad .muted .touched are the
+       library's.
+     · controls: .control .control-head .control-name .control-value
+       .control-ticks, input[type="range"].
+     · lists: .list .list-row .list-swatch .list-name .list-detail
+       .preset-row .list-actions .list-action.
+     · statusbar: .statusbar .hint b, and the chip's stepping/done/error/edit
+       data-states (idle grey + running green are restated below).
+     · about: the plain dialog sizing, .about::backdrop, .about-body padding,
+       its header rhythm and its h2 typography.
    ========================================================================= */
 
+/* =========================================================================
+   LOCAL OVERRIDES — where Karel deliberately differs from teletipo
+   -------------------------------------------------------------------------
+   Everything here beats the library by cascade order (this file imports
+   teletipo first), and each override preserves an existing Karel behaviour.
+
+     · The checked toggle reads "[X]": Karel's own glyph. The library
+       canonized "[■]"; the bracketed X predates it and stays.
+     · The status chip idles neutral grey (`--line-bright`) rather than the
+       library's green "working" fill, and Karel has a `running` state the
+       library does not carry (its plain chip is the working state).
+     · The view toggles ride with the transport instead of being pushed to
+       the far edge — the library's group carries `margin-left: auto`,
+       which this page removed on purpose (see .toggles below).
+     · The staggered paint-in keeps Karel's own delay values and its wider
+       cast of animated surfaces; the library animates fewer of them with
+       tighter readout staggering.
+ ========================================================================= */
+
+.toggle[aria-pressed="true"]::before {
+  content: "[X]";
+  color: var(--green);
+}
+
+/* Idle is a resting state here, not a working one: grey until something
+   happens. The library's data-state variants (stepping/done/error/edit)
+   carry the colours this page already used, so only the base and the
+   running state are restated. */
+.statusbar-end {
+  background: var(--line-bright);
+}
+
+.statusbar-end[data-state="running"] {
+  background: var(--green);
+}
+
+/* ---------------------------------------------------------- page load -- */
+/* A brisk wipe rather than a drift: panels arrive the way a screen paints.
+   The keyframes themselves come from teletipo; this page animates more
+   surfaces than the library does and staggers the readout differently,
+   so the cast and the delays are stated here in full. */
+
+.masthead,
+.strip,
+.guide,
+.gallery,
+.editor,
+.problems,
+.viewport,
+.console,
+.palette,
+.statusbar,
+.readout > * {
+  animation: paint 0.22s steps(4, end) backwards;
+}
+
+.masthead {
+  animation-delay: 0.02s;
+}
+.strip,
+.guide,
+.gallery {
+  animation-delay: 0.04s;
+}
+.editor {
+  animation-delay: 0.06s;
+}
+.viewport {
+  animation-delay: 0.06s;
+}
+.problems {
+  animation-delay: 0.12s;
+}
+.console {
+  animation-delay: 0.14s;
+}
+.statusbar {
+  animation-delay: 0.18s;
+}
+.readout > *:nth-child(1) {
+  animation-delay: 0.16s;
+}
+.readout > *:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.readout > *:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.readout > *:nth-child(4) {
+  animation-delay: 0.28s;
+}
+.readout > *:nth-child(5) {
+  animation-delay: 0.32s;
+}
+
+/* =========================================================================
+   Tokens
+   -------------------------------------------------------------------------
+   The four palettes live in teletipo/themes.css — one place, written down
+   once. What remains here is Karel's domain layer: the colours the world
+   itself is drawn with, the editor washes, and the layout rails, mapped
+   onto the library's accents per theme.
+ ========================================================================= */
+
 :root {
-  /* ---------------------------------------------------------------------
-     charm — hot pink and purple on near-black. The default.
-
-     Themes live here rather than in TypeScript so there is exactly one place
-     a colour is written down. The canvas reads these same custom properties
-     back through getComputedStyle when the theme changes, which is why every
-     value below has to stay a plain hex literal.
-     --------------------------------------------------------------------- */
-  --bg: #0c0c12;
-  --bg-panel: #111119;
-  --bg-raised: #1a1a24;
-
-  --line: #2b2b39;
-  --line-bright: #45455a;
-
-  --text: #e6e6f0;
-  --text-dim: #9494ab;
-  --text-faint: #61617a;
-
-  --pink: #ff5fa2;
-  --purple: #a98bff;
-  --cyan: #4fe3d2;
-  --lime: #cdfa54;
-  --amber: #ffc861;
-  --green: #45dd8b;
-  --red: #ff6b6b;
-  --blue: #6fa8ff;
-
   /* -------------------------------------------------------------------
      The world, as the canvas draws it.
 
@@ -52,9 +166,9 @@
      set has to be complete and identically named in all four themes.
 
      `--canvas-bg` must equal `--bg`, or the title chips that straddle the
-     viewport border show up as patches against it.
+     viewport border show up as patches against it — themes.css derives
+     it from --bg for exactly that reason.
      ------------------------------------------------------------------- */
-  --canvas-bg: #0c0c12;
   --grid: #24243a;
   --canvas-label: #8686a4;
   --karel: #ff5fa2;
@@ -69,15 +183,9 @@
   --editor-exec: rgba(255, 95, 162, 0.16);
   --editor-sel: rgba(169, 139, 255, 0.28);
 
-  --grain: rgba(150, 150, 190, 0.05);
   /* The wash the drag-and-drop overlay lays over the page. Per theme, because
      dimming a light palette means going lighter, not darker. */
   --scrim: rgba(12, 12, 18, 0.86);
-  --ok: var(--green);
-  --warn: var(--amber);
-
-  --mono:
-    "JetBrains Mono", ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
 
   /* The program column: wide enough for a Karel procedure at 12.5px without
      wrapping, narrow enough that the world keeps the bigger half. */
@@ -87,55 +195,12 @@
      off the world. */
   --guide-rail: 360px;
   --leading: 1.55;
-
-  /* Swatch previews. Fixed values on purpose: each one has to show its own
-     theme no matter which theme is active. */
-  --sw-charm-bg: #0c0c12;
-  --sw-charm-a: #ff5fa2;
-  --sw-charm-b: #4fe3d2;
-  --sw-matte-bg: #000000;
-  --sw-matte-a: #ff5fa2;
-  --sw-matte-b: #4fe3d2;
-  --sw-ember-bg: #1b1a17;
-  --sw-ember-a: #fb4934;
-  --sw-ember-b: #8ec07c;
-  --sw-paper-bg: #f2efe7;
-  --sw-paper-a: #c2255c;
-  --sw-paper-b: #0b7285;
 }
 
 /* -----------------------------------------------------------------------
-   matte — a true black, and the colour left alone on top of it.
-
-   Every neutral here has its red, green and blue equal, so nothing tints
-   anything: the ground is #000, the panels are lifted by lightness rather
-   than by hue, and the greys stay grey. The accents are charm's own, at
-   charm's own saturation — the depth belongs to the ground, not to the
-   colour, and pulling the chroma out of the palette to match a dark surface
-   is what makes a dark theme look washed rather than deep.
+    matte — the world re-inked on teletipo's true black.
    ----------------------------------------------------------------------- */
 [data-theme="matte"] {
-  --bg: #000000;
-  --bg-panel: #0a0a0a;
-  --bg-raised: #151515;
-
-  --line: #1e1e1e;
-  --line-bright: #333333;
-
-  --text: #f4f4f4;
-  --text-dim: #9e9e9e;
-  --text-faint: #616161;
-
-  --pink: #ff5fa2;
-  --purple: #a98bff;
-  --cyan: #4fe3d2;
-  --lime: #cdfa54;
-  --amber: #ffc861;
-  --green: #45dd8b;
-  --red: #ff6b6b;
-  --blue: #6fa8ff;
-
-  --canvas-bg: #000000;
   --grid: #1c1c1c;
   --canvas-label: #7d7d7d;
   --karel: #ff5fa2;
@@ -148,38 +213,13 @@
   --editor-exec: rgba(255, 95, 162, 0.16);
   --editor-sel: rgba(169, 139, 255, 0.28);
 
-  /* Neutral, like everything else here: charm's grain carries a blue lift
-     that would be the one tinted thing on an untinted surface. */
-  --grain: rgba(170, 170, 170, 0.04);
   --scrim: rgba(0, 0, 0, 0.86);
 }
 
 /* -----------------------------------------------------------------------
-   ember — the warm retro one, in the lineage of gruvbox: orange and olive
-   over a brown-black, the colour of a terminal that has been on all night.
+    ember — the warm retro one, over teletipo's gruvbox ground.
    ----------------------------------------------------------------------- */
 [data-theme="ember"] {
-  --bg: #1b1a17;
-  --bg-panel: #232120;
-  --bg-raised: #322e2b;
-
-  --line: #423b36;
-  --line-bright: #665c54;
-
-  --text: #ebdbb2;
-  --text-dim: #b3a288;
-  --text-faint: #857b6c;
-
-  --pink: #fe8019;
-  --purple: #d3869b;
-  --cyan: #8ec07c;
-  --lime: #b8bb26;
-  --amber: #fabd2f;
-  --green: #b8bb26;
-  --red: #fb4934;
-  --blue: #83a598;
-
-  --canvas-bg: #1b1a17;
   --grid: #35302b;
   --canvas-label: #9b8f7c;
   --karel: #fb4934;
@@ -192,38 +232,15 @@
   --editor-exec: rgba(251, 73, 52, 0.18);
   --editor-sel: rgba(211, 134, 155, 0.3);
 
-  --grain: rgba(220, 190, 140, 0.05);
   --scrim: rgba(27, 26, 23, 0.86);
 }
 
 /* -----------------------------------------------------------------------
-   paper — the light one. Not an inversion: a light background needs darker,
-   more saturated accents to hold the same weight, and the grid has to be
-   drawn in ink rather than in light. The walls in particular go to near-black
-   here, because a pale rule on paper reads as a fold, not as a barrier.
+    paper — the light one. Not an inversion: the grid is drawn in ink rather
+    than in light, and the walls go to near-black here, because a pale rule
+    on paper reads as a fold, not as a barrier.
    ----------------------------------------------------------------------- */
 [data-theme="paper"] {
-  --bg: #f2efe7;
-  --bg-panel: #f9f7f1;
-  --bg-raised: #e7e2d6;
-
-  --line: #cec7b7;
-  --line-bright: #a79e8b;
-
-  --text: #23211c;
-  --text-dim: #5b564b;
-  --text-faint: #8a8375;
-
-  --pink: #c2255c;
-  --purple: #6741a5;
-  --cyan: #0b7285;
-  --lime: #5c7a10;
-  --amber: #9c6a06;
-  --green: #216e39;
-  --red: #b02525;
-  --blue: #1864ab;
-
-  --canvas-bg: #f2efe7;
   --grid: #d7d0c0;
   --canvas-label: #6d6553;
   --karel: #c2255c;
@@ -236,77 +253,13 @@
   --editor-exec: rgba(194, 37, 92, 0.14);
   --editor-sel: rgba(103, 65, 165, 0.22);
 
-  --grain: rgba(80, 70, 50, 0.05);
   --scrim: rgba(242, 239, 231, 0.88);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
+/* The one declaration of the ground layer this page adds to teletipo's:
+   the workbench is a fixed-height instrument, not a scrolling document. */
 body {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: var(--leading);
-  font-variant-ligatures: none;
-  -webkit-font-smoothing: antialiased;
   overflow: hidden;
-}
-
-/* A very faint dot lattice, standing in for the cell grid of a terminal. */
-.grain {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.5;
-  background-image: radial-gradient(circle at 1px 1px, var(--grain) 1px, transparent 0);
-  background-size: 4px 4px;
-}
-
-button {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  border-radius: 0;
-}
-
-::selection {
-  background: var(--pink);
-  color: var(--bg);
-}
-
-/* ------------------------------------------------------------- the box -- */
-/* One rule, and a title chip that paints over it. The chip carries the page
-   background so the border appears to break around the label, which is
-   exactly what a box-drawing title looks like in a terminal. */
-
-.box-title,
-.panel-title {
-  position: absolute;
-  top: 0;
-  left: 9px;
-  transform: translateY(-50%);
-  padding: 0 6px;
-  background: var(--bg);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--pink);
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 2;
 }
 
 /* Two names cut into one border, where a single title chip used to sit. A box
@@ -421,25 +374,6 @@ button {
   border-color: var(--line-bright);
 }
 
-.box-note,
-.panel-note {
-  position: absolute;
-  top: 0;
-  right: 9px;
-  max-width: 52%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transform: translateY(-50%);
-  padding: 0 6px;
-  background: var(--bg);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: var(--text-faint);
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 2;
-}
-
 /* ---------------------------------------------------------------- shell -- */
 
 .frame {
@@ -469,218 +403,6 @@ button {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-}
-
-.masthead {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  min-width: 0;
-  padding: 0 14px;
-  height: 42px;
-  border-bottom: 1px solid var(--line);
-}
-
-.identity {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: none;
-  min-width: 0;
-}
-
-/* Inverse video, the way a TUI names itself in its own title bar. */
-.wordmark {
-  background: var(--pink);
-  color: var(--bg);
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-}
-
-.subtitle {
-  font-size: 10.5px;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-@media (max-width: 940px) {
-  .subtitle {
-    display: none;
-  }
-}
-
-.channels {
-  display: flex;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.channels::-webkit-scrollbar {
-  display: none;
-}
-
-.channel {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex: none;
-  padding: 3px 10px;
-  border: 1px solid transparent;
-  background: none;
-  color: var(--text-dim);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  transition:
-    color 0.1s,
-    background 0.1s,
-    border-color 0.1s;
-}
-
-.channel:hover {
-  color: var(--text);
-  border-color: var(--line);
-}
-
-.channel-label {
-  white-space: nowrap;
-}
-
-.channel .index {
-  font-size: 10px;
-  color: var(--text-faint);
-  transition: color 0.1s;
-}
-
-.channel .index::before {
-  content: "[";
-}
-.channel .index::after {
-  content: "]";
-}
-
-.channel[aria-selected="true"] {
-  background: var(--purple);
-  border-color: var(--purple);
-  color: var(--bg);
-  font-weight: 700;
-}
-
-.channel[aria-selected="true"] .index {
-  color: var(--bg);
-  opacity: 0.62;
-}
-
-.masthead-end {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: none;
-}
-
-.themes {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.themes-label {
-  font-size: 10px;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-@media (max-width: 1180px) {
-  .themes-label {
-    display: none;
-  }
-}
-
-/* Each swatch previews its own theme rather than describing it: two bands of
-   the palette it would switch to, over that theme's own background. */
-.theme-swatch {
-  width: 20px;
-  height: 15px;
-  padding: 0;
-  border: 1px solid var(--line);
-  background: none;
-  position: relative;
-  overflow: hidden;
-  transition:
-    border-color 0.1s,
-    transform 0.1s;
-}
-
-.theme-swatch::before,
-.theme-swatch::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 6px;
-}
-
-.theme-swatch::before {
-  right: 50%;
-}
-
-.theme-swatch::after {
-  left: 50%;
-}
-
-.theme-swatch:hover {
-  border-color: var(--line-bright);
-}
-
-.theme-swatch[aria-pressed="true"] {
-  border-color: var(--text);
-  transform: scale(1.12);
-}
-
-/* Each swatch is painted in its own theme's colours whichever theme is
-   currently active -- so it previews rather than merely labels. */
-.theme-swatch[data-theme="charm"] {
-  background: var(--sw-charm-bg);
-}
-.theme-swatch[data-theme="charm"]::before {
-  background: var(--sw-charm-a);
-}
-.theme-swatch[data-theme="charm"]::after {
-  background: var(--sw-charm-b);
-}
-
-.theme-swatch[data-theme="matte"] {
-  background: var(--sw-matte-bg);
-}
-.theme-swatch[data-theme="matte"]::before {
-  background: var(--sw-matte-a);
-}
-.theme-swatch[data-theme="matte"]::after {
-  background: var(--sw-matte-b);
-}
-
-.theme-swatch[data-theme="ember"] {
-  background: var(--sw-ember-bg);
-}
-.theme-swatch[data-theme="ember"]::before {
-  background: var(--sw-ember-a);
-}
-.theme-swatch[data-theme="ember"]::after {
-  background: var(--sw-ember-b);
-}
-
-.theme-swatch[data-theme="paper"] {
-  background: var(--sw-paper-bg);
-}
-.theme-swatch[data-theme="paper"]::before {
-  background: var(--sw-paper-a);
-}
-.theme-swatch[data-theme="paper"]::after {
-  background: var(--sw-paper-b);
 }
 
 /* The skin picker, sitting beside the theme swatches and built the same way,
@@ -794,39 +516,6 @@ button {
   border-color: var(--cyan);
   color: var(--bg);
   font-weight: 700;
-}
-
-.ghost-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 9px;
-  border: 1px solid var(--line);
-  background: none;
-  color: var(--text-dim);
-  font-size: 11.5px;
-  transition:
-    color 0.1s,
-    border-color 0.1s,
-    background 0.1s;
-}
-
-.ghost-button:hover {
-  color: var(--bg);
-  background: var(--text-dim);
-  border-color: var(--text-dim);
-}
-
-.key-cap {
-  padding: 0 4px;
-  background: var(--line);
-  color: var(--text);
-  font-size: 10px;
-}
-
-.ghost-button:hover .key-cap {
-  background: var(--bg);
-  color: var(--text);
 }
 
 /* ---------------------------------------------------------------- bench -- */
@@ -1391,16 +1080,6 @@ button.problem:hover {
 /* --------------------------------------------------------------- canvas -- */
 
 .viewport {
-  position: relative;
-  min-height: 0;
-  border: 1px solid var(--line);
-  /* Matches the canvas fill exactly, so the title chip straddling the top
-     border has the same ground above and below it. */
-  background: var(--bg);
-  overflow: visible;
-}
-
-.viewport {
   /* The canvas sizes itself to the world it draws, so the box centres the
      element rather than the renderer centring the drawing inside its own
      bitmap — which would push the far columns off the edge. `auto` margins
@@ -1415,6 +1094,13 @@ button.problem:hover {
   display: block;
   margin: auto;
   touch-action: none;
+  /* Restated against teletipo's `.viewport canvas`, which fills its box
+     (width/height 100%) and points crosshair unconditionally. Karel's world
+     keeps its natural size, centred, and is a readout unless it says
+     otherwise below. */
+  width: auto;
+  height: auto;
+  cursor: auto;
 }
 
 /* A crosshair only while the world is editable; otherwise the world is a
@@ -1433,139 +1119,25 @@ button.problem:hover {
   min-width: 0;
 }
 
-.transport {
-  display: flex;
-  gap: 4px;
-}
-
-.transport-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 10px;
-  border: 1px solid var(--line);
-  background: none;
-  color: var(--text-dim);
-  font-size: 11.5px;
-  transition:
-    color 0.1s,
-    border-color 0.1s,
-    background 0.1s;
-}
-
-.transport-button .glyph {
-  font-size: 9px;
-  letter-spacing: -0.05em;
-}
-
-.transport-button:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--line-bright);
-}
-
-.transport-button:disabled {
-  color: var(--text-faint);
-  border-color: var(--line);
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Fixed width because this button swaps between "run" and "pause": letting it
-   resize would shove step, stop and reset sideways on every state change. */
-.transport-button.primary {
-  border-color: var(--cyan);
-  color: var(--cyan);
-  min-width: 96px;
-}
-
-.transport-button.primary:hover:not(:disabled) {
-  background: var(--cyan);
-  color: var(--bg);
-}
-
-.rate {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rate-options {
-  display: flex;
-  border: 1px solid var(--line);
-}
-
-.rate-option {
-  padding: 3px 8px;
-  border: none;
-  border-right: 1px solid var(--line);
-  background: none;
-  color: var(--text-faint);
-  font-size: 11px;
-  transition:
-    color 0.1s,
-    background 0.1s;
-}
-.rate-option:last-child {
-  border-right: none;
-}
-.rate-option:hover {
-  color: var(--text);
-}
-.rate-option[aria-pressed="true"] {
-  background: var(--amber);
-  color: var(--bg);
-  font-weight: 700;
-}
-
 /* The view toggles ride with the transport rather than being pushed to the
-   far edge. An `auto` margin here used to right-align them, which looked
-   deliberate only while the whole console fitted on one line: below about
-   1560px the group wrapped on its own and left a single chip stranded
-   against the right edge, floating over the readout. Files is ordered last
-   instead, so the group that drops to a second row is a coherent one and it
-   drops flush left, where a second row belongs. */
+   far edge. teletipo's `.toggles` carries `margin-left: auto`; an `auto`
+   margin here used to right-align them, which looked deliberate only while
+   the whole console fitted on one line: below about 1560px the group wrapped
+   on its own and left a single chip stranded against the right edge, floating
+   over the readout. Files is ordered last instead, so the group that drops to
+   a second row is a coherent one and it drops flush left, where a second row
+   belongs. The zero margin is stated so the library's stays overridden. */
 
 .toggles {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+  margin-left: 0;
 }
 
-/* Checkbox as a terminal would draw it: a bracketed cell that fills in. */
-.toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
-  border: 1px solid transparent;
-  background: none;
-  color: var(--text-faint);
-  font-size: 11.5px;
-  transition:
-    color 0.1s,
-    border-color 0.1s;
-}
-
-.toggle::before {
-  content: "[ ]";
-  color: var(--line-bright);
-  letter-spacing: -0.06em;
-}
-
-.toggle:hover {
-  color: var(--text-dim);
-  border-color: var(--line);
-}
-
-.toggle[aria-pressed="true"] {
-  color: var(--text);
-  border-color: var(--line);
-}
-
-.toggle[aria-pressed="true"]::before {
-  content: "[X]";
-  color: var(--green);
-}
+/* The checkbox itself — base, unchecked cell, hover, checked fill — is
+   teletipo's; only the checked glyph is Karel's own ("[X]"), kept in the
+   local overrides at the top of this file. */
 
 /* ---------------------------------------------------------------- files -- */
 /* Open and save, next to the transport rather than inside the map editor: a
@@ -1866,344 +1438,20 @@ button.problem:hover {
   margin-top: 4px;
 }
 
-.panel {
-  position: relative;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
-  min-width: 0;
-}
-
-.panel-body {
-  padding: 12px 11px 10px;
-}
-
-/* Rows of measurements, leader-dotted so the eye tracks across the gap the
-   way it does down a printed table of figures. */
-.metrics {
-  display: grid;
-  gap: 2px;
-}
-
-.metric {
-  display: grid;
-  grid-template-columns: auto minmax(10px, 1fr) auto;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.metric::after {
-  content: "";
-  grid-column: 2;
-  border-bottom: 1px dotted var(--line);
-  transform: translateY(-3px);
-}
-
-.metric-label {
-  font-size: 12px;
-  color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.metric-label em {
-  font-style: normal;
-  color: var(--text);
-}
-
-.metric-value {
-  grid-column: 3;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-.metric-value .unit {
-  color: var(--text-faint);
-  font-size: 10px;
-  margin-left: 3px;
-}
-
-.metric-value.good {
-  color: var(--ok);
-}
-.metric-value.warn {
-  color: var(--warn);
-}
-.metric-value.bad {
-  color: var(--red);
-}
-.metric-value.muted {
-  color: var(--text-faint);
-}
-
-/* A changed value inverts for a moment: the terminal way of drawing attention,
-   and far more legible at this size than a fade. */
-@keyframes value-touched {
-  0%,
-  55% {
-    background: var(--amber);
-    color: var(--bg);
-  }
-  100% {
-    background: transparent;
-  }
-}
-
-.metric-value.touched {
-  animation: value-touched 0.45s steps(2, end);
-}
-
 /* The compass, for `facing`. A glyph as text, sized to the row it sits in. */
 .metric-value .compass {
   color: var(--karel);
   margin-right: 5px;
 }
 
-/* ------------------------------------------------------------- controls -- */
-
-.control {
-  display: grid;
-  gap: 3px;
-  padding: 6px 0;
-}
-
-.control + .control {
-  border-top: 1px dotted var(--line);
-  padding-top: 8px;
-}
-
-.control-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.control-name {
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-.control-name em {
-  font-style: normal;
-  color: var(--cyan);
-}
-
-.control-value {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--amber);
-}
-
-.control-value .unit {
-  color: var(--text-faint);
-  font-size: 10px;
-  margin-left: 3px;
-}
-
-/* A slider drawn as a rail with a block riding it. */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 14px;
-  background: none;
-  cursor: ew-resize;
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 1px;
-  background: var(--line-bright);
-}
-
-input[type="range"]::-moz-range-track {
-  height: 1px;
-  background: var(--line-bright);
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 9px;
-  height: 13px;
-  margin-top: -6px;
-  border: none;
-  border-radius: 0;
-  background: var(--amber);
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 9px;
-  height: 13px;
-  border: none;
-  border-radius: 0;
-  background: var(--amber);
-}
-
-input[type="range"]:hover::-webkit-slider-thumb,
-input[type="range"]:focus-visible::-webkit-slider-thumb {
-  background: var(--lime);
-}
-
-.control-ticks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9.5px;
-  color: var(--text-faint);
-  margin-top: -2px;
-}
-
-/* ----------------------------------------------------------------- list -- */
-/* Rows of things to pick from: saved worlds, the map editor's brushes. */
-
-.list {
-  display: grid;
-  gap: 1px;
-}
-
-.list-row {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 3px 6px;
-  border: none;
-  background: none;
-  color: var(--text-dim);
-  font-size: 11.5px;
-  text-align: left;
-  transition:
-    background 0.1s,
-    color 0.1s;
-}
-
-.list-row:hover {
-  background: var(--bg-raised);
-  color: var(--text);
-}
-
-/* The selected row inverts, which is how a terminal list shows its cursor. */
-.list-row[aria-pressed="true"] {
-  background: var(--text);
-  color: var(--bg);
-  font-weight: 500;
-}
-
-.list-swatch {
-  width: 8px;
-  height: 8px;
-  flex: none;
-}
-
-.list-name {
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.list-detail {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.preset-row {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.preset-row .list-action {
-  flex: 1 1 auto;
-  min-width: 58px;
-}
-
-.list-actions {
-  display: flex;
-  gap: 4px;
-  margin-top: 9px;
-  padding-top: 8px;
-  border-top: 1px dotted var(--line);
-}
-
-.list-action {
-  flex: 1;
-  padding: 3px 8px;
-  border: 1px solid var(--line);
-  background: none;
-  color: var(--text-dim);
-  font-size: 11px;
-  transition:
-    color 0.1s,
-    border-color 0.1s,
-    background 0.1s;
-}
-
-.list-action:hover:not(:disabled) {
-  color: var(--bg);
-  background: var(--cyan);
-  border-color: var(--cyan);
-}
-
-.list-action:disabled {
-  color: var(--text-faint);
-  border-color: var(--line);
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+/* The readout panels, their metric rows and the list/preset families are
+   teletipo's chrome (panel, panel-body, metrics, metric, list, preset-row,
+   list-actions); the compass above is the one reading Karel adds. */
 
 /* ------------------------------------------------------------ statusbar -- */
-/* Every well-made TUI ends in a line of key hints. */
-
-.statusbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  height: 24px;
-  padding: 0 14px;
-  border-top: 1px solid var(--line);
-  background: var(--bg-panel);
-  font-size: 10.5px;
-  color: var(--text-faint);
-}
-
-.hint b {
-  color: var(--text-dim);
-  font-weight: 500;
-  margin-right: 4px;
-}
-
-/* The state chip. One colour per `SessionState`, so the strip at the bottom
-   right answers "what is it doing" without being read. */
-.statusbar-end {
-  margin-left: auto;
-  padding: 0 7px;
-  background: var(--line-bright);
-  color: var(--bg);
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.statusbar-end[data-state="running"] {
-  background: var(--green);
-}
-.statusbar-end[data-state="stepping"] {
-  background: var(--cyan);
-}
-.statusbar-end[data-state="done"] {
-  background: var(--purple);
-}
-.statusbar-end[data-state="error"] {
-  background: var(--red);
-}
-.statusbar-end[data-state="edit"] {
-  background: var(--amber);
-}
+/* The bar, its hints and the state chip's data-state variants are teletipo's.
+   Karel restates only what differs: the chip idles grey (see the local
+   overrides at the top of this file) and has a `running` state. */
 
 /* ---------------------------------------------------------------- about -- */
 /* The manual. It is the only long-form reading in a page otherwise made of
@@ -2213,7 +1461,10 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 
    Layout is a fixed index beside a scrolling document, rather than a sticky
    index inside one: nothing then slides underneath the index, and the reader's
-   place in a nine-section reference is always one glance away. */
+   place in a nine-section reference is always one glance away.
+
+   teletipo styles a simpler `.about` (max-width 660px, padded body); the rules
+   here restate Karel's fixed-height instrument on top of it. */
 
 .about {
   /* Positioned explicitly rather than trusting the UA's centring of a
@@ -2229,6 +1480,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   color: var(--text);
   padding: 0;
   width: min(820px, calc(100% - 32px));
+  /* teletipo caps the dialog at max-width 660px; Karel's own width wins. */
+  max-width: none;
   /* A definite height, not a maximum: the body below grows into it with
      flex: 1, and a flex basis resolved against an indefinite height is free
      to come out as nothing. The document is always taller than this anyway.
@@ -2246,33 +1499,27 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   flex-direction: column;
 }
 
-.about::backdrop {
-  background: rgba(8, 8, 13, 0.8);
-}
-
 .about-body {
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  /* teletipo pads `.about-body`; here the head carries its own padding and
+     the scroll area below owns the rest. */
+  padding: 0;
 }
 
-.about-head {
+/* Two classes, not one: teletipo styles `.about-body header` at higher
+   specificity than a lone class would beat, and its header rhythm is not
+   this dialog's. */
+.about-body .about-head {
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 13px 16px 11px;
   border-bottom: 1px solid var(--line);
-}
-
-.about-body h2 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--pink);
 }
 
 /* The index down the left, the document to its right. This element does not
@@ -2401,9 +1648,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   color: var(--lime);
 }
 
-.about-body h3::before {
-  content: "▌ ";
-}
+/* The section mark ("▌ ") is teletipo's `.about-body h3::before`. */
 
 .about-body h4 {
   margin: 0 0 3px;
@@ -2436,6 +1681,20 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   font-family: var(--mono);
   font-size: 0.94em;
   color: var(--amber);
+}
+
+/* teletipo dresses `.about-body ul` and dots every `li` inside the dialog
+   with a pink "· ". The manual's only lists are the condition chips below,
+   which are chips, not prose bullets — so both are held back to what they
+   rendered before the library arrived. */
+.about-body .help-chips {
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.about-body .help-chips li::before {
+  content: none;
 }
 
 /* ------------------------------------------------------------ help code -- */
@@ -3494,94 +2753,9 @@ textarea.text-input {
   clip-path: inset(50%);
 }
 
-/* ------------------------------------------------------------ page load -- */
-/* A brisk wipe rather than a drift: panels arrive the way a screen paints. */
-
-@keyframes paint {
-  from {
-    opacity: 0;
-    transform: translateX(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.masthead,
-.strip,
-.guide,
-.gallery,
-.editor,
-.problems,
-.viewport,
-.console,
-.palette,
-.statusbar,
-.readout > * {
-  animation: paint 0.22s steps(4, end) backwards;
-}
-
-.masthead {
-  animation-delay: 0.02s;
-}
-.strip,
-.guide,
-.gallery {
-  animation-delay: 0.04s;
-}
-.editor {
-  animation-delay: 0.06s;
-}
-.viewport {
-  animation-delay: 0.06s;
-}
-.problems {
-  animation-delay: 0.12s;
-}
-.console {
-  animation-delay: 0.14s;
-}
-.statusbar {
-  animation-delay: 0.18s;
-}
-.readout > *:nth-child(1) {
-  animation-delay: 0.16s;
-}
-.readout > *:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.readout > *:nth-child(3) {
-  animation-delay: 0.24s;
-}
-.readout > *:nth-child(4) {
-  animation-delay: 0.28s;
-}
-.readout > *:nth-child(5) {
-  animation-delay: 0.32s;
-}
-
-/* Two animations run on this page and both are ornament: the wipe above, and
-   the inverse-video flash that marks a reading as it changes. Neither carries
-   information the page does not also state in words, so under a reduced-motion
-   preference they are replaced by their end state rather than by a very fast
-   version of themselves.
-
-   The delays have to go with the durations. `paint` fills backwards, so a
-   delay left in place would hold a panel at opacity 0 for up to a third of a
-   second and then snap it in -- which is not less motion, it is a flash. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-delay: 0ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    transition-delay: 0ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* The page-load wipe (keyframes, cast and delays) lives in the local
+   overrides at the top of this file; the reduced-motion kill-switch is
+   teletipo's base layer. */
 
 /* ----------------------------------------------------------- responsive -- */
 
@@ -3682,44 +2856,9 @@ textarea.text-input {
   }
 }
 
-@media (max-width: 760px) {
-  .masthead {
-    height: auto;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    padding: 8px 12px;
-  }
-
-  .channels {
-    order: 3;
-    flex: 1 0 100%;
-    /* A fading edge, so a half-visible tab reads as "there is more". */
-    -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
-    mask-image: linear-gradient(90deg, #000 88%, transparent);
-  }
-
-  .masthead-end {
-    margin-left: auto;
-  }
-}
-
+/* The masthead's phone wrap (760px) and the console's narrow arrangements
+   (620px) are teletipo's chrome; only Karel's palette hint is added here. */
 @media (max-width: 620px) {
-  .toggles {
-    width: 100%;
-  }
-
-  .transport-button span:not(.glyph) {
-    display: none;
-  }
-
-  .transport-button.primary {
-    min-width: 0;
-  }
-
-  .hint:nth-child(n + 4) {
-    display: none;
-  }
-
   .palette-hint {
     display: none;
   }

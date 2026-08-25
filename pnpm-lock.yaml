@@ -44,6 +44,9 @@ importers:
       codemirror:
         specifier: ^6.0.2
         version: 6.0.2
+      teletipo:
+        specifier: github:GH-Jaider/teletipo#v0.1.0
+        version: https://codeload.github.com/GH-Jaider/teletipo/tar.gz/6eec253774889e9f0a38168b95cd1ab8dfb19eee
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -2488,6 +2491,11 @@ packages:
   tar-stream@2.2.0:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
     engines: {node: '>=6'}
+
+  teletipo@https://codeload.github.com/GH-Jaider/teletipo/tar.gz/6eec253774889e9f0a38168b95cd1ab8dfb19eee:
+    resolution: {tarball: https://codeload.github.com/GH-Jaider/teletipo/tar.gz/6eec253774889e9f0a38168b95cd1ab8dfb19eee}
+    version: 0.1.0
+    engines: {node: '>=20'}
 
   terminal-link@4.0.0:
     resolution: {integrity: sha512-lk+vH+MccxNqgVqSnkMVKx4VLJfnLjDBGzH16JVZjKE2DoxP57s6/vt6JmXV5I3jBcfGrxNrYtC+mPtU7WJztA==}
@@ -5272,6 +5280,8 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
     optional: true
+
+  teletipo@https://codeload.github.com/GH-Jaider/teletipo/tar.gz/6eec253774889e9f0a38168b95cd1ab8dfb19eee: {}
 
   terminal-link@4.0.0:
     dependencies:
